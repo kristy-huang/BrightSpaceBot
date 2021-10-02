@@ -1,9 +1,9 @@
 from flask import Flask, send_from_directory
 from flask_restful import Api, Resource, reqparse
 from flask_cors import CORS  # comment this out on deployment
-from api.HelloApiHandler import HelloApiHandler
+from backendApi.HelloApiHandler import HelloApiHandler
 
-webapp = Flask(__name__, static_url_path='', static_folder='frontend/build')
+webapp = Flask(__name__, static_url_path='', static_folder='web/public')
 CORS(webapp)  # comment this out on deployment
 api = Api(webapp)
 
