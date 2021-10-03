@@ -1,10 +1,11 @@
 # This will house the logic for user story 4 (file storage )
 import os
+import urllib
 # Accessing google api
 from pydrive.auth import GoogleAuth
 from pydrive.drive import GoogleDrive
-from File import File
-
+# Accessing the data class made
+from File import File, StorageTypes
 
 # Since our project is in "testing" phase, you have to manually add test users until you publish the app
 # My personal email is the only test user now, but we can add more
@@ -32,21 +33,42 @@ def store_path():
 # if path not determined by user yet, prompt them to fill one (or just do default downloads path)
 
 # Algorithm to check if path is a valid path
-def validate_path(storage_path):
+def validate_path(storage_path, drive):
     # checks if inputted path is valid or not for their local machine
     if not os.path.exists(storage_path):
-        return False
+        # check if its a valid google drive folder in root (update later for nested folders)
+        folderList = get_all_files_in_google(drive)
+        for folder in folderList:
+            if folder.fileTitle == storage_path:
+                return True
+        else:
+            return False
     return True
 
 
-def upload_to_google_drive(drive):
-    file = "/Users/raveena/Desktop/BrightSpaceBot/docs/Project Backlog - Team 14 (BrightspaceBot).pdf"
-    # currently takes the folder id from browser of url for the folder they want to upload something in
-    gd_file = drive.CreateFile({'parents': [{'id': '1FHtEwx0GlOzZokqsYfLY4mI85WS9S0i-'}]})
+def upload_to_google_drive(drive, storage_path, file):
+    file_to_upload = file
+    # finding the folder to upload to
+    folders = get_all_files_in_google(drive)
+    folder_id = -1
+    for folder in folders:
+        if folder.fileTitle == storage_path:
+            folder_id = folder.filePath
+            break
+    print(folder_id)
+    if folder_id == -1:
+        # upload it to the root (My Drive)
+        gd_file = drive.CreateFile({'title': file})
+    else:
+        # currently takes the folder id from browser of url for the folder they want to upload something in
+        gd_file = drive.CreateFile({'parents': [{'id': folder_id}]})
+
     # Read file and set it as the content of this instance.
     gd_file.SetContentFile(file)
     # Upload the file
     gd_file.Upload()
+    # handles memory leaks
+    gd_file = None
 
 
 def get_all_files_in_google(drive):
@@ -57,26 +79,29 @@ def get_all_files_in_google(drive):
     for file in fileList:
         if file['mimeType'] == 'application/vnd.google-apps.folder':
             myFile = File(file['title'], file['id'])
-            check_path = validate_path(myFile.filePath)
-            if check_path:
-                myFile.storageType = 0
-            else:
-                myFile.storageType = 1  # in this method it will always be here but I will make this logic better soon
+            myFile.storageType = StorageTypes.GOOGLE_DRIVE
             folderList.append(myFile)
 
     return folderList
 
+
+# This will be replaced by the actual url
+def upload_file_to_local_path(localPath, fileRUL, filename):
+    fullfilename = os.path.join(localPath, filename)
+    urllib.urlretrieve(fileRUL, fullfilename)
 
 # Prompt options for storage locations when prompting users to specify a location
 
 
 # Main function
 if __name__ == '__main__':
-    # storage_path = ask_for_path()
-    # validate_path(storage_path)
-    # upload_to_google_drive(drive)
-
+    # Example of what the typical flow would look like when interacting with Bot
+    storage_path = ask_for_path()
     drive = init_google_auths()
-    folders = get_all_files_in_google(drive)
-    for f in folders:
-        print(f.get_info())
+    return_val = validate_path(storage_path, drive)
+    print(return_val)  # for debugging
+    # for debugging, just using this default file
+    file = "docs/Project Backlog - Team 14 (BrightspaceBot).pdf"
+
+    upload_to_google_drive(drive, storage_path, file)
+
