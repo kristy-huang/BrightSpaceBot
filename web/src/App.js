@@ -7,7 +7,7 @@ function App() {
   const [getMessage, setGetMessage] = useState({})
 
   useEffect(()=>{
-    axios.get('http://localhost:5000/flask/hello').then(response => {
+    axios.post('http://localhost:5000/register').then(response => {
       console.log("SUCCESS", response)
       setGetMessage(response)
     }).catch(error => {
@@ -21,7 +21,7 @@ function App() {
         <img src={logo} className="App-logo" alt="logo" />
         <p>Welcome to BrightSpace Bot</p>
         <div>{getMessage.status === 200 ?
-          <h3>{getMessage.data.message}</h3>
+          <button>{getMessage.data.message}</button>
           :
           <h3>LOADING</h3>}</div>
       </header>
