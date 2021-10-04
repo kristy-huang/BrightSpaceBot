@@ -45,8 +45,8 @@ async def on_message(message):
     # Lets say that we want the bot to only respond to a specific text channel in a server named 'todo'
     # Make sure this channel exists tho first!
     # I think there is a slight bug when I put sentences but we can revisit that later
-    if message.channel.name == 'todo':
-        if user_message.lower() == 'bored':
+    if message.channel.name == 'specifics':
+        if user_message.lower() == 'im bored':
             await message.channel.send("You should probably study...")
             return
 
