@@ -12,6 +12,8 @@ flask-sqlalchemy = "*"
 mysqlclient = "*"
 flask-marshmallow = "*"
 marshmallow-sqlalchemy = "*"
+flask-login = "*"
+bcrypt = "*"
 
 [dev-packages]
 
