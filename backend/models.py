@@ -6,7 +6,7 @@ class Users(db.Model):
     first_name = db.Column(db.String(50))
     last_name = db.Column(db.String(50))
     username = db.Column(db.String(50))
-    password = db.Column(db.String(50))
+    password = db.Column(db.String(255))
 
     def __init__(self, first_name, last_name, username, password):
         self.first_name = first_name

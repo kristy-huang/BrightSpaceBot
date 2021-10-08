@@ -1,30 +1,25 @@
-import logo from './logo.svg';
 import './App.css';
 import React, { useEffect, useState } from 'react';
 import axios from 'axios'
+import UserLogin from './components/UserLogin';
 
 function App() {
-  const [getMessage, setGetMessage] = useState({})
-
-  useEffect(()=>{
-    axios.post('http://localhost:5000/register').then(response => {
-      console.log("SUCCESS", response)
-      setGetMessage(response)
-    }).catch(error => {
-      console.log(error)
+  const [user, setUser] = useState([]);
+  useEffect(()=> {
+    fetch('http://localhost:5000/getUsers', {
+        'method':'GET',
+        headers: {
+            'Content-Type':'applications/json'
+        }
     })
-
-  }, [])
+    .then(res => res.json())
+    .then(res => setUser(res))
+    .catch(err => console.log(err))
+  })
   return (
     <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>Welcome to BrightSpace Bot</p>
-        <div>{getMessage.status === 200 ?
-          <button>{getMessage.data.message}</button>
-          :
-          <h3>LOADING</h3>}</div>
-      </header>
+        <h1>Welcome to BrightSpaceBot</h1>
+        <UserLogin user = {user}/>
     </div>
   );
 }
