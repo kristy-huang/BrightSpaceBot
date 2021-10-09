@@ -42,6 +42,9 @@ async def on_message(message):
         await message.channel.send(f'Bye {username}!')
         return
 
+    # Maybe in reality we want to have the message be passed through chat module and it returns what type of
+    # request they are intending. From there we call the methods from the scripts we have written.
+
     # Lets say that we want the bot to only respond to a specific text channel in a server named 'todo'
     # Make sure this channel exists tho first!
     # I think there is a slight bug when I put sentences but we can revisit that later
