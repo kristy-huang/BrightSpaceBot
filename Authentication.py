@@ -70,11 +70,14 @@ def __login_brightspace(session):
     res.raise_for_status()
 
     tree = etree.HTML(res.text)
-    res = session.post(
-        tree.xpath("//form/@action")[0],
-        data={"SAMLResponse": tree.xpath('//input[@name="SAMLResponse"]/@value')[0]},
-        headers=HEADER
-    )
+    try:
+        res = session.post(
+            tree.xpath("//form/@action")[0],
+            data={"SAMLResponse": tree.xpath('//input[@name="SAMLResponse"]/@value')[0]},
+            headers=HEADER
+        )
+    except:
+        print("Login failed. Please check your cridentials. ")
 
     return session
 
