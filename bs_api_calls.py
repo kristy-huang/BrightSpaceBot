@@ -37,12 +37,12 @@ class BSAPI():
     # information.
 
 
-    # Pulls user information.
+    # Pulls user "who am i" information.
     #
     # returns: WhoAmIUser JSON
 
     def get_user_info(self):
-        url = self._API_URL_PREFIX + "lp/1.21/users/mypronouns"
+        url = self._API_URL_PREFIX + "lp/1.21/users/"
         return self.__process_api("get_user_info", url)
 
 
@@ -55,6 +55,23 @@ class BSAPI():
         url = self._API_URL_PREFIX + "le/1.38/{course_id}/quizzes/".format(course_id=course_id)
         return self.__process_api("get_quizzes", url)
 
+
+    # Pulls all announcements from BrightSpace with a given course id.
+    # Announcements posted after "since" are returned. If no since is provided, 
+    # all announcements for this class are returned.
+    # "since" is a date in UTC+0 time, in the format of yyyy-MM-ddTHH:mm:ss.fffZ 
+    #
+    # course_id (str / int): the id of the course
+    # since (str): announcements before this time won't be returned. 
+    # return: a JSON array of NewsItem
+
+    def get_announcements_class(self, course_id, since=None):
+        url = self._API_URL_PREFIX + "le/1.38/{course_id}/news/".format(course_id=course_id)
+        since = "since=" + since if since else ""
+        url += "?" + since if since else ""
+
+        return self.__process_api("get_news_class", url)
+        
 
     def __process_api(self, call_name, api_url):
         if not self._session:
@@ -80,7 +97,3 @@ class BSAPI():
     def set_debug_mode(self, debug):
         self._debug = debug
 
-
-bs = BSAPI(debug=True)
-bs.set_session("xiong109", "1486,push")
-print(bs.get_user_info())
