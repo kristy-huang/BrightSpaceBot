@@ -2,7 +2,8 @@ import requests
 from lxml import etree
 import os
 from pathlib import Path
-from File import File, StorageTypes
+from File import File
+from datetime import datetime
 
 HEADER = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3626.121 Safari/537.36",
@@ -131,7 +132,7 @@ def get_grade(session, course_id):
 
 def get_file_from_request(session, courseid, topicid, filename):
     # formatting downloadable link
-    download_url = "https://purdue.brightspace.com/d2l/api/le/{version}/{course_id}/content/topic/{topic_id}/file"\
+    download_url = "https://purdue.brightspace.com/d2l/api/le/{version}/{course_id}/content/topic/{topic_id}/file" \
         .format(version=BP_VERSION,
                 course_id=courseid,
                 topic_id=topicid)
@@ -173,15 +174,54 @@ def download__file(session, courseid):
                     get_file_from_request(session, courseid, m_topics[k]["TopicId"], filename)
 
 
+def get_discussion_topics(session, courseID, forumID):
+    topic_url = "https://purdue.brightspace.com/d2l/api/le/{verison}/{course_id}/discussions/forums/{forum_id}/topics/" \
+        .format(verison=BP_VERSION,
+                course_id=courseID,
+                forum_id=forumID)
+    res = session.get(topic_url, headers=HEADER)
+    topics = res.json()
+    return topics
+
+
+def get_discussion_due_dates(session, courseID):
+    dates = []
+    current_date = datetime.now()  # saving the current date
+    print(current_date)
+
+    discussion_url = "https://purdue.brightspace.com/d2l/api/le/{version}/{course_id}/discussions/forums/" \
+        .format(version=BP_VERSION,
+                course_id=courseID)
+    res = session.get(discussion_url, headers=HEADER)
+
+    threads = res.json()
+    for thread in threads:
+        print(thread["Name"])
+        print("----")
+        # get the list of topics for each thread
+        topics = get_discussion_topics(session, courseID, thread["ForumId"])
+        for t in topics:
+            print(t["Name"])
+            # if its null, then we don't need the value
+            if t["EndDate"] is not None:
+                dates.append(t["EndDate"])
+    return dates
+
+
 def main():
     session = get_brightspace_session("xxxx", "xxxx,push")
-    #quiz = get_quizzes(session, "xxxx")
-    #get_grade(session, "xxxx")
-    print("--------------------------")
-    download__file(session, "xxxxx")
-
+    # quiz = get_quizzes(session, "xxxx")
+    # get_grade(session, "xxxx")
+    # download__file(session, "xxxxx")
+    dates = get_discussion_due_dates(session, "xxxx")
+    print(dates)
 
 
 if __name__ == "__main__":
     print("---------------------------------")
     main()
+    # example: the code below will be used to see the difference in days between now and due date
+    current_date = datetime.now()  # saving the current date
+    print(current_date)
+    end = datetime(2021, 10, 13)
+    print(end - current_date)
