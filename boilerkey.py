@@ -6,6 +6,8 @@ HEADER = {
     "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9"
 }
 
+BP_VERSION = "1.38"
+WHO_AM_I_VERSION = "1.0"
 
 # Returns a requests.session that is logged in to brightspace
 # with the given username and password.
@@ -89,7 +91,7 @@ def login_brightspace(session):
 # return: None
 
 def get_quizzes(session, course_id):
-    quiz_url = "https://purdue.brightspace.com/d2l/api/le/1.38/{course_id}/quizzes/".format(course_id=course_id)
+    quiz_url = "https://purdue.brightspace.com/d2l/api/le/{version}/{course_id}/quizzes/".format(version=BP_VERSION, course_id=course_id)
     print("q url:", quiz_url)
     res = session.get(quiz_url, headers=HEADER)
 
@@ -102,8 +104,8 @@ def get_quizzes(session, course_id):
 def get_grade(session, course_id):
     # surrounding request with try catch to capture any errors through
     try:
-        grade_url = "https://purdue.brightspace.com/d2l/api/le/1.38/{course_id}/grades/final/values/myGradeValue".format(
-            course_id=course_id)
+        grade_url = "https://purdue.brightspace.com/d2l/api/le/{version}/{course_id}/grades/final/values/myGradeValue".format(
+            version=BP_VERSION, course_id=course_id)
         print(grade_url)
         res = session.get(grade_url, headers=HEADER)
         res.raise_for_status()
@@ -122,10 +124,27 @@ def get_grade(session, course_id):
     return fraction_string, percentage_string
 
 
+def download__file(session):
+    url = "https://purdue.brightspace.com/d2l/api/le/1.38/335757/content/toc"
+    print("q url:", url)
+    res = session.get(url, headers=HEADER, allow_redirects=True)
+
+    print(res.status_code)
+    topic = res.json()["Modules"][0]["Modules"]
+    #[1]["Topics"]
+    s = len(topic)
+    for i in range(s):
+        m = topic[i]["Topics"]
+        for j in range(len(m)):
+            print(m[j]["Url"])
+    #open('facebook.pdf', 'wb').write(res.content)
+
+
 def main():
-    session = get_brightspace_session("username", "xxxx,push")
-    quiz = get_quizzes(session, "xxxxx")
-    get_grade(session, "xxxxx")
+    session = get_brightspace_session("xxxx", "xxxx,push")
+    #quiz = get_quizzes(session, "335578")
+    #get_grade(session, "335578")
+    download__file(session)
 
 
 if __name__ == "__main__":
