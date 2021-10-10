@@ -120,4 +120,4 @@ class MySQLDatabase:
         if state:
             rows = self._cursor.fetchall()
             return rows
-        return "No databases found in instance."
+        return "No tables found in database."
