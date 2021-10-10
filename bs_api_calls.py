@@ -3,7 +3,6 @@ from authentication import get_brightspace_session
 import requests
 
 
-
 class BSAPI():
     # ---------- Some initialization functions ---------------
 
@@ -52,7 +51,7 @@ class BSAPI():
         return self.__process_api("get_enrollments", url)
 
 
-    # Pulls all quiz information from BrightSpacen with a given course id.
+    # Pulls all quiz information from BrightSpace with a given course id.
     #
     # course_id (str / int): the id of the course
     # return: ObjectListPage JSON block containing a list of QuizReadData blocks.
@@ -78,6 +77,14 @@ class BSAPI():
 
         return self.__process_api("get_news_class", url)
         
+
+    # A general process for processing an api call.
+    #
+    # call_name: The name of the functionality that is being processed. 
+    #            Used for debugging.
+    # api_url:   The url for the api call
+    #
+    # return: a json file. See references for more informtion. 
 
     def __process_api(self, call_name, api_url):
         if not self._session:
