@@ -6,7 +6,8 @@ class BSUtilities():
     def __init__(self):
         self._bsapi = BSAPI()
 
-
+    # Same as set_session in BSAPI
+    
     def set_session(self, session):
         self._bsapi.set_session(session)
  
