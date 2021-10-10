@@ -11,7 +11,6 @@ HEADER = {
 
 BP_VERSION = "1.38"
 WHO_AM_I_VERSION = "1.0"
-FILE_ARRAY = []
 
 
 # Returns a requests.session that is logged in to brightspace
@@ -130,49 +129,57 @@ def get_grade(session, course_id):
     return fraction_string, percentage_string
 
 
+def get_file_from_request(session, courseid, topicid, filename):
+    # formatting downloadable link
+    download_url = "https://purdue.brightspace.com/d2l/api/le/{version}/{course_id}/content/topic/{topic_id}/file"\
+        .format(version=BP_VERSION,
+                course_id=courseid,
+                topic_id=topicid)
+    # Making the request to retrieve the file
+    res = session.get(download_url, headers=HEADER, allow_redirects=True)
+    # saving that file internally
+    open(filename, 'wb').write(res.content)
+    # moving the file to a default location (testing location locally)
+    source = filename
+    destination = "/Users/raveena/Desktop/testing" + "/" + source  # for debugging (change later)
+    os.rename(source, destination)
+
+
 def download__file(session, courseid):
     url = "https://purdue.brightspace.com/d2l/api/le/1.38/{course_id}/content/toc".format(course_id=courseid)
     print("q url:", url)
-    res = session.get(url, headers=HEADER, allow_redirects=True)
+    res = session.get(url, headers=HEADER)
 
-    print(res.status_code)
+    print("Download files request code: " + str(res.status_code))
+    # saving the json returned
     modules = res.json()["Modules"]
-    # number of big sections
-    print(len(modules))
+
+    print(len(modules))  # DEBUG: number of big sections
+
     # going through the big sections
     for i in range(len(modules)):
-        print(modules[i]["Title"])
         # go through any folders the module section may have (module inside module)
         for j in range(len(modules[i]["Modules"])):
-            print(modules[i]["Modules"][j]["Title"])
             m_topics = modules[i]["Modules"][j]["Topics"]
             # going through the topics to see files listed
             for k in range(len(m_topics)):
-                # print(m_topics[k]["Url"])
+                # getting the type of file it is
                 suffix = Path(m_topics[k]["Url"]).suffixes
                 extension = suffix[len(suffix) - 1]
-                print(extension)
+                # currently only saving pdf files
                 if extension == ".pdf":
-                    # todo make another method that processes requests based on topic id
-                    # todo add a field 'topicId' inside of File object
                     file = File(m_topics[k]["Title"], m_topics[k]["Url"])
-                    FILE_ARRAY.append(file)
-                    # open(m_topics[k]["Url"], 'wb').write(res.content)
-                    # source = m_topics[k]["Url"]
-                    # destination = "/Users/raveena/Desktop/testing" + "/" + source
-                    # os.rename(source, destination)
-
-    return FILE_ARRAY
+                    filename = file.fileTitle + ".pdf"
+                    get_file_from_request(session, courseid, m_topics[k]["TopicId"], filename)
 
 
 def main():
     session = get_brightspace_session("xxxx", "xxxx,push")
-    quiz = get_quizzes(session, "xxxx")
-    get_grade(session, "xxxx")
+    #quiz = get_quizzes(session, "xxxx")
+    #get_grade(session, "xxxx")
     print("--------------------------")
-    files = download__file(session, "335757")
-    for i in files:
-        print(i.get_info())
+    download__file(session, "xxxxx")
+
 
 
 if __name__ == "__main__":
