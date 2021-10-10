@@ -3,6 +3,7 @@ from authentication import get_brightspace_session
 import requests
 
 
+
 class BSAPI():
     # ---------- Some initialization functions ---------------
 
@@ -44,6 +45,11 @@ class BSAPI():
     def get_user_info(self):
         url = self._API_URL_PREFIX + "lp/1.21/users/"
         return self.__process_api("get_user_info", url)
+
+
+    def get_enrollments(self):
+        url = self._API_URL_PREFIX + "lp/1.26/enrollments/myenrollments/"
+        return self.__process_api("get_enrollments", url)
 
 
     # Pulls all quiz information from BrightSpacen with a given course id.
