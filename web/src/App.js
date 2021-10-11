@@ -1,7 +1,16 @@
 import './App.css';
 import React, { useEffect, useState } from 'react';
 import axios from 'axios'
-import UserLogin from './components/UserLogin';
+import Home from './components/Home';
+import Login from './components/Login';
+import Navbar from './components/Navbar';
+import Register from './components/Register';
+import './styles/main.css'
+import {
+    BrowserRouter as Router,
+    Switch,
+    Route
+} from 'react-router-dom'
 
 function App() {
   const [user, setUser] = useState([]);
@@ -17,10 +26,22 @@ function App() {
     .catch(err => console.log(err))
   })
   return (
+    <Router>
     <div className="App">
-        <h1>Welcome to BrightSpaceBot</h1>
-        <UserLogin user = {user}/>
+        <Navbar/>
+        <Switch>
+            <Route path="/login">
+                <Login/>
+            </Route>
+            <Route path="/register">
+                <Register/>
+            </Route>
+            <Route path="/">
+                <Home/>
+            </Route>
+        </Switch>
     </div>
+    </Router>
   );
 }
 
