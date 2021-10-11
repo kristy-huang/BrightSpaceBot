@@ -3,7 +3,8 @@ from discord_config import config, USERNAME, PIN
 import discord
 import asyncio
 from file_storage import *
-from Authentication import *
+from bs_api import BSAPI
+from bs_utilities import BSUtilities
 
 '''
 To add the bot to your own server and test it out, copy this URL into your browser
@@ -121,10 +122,11 @@ async def on_message(message):
         except asyncio.TimeoutError:
             await message.channel.send("taking too long...")
             return
-        # TODO update this with code from master
-        session = get_brightspace_session(USERNAME, PIN)
-        fraction_string, percentage_string = get_grade(session, courseID.content)
-        letter = get_letter_grade(int(percentage_string.split(" ")[0]))
+        bs = BSAPI()
+        bs.set_session(USERNAME, PIN)
+        fraction_string, percentage_string = bs.get_grade(courseID.content)
+        bs_utils = BSUtilities()
+        letter = bs_utils.get_letter_grade(int(percentage_string.split(" ")[0]))
         final_string = "Your overall fraction for that class is: " + fraction_string + \
                        "\nYour percentage is: " + percentage_string + ". That translate to a " + letter
         await message.channel.send(final_string)

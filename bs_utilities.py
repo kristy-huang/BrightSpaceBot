@@ -294,3 +294,15 @@ class BSUtilities():
             return -1
         if time1 == time2:
             return 0
+
+    def get_letter_grade(self, percentage):
+        if percentage >= 90:
+            return 'A'
+        elif 80 <= percentage < 90:
+            return 'B'
+        elif 70 <= percentage < 80:
+            return 'C'
+        elif 60 <= percentage < 50:
+            return 'D'
+        else:
+            return 'F'
