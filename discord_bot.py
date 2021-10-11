@@ -42,6 +42,14 @@ async def on_message(message):
         await message.channel.send(f'Bye {username}!')
         return
 
+    #should I call the determineTask() function here? Before this if clause? Or just set the task type to Request in the if clause below? 
+    
+    if 'upcoming quiz' in message.content:
+        newTask = Task()
+        newRequest = Request(newTask)
+        upcomingQuizzes [] = newRequest.getUpcomingQuizzes();    ##research how to import other files in python!
+        
+    
     # Maybe in reality we want to have the message be passed through chat module and it returns what type of
     # request they are intending. From there we call the methods from the scripts we have written.
 
