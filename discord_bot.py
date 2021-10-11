@@ -3,7 +3,7 @@ from discord_config import config, USERNAME, PIN
 import discord
 import asyncio
 from file_storage import *
-from boilerkey import *
+from Authentication import *
 
 '''
 To add the bot to your own server and test it out, copy this URL into your browser
@@ -121,7 +121,7 @@ async def on_message(message):
         except asyncio.TimeoutError:
             await message.channel.send("taking too long...")
             return
-
+        # TODO update this with code from master
         session = get_brightspace_session(USERNAME, PIN)
         fraction_string, percentage_string = get_grade(session, courseID.content)
         letter = get_letter_grade(int(percentage_string.split(" ")[0]))
