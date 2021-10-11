@@ -1,11 +1,15 @@
 from bs_api import BSAPI
 
 import datetime
+import urllib.parse
+import os
+from pathlib import Path
 
 
 class BSUtilities():
-    def __init__(self):
-        self._bsapi = BSAPI()
+    def __init__(self, debug=False):
+        self._bsapi = BSAPI(debug=debug)
+        self._debug = debug
 
     # Same as set_session in BSAPI
 
@@ -24,6 +28,87 @@ class BSUtilities():
     def replace_bsapi(self, bsapi):
         self._bsapi = bsapi
     
+
+    '''
+        Downloads one file from a topic with a given course id and topic id.
+
+        course_id (int / str): id of the course
+        topic_id (int / str): id of the topic
+        destination (str): location the files are downloaded.
+    '''
+    def download_file(self, course_id, topic_id, destination):
+        res = self._bsapi.get_file_from_request(course_id, topic_id)
+        
+        filename = res.headers['Content-Disposition']
+        filename = filename[:filename.rindex("\"")]
+        filename = filename[filename.rindex("\"") + 1: ]
+        filename = urllib.parse.unquote(filename)
+
+        destination += "/" if destination[-1] != '/' else ""
+        if not os.path.exists(destination):
+            os.makedirs(destination)
+        full_path = destination + filename
+
+        open(full_path, 'wb').write(res.content)
+        if self._debug:
+            print("File {filename}: downloaded.".format(filename=filename))
+
+
+    '''
+        Downloads all files for a course recursively.
+
+        course_id (int / str): id of the course
+        destination (str): location the files are downloaded.
+    '''
+    # TODO: files not located in a sub-module are not downloaded.
+    def download_files(self, course_id, destination):
+    
+        modules = self._bsapi.get_topics(course_id)["Modules"]
+
+        if self._debug:
+            print("number of big sections:", len(modules))
+
+        # going through the big sections
+        for i in range(len(modules)):
+            # go through any folders the module section may have (module inside module)
+            for j in range(len(modules[i]["Modules"])):
+                m_topics = modules[i]["Modules"][j]["Topics"]
+                # going through the topics to see files listed
+                for k in range(len(m_topics)):
+                    # getting the type of file it is
+                    suffix = Path(m_topics[k]["Url"]).suffixes
+                    extension = suffix[len(suffix) - 1]
+                    # currently only saving pdf files
+                    if extension == ".pdf":
+                        self.download_file(course_id, m_topics[k]["TopicId"], destination=destination)
+
+
+    '''
+        Gets a list of classes the user is currently enrolled in.
+        Returns a dictionary in the format of 
+        {classname1: course_id1,
+        classname2: course_id2}
+
+        return: dict
+    '''
+    def get_classes_enrolled(self):
+        ORG_ID_CLASS = 3
+        ORG_ID_GROUP = 4
+
+        enrolled_classes = {}
+
+        enroll = self._bsapi.get_enrollments()
+        for item in enroll['Items']:
+            if item['OrgUnit']['Type']['Id'] == ORG_ID_CLASS:
+                # Check if the class ended already
+                end_date = item['Access']['EndDate']
+                if self.__timestamp_later_than_current(end_date):
+                    class_name = item['OrgUnit']['Name']
+                    class_id = item['OrgUnit']['Id']
+                    enrolled_classes[class_name] = class_id
+                
+        return enrolled_classes
+
 
     '''
         Pulls all announcements from every class the user is currently enrolled in.
@@ -68,27 +153,56 @@ class BSUtilities():
 
 
     '''
-        Pulls all events from currently enrolled classe that happened between 
-        startDateTime and endDateTime. 
+        Get the discussion due dates of a given course.
+
+        course_id (int / str): id of the course
+        returns: an array of dates(str).
+    '''
+    def get_discussion_due_dates(self, course_id):
+        dates = []
+
+        threads = self._bsapi.get_forums(course_id)
+        if not threads:
+            return dates
+
+        for thread in threads:
+            # get the list of topics for each thread
+            topics = self._bsapi.get_discussion_topics(course_id, thread["ForumId"])
+            for t in topics:
+                # if its null, then we don't need the value
+                if t["EndDate"] is not None:
+                    dates.append(t["EndDate"])
+        return dates
+
+
+    '''
+        Pulls events of a specific type from currently enrolled classes that  
+        happened between startDateTime and endDateTime. 
         If no dates are provided, events from the past 1 year time window will
         be returned.
         If only one of start / end date is provided, a 1 year time window will 
         be calculated based on the provided date.
+        If no eventType is provided, Reminders(1) will be returned.
 
+        list of event types:
+            Reminder(1), AvailabilityStarts(2), AvailabilityEnds(3)
+            UnlockStarts(4), UnlockEnds(5), DueDate(6)
         
         startDateTime (str): representing a time with timezone UTC+0, in the format 
                             of yyyy-MM-ddTHH:mm:ss.fffZ, zero padded. 
                             e.g. 2046-05-20T13:15:30.067Z
         endDateTime (str): same as startDateTime
+        eventType (int / str): represents a event type.
 
         returns: an array of dictionaries, representing events in the format of:
                 {'course_id': str,
                 'Title': str,
+                'EventType': str,
                 'Description': str,
                 'StartDate': datetime
                 }
     '''
-    def get_all_events(self, startDateTime=None, endDateTime=None):
+    def get_events_by_type(self, startDateTime=None, endDateTime=None, eventType=1):
         if not startDateTime and not endDateTime:
             endDateTime = datetime.datetime.utcnow()
             startDateTime = endDateTime - datetime.timedelta(days = 365) 
@@ -113,10 +227,24 @@ class BSUtilities():
             startDateTime = datetime_end - datetime.timedelta(days = 365) 
             startDateTime = startDateTime.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
 
+        if isinstance(eventType, str):
+            if eventType == "Reminder":
+                eventType = 1
+            elif eventType == "AvailabilityStarts":
+                eventType = 2
+            elif eventType == "AvailabilityEnds":
+                eventType = 3
+            elif eventType == "UnlockStarts":
+                eventType = 4
+            elif eventType == "UnlockEnds":
+                eventType = 5
+            elif eventType == "DueDate":
+                eventType = 6
+        
         events = []
         classes_list = self.get_classes_enrolled()
         for c in classes_list.keys():
-            cal_events = self._bsapi.get_calender_events(classes_list[c], startDateTime, endDateTime)
+            cal_events = self._bsapi.get_calender_events(classes_list[c], startDateTime, endDateTime, eventType=eventType)
             cal_events = cal_events['Objects']
             for cal_event in cal_events:
                 startDate = datetime.datetime.strptime(cal_event['StartDateTime'], "%Y-%m-%dT%H:%M:%S.%fZ")
@@ -126,33 +254,6 @@ class BSUtilities():
                                'StartDate': startDate})
 
         return events
-
-
-    '''
-        Gets a list of classes the user is currently enrolled in.
-        Returns a dictionary in the format of 
-        {classname1: course_id1,
-        classname2: course_id2}
-
-        return: dict
-    '''
-    def get_classes_enrolled(self):
-        ORG_ID_CLASS = 3
-        ORG_ID_GROUP = 4
-
-        enrolled_classes = {}
-
-        enroll = self._bsapi.get_enrollments()
-        for item in enroll['Items']:
-            if item['OrgUnit']['Type']['Id'] == ORG_ID_CLASS:
-                # Check if the class ended already
-                end_date = item['Access']['EndDate']
-                if self.__timestamp_later_than_current(end_date):
-                    class_name = item['OrgUnit']['Name']
-                    class_id = item['OrgUnit']['Id']
-                    enrolled_classes[class_name] = class_id
-                
-        return enrolled_classes
 
 
     '''
