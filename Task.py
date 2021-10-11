@@ -1,5 +1,6 @@
 import requests
 from lxml import etree
+from datetime import datetime
 
 HEADER = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3626.121 Safari/537.36",
@@ -86,11 +87,17 @@ def __login_brightspace(session):
 class Task:
   def__init__(self):
     #constructor for Task class
+    self.session = get_brightspace_session("xxxx", "xxxx,push");
     #set necessary variables here. 
+    
   
   def getTask():
     return self
   
+  def determineTask():     
+   #for now, all tasks are requests.  
+   return Request(self)
+
 class Request(Task):
   def __init__(self):
     #constructor for Request class
@@ -104,7 +111,35 @@ class Request(Task):
     #return all of user's upcoming quizzes across all classes.
     #figure out what dataype to return this as - list? 
     #makes BS API calls.  
+    enrollments_url = "https://purdue.brightspace.com/d2l/api/lp/{version}/enrollments/myenrollments/".format(version=BP_VERSION)
+    #print("enrollments url:", enrollments_url)
+    res = self.session.get(enrollments_url, headers=HEADER)
+    courses = res.json()["Items"]
+    results = []
+    for course in courses:
+        quiz_url = "https://purdue.brightspace.com/d2l/api/le/{version}/{course_id}/quizzes/".format(version=BP_VERSION,
+                                                                                                 course_id=course)
+        #print("q url:", quiz_url)
+        res = session.get(quiz_url, headers=HEADER)
+        quizzes = res.json()["Objects"]
+            #retrieving quizzes within a week. 
+            for quiz in quizzes: 
+                        #get today's date
+                        current_date = datetime.now()
+                        quiz_due_date = quiz.json()["DueDate"]
+                        #find diff between quiz.due date and today
+                        diff = quiz_due_date - current
+                        #if diff less than or equal to 7 days = 604800 seconds
+                        if diff <= 604800
+                                    #add to results array
+                                    results.append(quiz)
+                        
+     return results
+            
       
+  def getUpcomingExams(session):
+    #return all of user's upcoming exams across all classes. 
+            
   def suggestFocusTime():
     #return the top 3 weeks that have the most assignments
     #bot must go across all classes and calculate which weeks have the most assignments
