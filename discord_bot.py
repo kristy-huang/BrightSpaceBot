@@ -1,6 +1,9 @@
 # Our discord token is saved in another file for security
-from discord_config import config
+from discord_config import config, USERNAME, PIN
 import discord
+import asyncio
+from file_storage import *
+from boilerkey import *
 
 '''
 To add the bot to your own server and test it out, copy this URL into your browser
@@ -32,6 +35,12 @@ async def on_message(message):
     if message.author == client.user:
         return
 
+    # Lets say that we want the bot to only respond to a specific text channel in a server named 'todo'
+    if message.channel.name == 'specifics':
+        if user_message.lower() == 'im bored':
+            await message.channel.send("You should probably study...")
+            return
+
     # setting up a basic 'hello' command so you get this gist of it
     if user_message.lower() == 'hello':
         # put your custom message here for the bot to output
@@ -41,17 +50,87 @@ async def on_message(message):
     elif user_message.lower() == 'bye':
         await message.channel.send(f'Bye {username}!')
         return
+    # get the current storage path
+    elif user_message.lower() == 'current storage location':
+        # todo: access database and get the actual value
+        storage_path = "Some/default/location"
+        await message.channel.send(f'Your current storage location: {storage_path}')
+        return
 
-    # Maybe in reality we want to have the message be passed through chat module and it returns what type of
-    # request they are intending. From there we call the methods from the scripts we have written.
+    # update the current storage path (used starts with so they can type update storage destination or path)
+    elif message.content.startswith('update storage'):
+        await message.channel.send("Google Drive or Local?")
 
-    # Lets say that we want the bot to only respond to a specific text channel in a server named 'todo'
-    # Make sure this channel exists tho first!
-    # I think there is a slight bug when I put sentences but we can revisit that later
-    if message.channel.name == 'specifics':
-        if user_message.lower() == 'im bored':
-            await message.channel.send("You should probably study...")
+        # check what type of path they want
+        def storage_path(m):
+            return m.author == message.author
+
+        # getting the type of storage location
+        try:
+            path_type = await client.wait_for('message', check=storage_path, timeout=5.0)
+        except asyncio.TimeoutError:
+            await message.channel.send("taking too long...")
             return
+
+        # checking what type of path they are going to save it in
+        if path_type.content == "google drive":
+            await message.channel.send("What folder from root?")
+            # checking to see if path is valid
+            try:
+                new_storage = await client.wait_for('message', check=storage_path, timeout=10)
+                drive = init_google_auths()
+                return_val = validate_path_drive(new_storage.content, drive)
+                if not return_val:
+                    await message.channel.send("Not a valid path. Try the cycle again.")
+                else:
+                    # todo add saving mechanism to cloud database
+                    await message.channel.send("New path saved")
+                return
+            except asyncio.TimeoutError:
+                await message.channel.send("taking too long...")
+
+        # if the path is local
+        elif path_type.content == "local":
+            await message.channel.send("Send your local path")
+            # checking to see if path is valid (local)
+            try:
+                new_storage = await client.wait_for('message', check=storage_path, timeout=10)
+                return_val = validate_path_local(new_storage.content)
+                if not return_val:
+                    await message.channel.send("Not a valid path. Try the cycle again.")
+                else:
+                    # todo add saving mechanism to cloud database
+                    await message.channel.send("New path saved")
+                return
+            except asyncio.TimeoutError:
+                await message.channel.send("taking too long...")
+
+        else:
+            await message.channel.send("Your input isn't valid")
+
+    # get a grade for a class
+    elif message.content.startswith("get grade"):
+        # TODO make it so that student can just put the course name
+        await message.channel.send("What is the course ID?")
+
+        def check_input(m):
+            return m.author == message.author
+        # getting the course ID
+        try:
+            courseID = await client.wait_for('message', check=check_input, timeout=5.0)
+        except asyncio.TimeoutError:
+            await message.channel.send("taking too long...")
+            return
+
+        session = get_brightspace_session(USERNAME, PIN)
+        fraction_string, percentage_string = get_grade(session, courseID.content)
+        letter = get_letter_grade(int(percentage_string.split(" ")[0]))
+        final_string = "Your overall fraction for that class is: " + fraction_string + \
+                       "\nYour percentage is: " + percentage_string + ". That translate to a " + letter
+        await message.channel.send(final_string)
+        return
+
+
 
 
 # Now to actually run the bot!

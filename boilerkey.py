@@ -208,13 +208,26 @@ def get_discussion_due_dates(session, courseID):
     return dates
 
 
+def get_letter_grade(percentage):
+    if percentage >= 90:
+        return 'A'
+    elif 80 <= percentage < 90:
+        return 'B'
+    elif 70 <= percentage < 80:
+        return 'C'
+    elif 60 <= percentage < 50:
+        return 'D'
+    else:
+        return 'F'
+
+
 def main():
-    session = get_brightspace_session("xxxx", "xxxx,push")
+    session = get_brightspace_session("nair64", "1500,push2")
     # quiz = get_quizzes(session, "xxxx")
     # get_grade(session, "xxxx")
     # download__file(session, "xxxxx")
-    dates = get_discussion_due_dates(session, "xxxx")
-    print(dates)
+    # dates = get_discussion_due_dates(session, "xxxx")
+    # print(dates)
 
 
 if __name__ == "__main__":
