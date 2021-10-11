@@ -137,15 +137,19 @@ class Request(Task):
      return results
             
       
-  def getUpcomingExams(session):
-    #return all of user's upcoming exams across all classes. 
             
   def suggestFocusTime():
     #return the top 3 weeks that have the most assignments
     #bot must go across all classes and calculate which weeks have the most assignments
     #this way, user can plan out what to focus on. 
     #makes BS API calls. 
-   
+   enrollments_url = "https://purdue.brightspace.com/d2l/api/lp/{version}/enrollments/myenrollments/".format(version=BP_VERSION)
+    #print("enrollments url:", enrollments_url)
+    res = self.session.get(enrollments_url, headers=HEADER)
+    courses = res.json()["Items"]
+    results = []
+    
+
   def getCurrentGrade():
     #return user's current grade in a specific class - class is passed as param
     #makes BS API call
