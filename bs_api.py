@@ -1,6 +1,7 @@
 from authentication import get_brightspace_session
 
 import requests
+import os
 
 
 class BSAPI():
@@ -47,7 +48,7 @@ class BSAPI():
     '''
     def get_user_info(self):
         url = self._API_URL_PREFIX + "lp/1.21/users/"
-        return self.__process_api("get_user_info", url)
+        return self.__process_api_json("get_user_info", url)
 
 
     '''
@@ -56,18 +57,81 @@ class BSAPI():
     '''
     def get_enrollments(self):
         url = self._API_URL_PREFIX + "lp/1.26/enrollments/myenrollments/"
-        return self.__process_api("get_enrollments", url)
+        return self.__process_api_json("get_enrollments", url)
 
 
     '''
         Pulls all quiz information from BrightSpace with a given course id.
 
         course_id (str / int): the id of the course
+
         return: ObjectListPage JSON block containing a list of QuizReadData blocks.
     '''
     def get_quizzes(self, course_id):
         url = self._API_URL_PREFIX + "le/1.38/{course_id}/quizzes/".format(course_id=course_id)
-        return self.__process_api("get_quizzes", url)
+        return self.__process_api_json("get_quizzes", url)
+
+
+    '''
+        This gets the numeric points and percentage grade of a course.
+        
+        course_id (str / int): the id of the course
+        returns: tuple (fraction_string, percentage_string)
+    ''' 
+    def get_grade(self, course_id):
+        url = self._API_URL_PREFIX + "le/1.38/{course_id}/grades/final/values/myGradeValue".format(
+                course_id=course_id)
+
+        grade_object = self.__process_api_json("get_grade", url)
+
+        # TODO : Should do error checking on if these values are even in the json
+        numerator = grade_object["PointsNumerator"]
+        denominator = grade_object["PointsDenominator"]
+        fraction_string = "{numerator}/{denominator}".format(numerator=numerator, denominator=denominator)
+        percentage_string = grade_object["DisplayedGrade"]
+
+        return fraction_string, percentage_string
+
+
+    '''
+        This gets a file and saves it to a given destination 
+        
+        course_id (str / int): the id of the course
+        topic_id (str / int): the id of the topic
+
+        returns: a requests.response object containing a file
+    ''' 
+    def get_file_from_request(self, course_id, topic_id):
+        # formatting downloadable link
+        url = self._API_URL_PREFIX + "le/1.38/{course_id}/content/topics/{topic_id}/file" \
+                .format(course_id=course_id,
+                        topic_id=topic_id)
+        # Making the request to retrieve the file
+        return self.__process_api_file("get_file_from_request", url)
+
+
+    '''
+        Get all topics for a given course.
+        
+        course_id (str / int): the id of the course
+        returns: a TableOfContents JSON block, in a dictionary. 
+    '''
+    def get_topics(self, course_id):
+        url = self._API_URL_PREFIX + "le/1.38/{course_id}/content/toc".format(course_id=course_id)
+        return self.__process_api_json("get_topics", url)
+      
+
+    def get_forums(self, course_id):
+        url = "https://purdue.brightspace.com/d2l/api/le/1.38/{course_id}/discussions/forums/" \
+                .format(course_id=course_id)
+        return self.__process_api_json("get_forums", url)
+
+
+    def get_discussion_topics(self, course_id, forum_id):
+        url = "https://purdue.brightspace.com/d2l/api/le/1.38/{course_id}/discussions/forums/{forum_id}/topics/" \
+                .format(course_id=course_id,
+                        forum_id=forum_id)
+        return self.__process_api_json("get_disscussion_topics", url)
 
 
     '''
@@ -85,7 +149,7 @@ class BSAPI():
         since = "since=" + since if since else ""
         url += "?" + since if since else ""
 
-        return self.__process_api("get_news_class", url)
+        return self.__process_api_json("get_news_class", url)
         
 
     '''
@@ -106,8 +170,36 @@ class BSAPI():
         url += "eventType={eventType}&".format(eventType=eventType) if eventType else ""
         url += "startDateTime={sDate}&endDateTime={eDate}".format(sDate=startDateTime, eDate=endDateTime)
 
-        return self.__process_api("get_calender_events", url)
+        return self.__process_api_json("get_calender_events", url)
     
+
+    '''
+        Processing an api call that returns a json.
+        
+        call_name: The name of the functionality that is being processed. 
+                    Used for debugging.
+        api_url:   The url for the api call
+        
+        return: a json dictionary. See references for more informtion.
+    ''' 
+    def __process_api_json(self, call_name, api_url):
+        res = self.__process_api(call_name, api_url)
+        return res.json() if res else None
+
+
+    '''
+        Processing an api call that returns a file.
+        
+        call_name: The name of the functionality that is being processed. 
+                    Used for debugging.
+        api_url:   The url for the api call
+        
+        return: a file. See references for more informtion.
+    ''' 
+    def __process_api_file(self, call_name, api_url):
+        res = self.__process_api(call_name, api_url)
+        return res
+
 
     '''
         A general process for processing an api call.
@@ -116,8 +208,8 @@ class BSAPI():
                     Used for debugging.
         api_url:   The url for the api call
         
-        return: a json file. See references for more informtion.
-    ''' 
+        return: the response from api call, could be many things. 
+    '''
     def __process_api(self, call_name, api_url):
         if not self._session:
             if self._debug:
@@ -130,7 +222,7 @@ class BSAPI():
             print(call_name, ": response status code: ", res.status_code)
 
         if res.status_code == 200:
-            return res.json()
+            return res
         return None
 
 
