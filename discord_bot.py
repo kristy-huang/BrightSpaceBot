@@ -153,6 +153,24 @@ async def on_message(message):
     elif message.content.startsWith("get busiest weeks"):
         bs_utils = BSUtilities()
         bs_utils.set_session(USERNAME, PIN)
+       
+    # change bot name 
+    # author: @CHP
+    elif message.content.startsWith("change bot name"):
+        def check(msg):
+          return msg.author == message.author
+       
+        await message.channel.send("To which name do you want to change?")
+
+        try:
+          new_name=await client.wait_for('message', check=check, timeout=10);
+        except asyncio.TimeoutError:
+          await message.channel.send("Timeout!")
+          return
+
+        await message.guild.me.edit(nick=new_name.content)
+        await message.channel.send("My name is now changed!")
+
         
 
 
