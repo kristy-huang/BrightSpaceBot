@@ -3,17 +3,38 @@ import {Form, Button} from 'react-bootstrap'
 import {useForm} from 'react-hook-form'
 
 function Register(props) {
-//    const [firstName, setFirstName] = useState('')
-//    const [lastName, setLastName] = useState('')
-//    const [username, setUsername] = useState('')
-//    const [password, setPassword] = useState('')
-//    const [confirmPassword, setConfirmPassword] = useState('')
 
     const {register, watch, handleSubmit, reset, formState:{errors}} = useForm();
 
     const submitForm = (data)=>{
         console.log(data);
-        reset();
+        if (data.password === data.confirmPassword) {
+            const requestOptions = {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body:
+                    JSON.stringify({
+                        "firstName": data.firstName,
+                        "lastName": data.lastName,
+                        "username": data.username,
+                        "password": data.password
+                    })
+
+            };
+            console.log(requestOptions)
+            fetch('http://localhost:5000/registerUser', requestOptions)
+            .then(res=>{res.json()})
+            .then(data=>console.log(data))
+            .catch(err=>console.log(err))
+
+            reset();
+        }
+        else {
+            alert("Passwords do not match");
+        }
+
     }
 
     console.log(watch("username"));
