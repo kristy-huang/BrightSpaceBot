@@ -5,6 +5,7 @@ function Home(props) {
     return (
         <div className="home container">
             <h1>Welcome to BrightSpaceBot</h1>
+            <br></br>
             <Link to="/register" className="btn btn-primary">Get Started</Link>
         </div>
     )

@@ -102,25 +102,36 @@ def login_user():
     # find user in db by username
     user = Users.query.filter_by(username=username).first()
 
+    # user does not exist
+    if user is None:
+        return jsonify({
+            "status": 400,
+            "message": "User not found"
+        })
+
+    # user exists and password is incorrect
+    if user and not check_password_hash(user.password, password):
+        return jsonify({
+            "status": 400,
+            "message": "Wrong password"
+        })
+
     # user exists and password is correct
     if user and check_password_hash(user.password, password):
         access_token = create_access_token(identity=user.username)
         refresh_token = create_refresh_token(identity=user.username)
         return jsonify({
+            "status": 200,
+            "message": "Success",
             "access_token": access_token,
             "refresh_token": refresh_token
         })
 
+    # all other errors
     return jsonify({
+        "status": 400,
         "message": "Error, could not login"
     })
-
-
-@webapp.route("/getUsers", methods=['GET'])
-def get_users():
-    all_users = Users.query.all()
-    results = users_schema.dump(all_users)
-    return jsonify(results)
 
 
 if __name__ == "__main__":
