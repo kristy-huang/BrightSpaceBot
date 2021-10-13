@@ -174,6 +174,33 @@ class BSUtilities():
                     dates.append(t["EndDate"])
         return dates
 
+    '''
+        This functions pulls up a student's upcoming quizzes across all their
+
+        enrolled classes. By "upcoming", we mean within the next week. Serves user story 6 from Sprint 1. 
+        
+        returns: list of QuizReadDate blocks.
+    '''
+    def get_upcoming_quizzes(self):
+        enrollments = self._bsapi.get_enrollments()
+        courses = enrollments.json()["Items"]
+        upcoming_quizzes = []
+        for course in courses:
+            quizzes = self._bsapi.get_quizzes(course)
+            for quiz in quizzes:
+                #get today's date
+                current_date = datetime.now()
+                quiz_due_date = quiz.json()["DueDate"]
+                #find diff between quiz.due date and today
+                diff = quiz_due_date - current_date
+                #if diff less than or equal to 7 days = 604800 seconds
+                diff_in_seconds = diff.total_seconds()
+                if diff_in_seconds <= 604800:
+                    #this is an upcoming quiz within the next week
+                    upcoming_quizzes.append(quiz)
+
+        return upcoming_quizzes
+
 
     '''
         Pulls events of a specific type from currently enrolled classes that  
