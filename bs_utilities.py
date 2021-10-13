@@ -182,10 +182,11 @@ class BSUtilities():
         returns: list of QuizReadDate blocks.
     '''
     def get_upcoming_quizzes(self):
-        enrollments = self._bsapi.get_enrollments()
-        courses = enrollments.json()["Items"]
+        #enrollments = self._bsapi.get_enrollments()
+        enrolled_courses = self.get_classes_enrolled()
+        #courses = enrollments.json()["Items"]
         upcoming_quizzes = []
-        for course in courses:
+        for course in enrolled_courses.values():
             quizzes = self._bsapi.get_quizzes(course)
             for quiz in quizzes:
                 #get today's date
@@ -200,6 +201,33 @@ class BSUtilities():
                     upcoming_quizzes.append(quiz)
 
         return upcoming_quizzes
+
+
+    #sub function of suggest_focus_time(), maybe need this idk. May delete.
+    def find_end_term_date(self):
+        enrollments = self._bsapi.get_enrollments()
+        courses = enrollments.json()["Items"]
+        return
+
+
+    '''
+       This function calculates the total number of assignments across all courses for each week, from now until
+
+       the end of the semester. Finally, the top 3 weeks with the most assignments are reported back to the user. 
+       
+       Serves user story 9 in Sprint 1. 
+
+       Returns:  
+
+    '''
+
+    def suggest_focus_time(self):
+        busiest_weeks = []
+        enrollments = self._bsapi.get_enrollments()
+        courses = enrollments.json()["Items"]
+        current_date = datetime.now()
+        end_term_date = self.find_end_term_date()
+        return busiest_weeks
 
 
     '''
