@@ -150,6 +150,11 @@ async def on_message(message):
                 await message.channel.send(output_str)
             return
 
+    elif message.content.startsWith("get busiest weeks"):
+        bs_utils = BSUtilities()
+        bs_utils.set_session(USERNAME, PIN)
+        
+
 
 
 # Now to actually run the bot!
