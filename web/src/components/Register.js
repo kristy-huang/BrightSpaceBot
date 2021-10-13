@@ -1,24 +1,22 @@
 import React, {useState} from 'react'
 import {Form, Button} from 'react-bootstrap'
+import {useForm} from 'react-hook-form'
 
 function Register(props) {
-    const [firstName, setFirstName] = useState('')
-    const [lastName, setLastName] = useState('')
-    const [username, setUsername] = useState('')
-    const [password, setPassword] = useState('')
-    const [confirmPassword, setConfirmPassword] = useState('')
+//    const [firstName, setFirstName] = useState('')
+//    const [lastName, setLastName] = useState('')
+//    const [username, setUsername] = useState('')
+//    const [password, setPassword] = useState('')
+//    const [confirmPassword, setConfirmPassword] = useState('')
 
-    const submitForm = ()=>{
-        console.log("form submitted");
-        console.log(firstName);
-        console.log(lastName);
+    const {register, watch, handleSubmit, reset, formState:{errors}} = useForm();
 
-        setFirstName('');
-        setLastName('');
-        setUsername('');
-        setPassword('');
-        setConfirmPassword('');
+    const submitForm = (data)=>{
+        console.log(data);
+        reset();
     }
+
+    console.log(watch("username"));
 
     return (
         <div className="container">
@@ -31,9 +29,8 @@ function Register(props) {
                         <Form.Control
                             type="text"
                             placeholder="John"
-                            value={firstName}
-                            name="firstName"
-                            onChange={(e)=>{setFirstName(e.target.value)}}/>
+                            {...register("firstName", {required:true, maxLength:50})}/>
+                        {errors.firstName && <span style={{color:"red"}}>First name is required</span>}
                     </Form.Group>
                     <br></br>
                     <Form.Group>
@@ -41,9 +38,8 @@ function Register(props) {
                         <Form.Control
                             type="text"
                             placeholder="Doe"
-                            value={lastName}
-                            name="lastName"
-                            onChange={(e)=>{setLastName(e.target.value)}}/>
+                            {...register("lastName", {required:true, maxLength:50})}/>
+                            {errors.lastName && <span style={{color:"red"}}>Last name is required</span>}
                     </Form.Group>
                     <br></br>
                     <Form.Group>
@@ -51,9 +47,8 @@ function Register(props) {
                         <Form.Control
                             type="text"
                             placeholder="JDoe123"
-                            value={username}
-                            name="username"
-                            onChange={(e)=>{setUsername(e.target.value)}}/>
+                            {...register("username", {required:true, maxLength:50})}/>
+                            {errors.username && <span style={{color:"red"}}>Username is required</span>}
                     </Form.Group>
                     <br></br>
                     <Form.Group>
@@ -61,9 +56,10 @@ function Register(props) {
                         <Form.Control
                             type="password"
                             placeholder="123456"
-                            value={password}
-                            name="password"
-                            onChange={(e)=>{setPassword(e.target.value)}}/>
+                            {...register("password", {required:true,minLength:6})}/>
+                            {errors.password && <span style={{color:"red"}}>Password is required</span>}
+                            <br></br>
+                            {errors.password?.type==="minLength"&&<span style={{color:"red"}}>Passwords should have at least 8 characters</span>}
                     </Form.Group>
                     <br></br>
                     <Form.Group>
@@ -71,13 +67,14 @@ function Register(props) {
                         <Form.Control
                             type="password"
                             placeholder="123456"
-                            value={confirmPassword}
-                            name="confirmPassword"
-                            onChange={(e)=>{setConfirmPassword(e.target.value)}}/>
+                            {...register("confirmPassword", {required:true,minLength:6})}/>
+                            {errors.confirmPassword && <span style={{color:"red"}}>Confirm password is required</span>}
+                            <br></br>
+                            {errors.confirmPassword?.type==="minLength"&&<span style={{color:"red"}}>Passwords should have at least 8 characters</span>}
                     </Form.Group>
                     <br></br>
                     <Form.Group>
-                        <Button as="sub" variant="primary" onClick={submitForm}>Sign up</Button>
+                        <Button as="sub" variant="primary" onClick={handleSubmit(submitForm)}>Sign up</Button>
                     </Form.Group>
                 </form>
             </div>
