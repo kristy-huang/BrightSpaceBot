@@ -1,5 +1,6 @@
 from bs_utilities import BSUtilities
 from database.db_utilities import DBUtilities
+import datetime
 
 #bsu = BSUtilities()
 #bsu.set_session("xiong109", "1486,push")
@@ -20,24 +21,22 @@ cre_col = {
             "BS_PASSWORD": "1486,push"
         }
 
-dbu = DBUtilities()
-dbu.connect_by_config("database/db_config.py")
-dbu.use_database("BSBOT")
-#print(dbu.get_bs_cridential("8"))
-#user_id = dbu.insert_user(user_col, cre_col)
-#dbu.clear_table("USERS")
-#dbu.clear_table("CREDENTIALS")
-#print(dbu.show_table_content("USERS"))
 
-def store_all_past_notifications(user_id):
+bsu = BSUtilities()
+bsu.set_session("xiong109", "1486,push")
+dsu = DBUtilities()
+dsu.connect_by_config("database/db_config.py")
+
+utc_one_day_before = datetime.datetime.utcnow() - datetime.timedelta(days = 1)
+utc_one_day_before = utc_one_day_before.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+announcements = bsu.get_announcements(since=utc_one_day_before)
+
+notification = "Announcements from the past 24 hours: \n"
+for announcement in announcements:
+    # TODO: get a mapping from course id to course names from the database
+    notification += "Class: {}\n".format(announcement['course_id'])
+    notification += "{}\n\n".format(announcement['Title'])
+    notification += "{}\n".format(announcement['Text'])
     pass
     
-    # TODO: login the user
-
-    cridentials = dbu.get_bs_cridential(user_id)
-    bsu = BSUtilities()
-    bsu.set_session(cridentials[0], cridentials[1])
-    announcements = bsu.get_announcements()
-    print(announcements)
-
-store_all_past_notifications("8")
+print(notification)

@@ -4,10 +4,13 @@ import discord
 from discord.ext import tasks
 import asyncio
 from file_storage import *
-from bs_api import BSAPI
-from bs_utilities import BSUtilities
 from datetime import datetime, timedelta
 import threading
+
+from bs_api import BSAPI
+from bs_utilities import BSUtilities
+from database.db_utilities import DBUtilities
+
 
 '''
 To add the bot to your own server and test it out, copy this URL into your browser
@@ -19,29 +22,49 @@ client = discord.Client()
 channelID = 894700985535058000  # TODO save this in the database - right now this is my (Raveena's) channel
 BS_UTILS = BSUtilities()
 BS_API = BSAPI()
+DB_UTILS = DBUtilities()
 
 # Having the bot log in and be online
 @client.event
 async def on_ready():
     BS_UTILS.set_session(USERNAME, PIN)
+    DB_UTILS.connect_by_config("database/db_config.py")
 
     print("We have logged in as: " + str(client.user))
 
 # looping every day
 # change parameter to minutes=1 and see it happen every minute
 # @tasks.loop(minutes=1)
-# async def called_once_a_day():
-#     message_channel = client.get_channel(894700985535058000)
-#     dates = BS_UTILS.get_dict_of_discussion_dates()
-#     #dates = DATES
-#     string = BS_UTILS.find_upcoming_disc_dates(1, dates)
-#     if len(string) == 0:
-#         ## only for debugging ##
-#         # string = "No posts due today"
-#         return
-#     # send the upcoming discussion due dates
-#     await message_channel.send(string)
-#     return
+async def called_once_a_day():
+    message_channel = client.get_channel(894700985535058000)
+    dates = BS_UTILS.get_dict_of_discussion_dates()
+    #dates = DATES
+    string = BS_UTILS.find_upcoming_disc_dates(1, dates)
+    string += get_notifications_past_24h()
+
+    if len(string) == 0:
+        ## only for debugging ##
+        # string = "No posts due today"
+        return
+    # send the upcoming discussion due dates
+    await message_channel.send(string)
+    return
+
+
+def get_notifications_past_24h():
+    utc_one_day_before = datetime.datetime.utcnow() - datetime.timedelta(days = 1)
+    utc_one_day_before = utc_one_day_before.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+    announcements = BS_UTILS.get_announcements(since=utc_one_day_before)
+
+    notification_header = "Announcements from the past 24 hours: \n"
+    notification = ""
+    for announcement in announcements:
+        # TODO: get a mapping from course id to course names from the database
+        notification += "Class: {}\n".format(announcement['course_id'])
+        notification += "{}\n\n".format(announcement['Title'])
+        notification += "{}\n".format(announcement['Text'])
+    return notification_header + notification if notification else ""
+        
 
 
 # @called_once_a_day.before_loop
