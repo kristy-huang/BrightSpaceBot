@@ -1,10 +1,13 @@
 # Our discord token is saved in another file for security
-from discord_config import config, USERNAME, PIN
+from discord_config import config, USERNAME, PIN, DATES
 import discord
+from discord.ext import tasks
 import asyncio
 from file_storage import *
 from bs_api import BSAPI
 from bs_utilities import BSUtilities
+from datetime import datetime, timedelta
+import threading
 
 '''
 To add the bot to your own server and test it out, copy this URL into your browser
@@ -13,13 +16,38 @@ https://discord.com/api/oauth2/authorize?client_id=894695859567083520&permission
 
 # This will be our discord client. From here we will get our input
 client = discord.Client()
-
+channelID = 894700985535058000  # TODO save this in the database - right now this is my (Raveena's) channel
+BS_UTILS = BSUtilities()
+BS_API = BSAPI()
 
 # Having the bot log in and be online
 @client.event
 async def on_ready():
+    BS_UTILS.set_session(USERNAME, PIN)
     print("We have logged in as: " + str(client.user))
 
+# looping every day
+# change parameter to minutes=1 and see it happen every minute
+@tasks.loop(hours=24)
+async def called_once_a_day():
+    message_channel = client.get_channel(894700985535058000)
+    dates = BS_UTILS.get_dict_of_discussion_dates()
+    #dates = DATES
+    string = BS_UTILS.find_upcoming_disc_dates(1, dates)
+    if len(string) == 0:
+        ## only for debugging ##
+        # string = "No posts due today"
+        return
+    # send the upcoming discussion due dates
+    await message_channel.send(string)
+
+
+@called_once_a_day.before_loop
+async def before():
+    await client.wait_until_ready()
+
+
+called_once_a_day.start()
 
 # This is our input stream for our discord bot
 # Every message that comes from the chat server will go through here
@@ -133,7 +161,7 @@ async def on_message(message):
         return
 
     #get upcoming quizzes across all classes
-    elif message.content.startsWith("get upcoming quizzes"):
+    elif message.content.startswith("get upcoming quizzes"):
         bs_utils = BSUtilities()
         bs_utils.set_session(USERNAME, PIN)
         upcoming_quizzes = bs_utils.get_upcoming_quizzes()
@@ -150,12 +178,12 @@ async def on_message(message):
                 await message.channel.send(output_str)
             return
 
-    elif message.content.startsWith("get busiest weeks"):
+    elif message.content.startswith("get busiest weeks"):
         bs_utils = BSUtilities()
         bs_utils.set_session(USERNAME, PIN)
        
     #changing bot name
-    elif message.content.startsWith("change bot name"):
+    elif message.content.startswith("change bot name"):
         # change value used to check if the user keep wants to change the name of the bot
         # initialized to True
         change=True;
@@ -194,7 +222,40 @@ async def on_message(message):
             except asyncio.TimeoutError:
                 await message.channel.send("Timeout ERROR has occured. Please try the query again.")
                 return
-              
+
+    elif message.content.startswith("upcoming discussion"):
+        # dictionary of class_name, [list of dates]
+        dates = BS_UTILS.get_dict_of_discussion_dates()
+        # dates = DATES ONLY FOR DEBUG
+        def check(msg):
+            return msg.author == message.author
+
+        # find discussion post deadline for 2 weeks
+        string = BS_UTILS.find_upcoming_disc_dates(14, dates)
+
+        if len(string) == 0:
+            await message.channel.send("No upcoming posts for the next two weeks. Would you like to look further than 2 weeks?")
+            try:
+                response = await client.wait_for('message', check=check, timeout=30)
+            except asyncio.TimeoutError:
+                await message.channel.send("taking too long...")
+                return
+            # they want to see everything
+            if response.content.startswith("yes"):
+                string = BS_UTILS.find_upcoming_disc_dates(0, dates)
+                if len(string) == 0:
+                    await message.channel.send("No upcoming posts.")
+                else:
+                    await message.channel.send(string)
+                return
+            # don't want to see anything
+            else:
+                await message.channel.send("Okay, sounds good!")
+                return
+        else:
+            await message.channel.send(string)
+            return
+
 
 # Now to actually run the bot!
 client.run(config['token'])

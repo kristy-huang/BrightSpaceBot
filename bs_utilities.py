@@ -171,7 +171,11 @@ class BSUtilities():
             for t in topics:
                 # if its null, then we don't need the value
                 if t["EndDate"] is not None:
-                    dates.append(t["EndDate"])
+                    string_rep = t["EndDate"]
+                    mdy = string_rep.split(" ")[0].split("-")
+                    end = datetime(int(mdy[0]), int(mdy[1]), int(mdy[2]))
+                    # saving datetime objects
+                    dates.append(end)
         return dates
 
     '''
@@ -361,3 +365,34 @@ class BSUtilities():
             return 'D'
         else:
             return 'F'
+
+    def get_dict_of_discussion_dates(self):
+        classes = self.get_classes_enrolled()
+        dates = {}
+        for key, value in classes.items():
+            dates[key] = self.get_discussion_due_dates(value)
+        return dates
+
+    # given end time (24 hrs or 2 weeks) give the list of upcoming dates
+    def find_upcoming_disc_dates(self, add_days, dates):
+        current_date = datetime.datetime.now()  # saving the current date
+        ending_date = datetime.datetime.today() + datetime.timedelta(days=add_days)
+        string = ""
+        for key, value in dates.items():
+            for i in value:
+                # less than 24 hours left
+                if add_days == 1:
+                    diff = i - current_date
+                    if diff.days == 0 or diff.days == -1:
+                        string = string + " " + key + ", due " + i.strftime("%d-%b-%Y") + "\n"
+                elif add_days == 14:
+                    diff = ending_date - i
+                    if 0 <= diff.days <= 14:
+                        string = string + " " + key + ", due " + i.strftime("%d-%b-%Y") + "\n"
+                # just give everything upcoming
+                else:
+                    diff = i - current_date
+                    if diff.days >= 0:
+                        string = string + " " + key + ", due " + i.strftime("%d-%b-%Y") + "\n"
+
+        return string
