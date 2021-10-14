@@ -11,6 +11,7 @@ class BSUtilities():
         self._bsapi = BSAPI(debug=debug)
         self._debug = debug
 
+
     # Same as set_session in BSAPI
 
     def set_session(self, session):
