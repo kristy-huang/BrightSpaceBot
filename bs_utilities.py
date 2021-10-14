@@ -4,6 +4,9 @@ import datetime
 import urllib.parse
 import os
 from pathlib import Path
+from pydrive.auth import GoogleAuth
+from pydrive.drive import GoogleDrive
+from File import File, StorageTypes
 
 
 class BSUtilities():
@@ -36,23 +39,54 @@ class BSUtilities():
         topic_id (int / str): id of the topic
         destination (str): location the files are downloaded.
     '''
-    def download_file(self, course_id, topic_id, destination):
+    def download_file(self, course_id, topic_id, destination, type, drive):
         res = self._bsapi.get_file_from_request(course_id, topic_id)
         
         filename = res.headers['Content-Disposition']
         filename = filename[:filename.rindex("\"")]
         filename = filename[filename.rindex("\"") + 1: ]
         filename = urllib.parse.unquote(filename)
+        print(filename)
+        if type == 'LOCAL':
+            destination += "/" if destination[-1] != '/' else ""
+            if not os.path.exists(destination):
+                os.makedirs(destination)
+            full_path = destination + filename
+            # saving the path in the right place
+            open(full_path, 'wb').write(res.content)
+            if self._debug:
+                print("File {filename}: downloaded.".format(filename=filename))
+        else:
+            # TODO download to google drive
+            return_val = self.validate_path_drive(destination, drive)
+            open(filename, 'wb').write(res.content)
+            # for debugging, just using this default file
+            self.upload_to_google_drive(drive, destination, filename)
+            os.remove(filename)
 
-        destination += "/" if destination[-1] != '/' else ""
-        if not os.path.exists(destination):
-            os.makedirs(destination)
-        full_path = destination + filename
+    def upload_to_google_drive(self, drive, storage_path, file):
+        file_to_upload = file
+        # finding the folder to upload to
+        folders = self.get_all_files_in_google(drive)
+        folder_id = -1
+        for folder in folders:
+            if folder.fileTitle == storage_path:
+                folder_id = folder.filePath
+                break
+        print(folder_id)
+        if folder_id == -1:
+            # upload it to the root (My Drive)
+            gd_file = drive.CreateFile({'title': file})
+        else:
+            # currently takes the folder id from browser of url for the folder they want to upload something in
+            gd_file = drive.CreateFile({'parents': [{'id': folder_id}]})
 
-        open(full_path, 'wb').write(res.content)
-        if self._debug:
-            print("File {filename}: downloaded.".format(filename=filename))
-
+        # Read file and set it as the content of this instance.
+        gd_file.SetContentFile(file)
+        # Upload the file
+        gd_file.Upload()
+        # handles memory leaks
+        gd_file = None
 
     '''
         Downloads all files for a course recursively.
@@ -61,9 +95,11 @@ class BSUtilities():
         destination (str): location the files are downloaded.
     '''
     # TODO: files not located in a sub-module are not downloaded.
-    def download_files(self, course_id, destination):
+    def download_files(self, course_id, destination, t):
     
         modules = self._bsapi.get_topics(course_id)["Modules"]
+        if t != "LOCAL":
+            drive = self.init_google_auths()
 
         if self._debug:
             print("number of big sections:", len(modules))
@@ -80,7 +116,7 @@ class BSUtilities():
                     extension = suffix[len(suffix) - 1]
                     # currently only saving pdf files
                     if extension == ".pdf":
-                        self.download_file(course_id, m_topics[k]["TopicId"], destination=destination)
+                        self.download_file(course_id, m_topics[k]["TopicId"], destination=destination, type=t, drive=drive)
 
 
     '''
@@ -407,13 +443,36 @@ class BSUtilities():
 
         return course_id
 
-if __name__ == '__main__':
-    #x = BSUtilities()
-    #x.set_session("nair64", "1500,push2")
-    d = {'BoilerConnect': 134654, 'Spring 2021 Supplemental Instruction': 255533, 'Learning Online 101': 256101, 'Fall 2021 CS 19300-P02 PSO': 335523, 'Fall 2021 CS 38100-LE1 LEC': 335578, 'Fall 2021 CS 37300-LE1 LEC': 335719, 'Fall 2021 CS 30700-LE1 LEC': 335757, 'Fall 2021 EAPS 112 Earth Through Time - Merge': 336112, 'Fall 2021 M201 - Merge': 343395, 'Health and Safety Training (Fall 2021)': 392278, 'Fall 2021 UR SOS Training': 394335, 'Fall 2021 Supplemental Instruction': 395869, 'CS TA Training 21-22': 401998}
+    # Since our project is in "testing" phase, you have to manually add test users until you publish the app
+    # My personal email is the only test user now, but we can add more
+    def init_google_auths(self):
+        gauth = GoogleAuth()
+        gauth.LocalWebserverAuth()  # client_secrets.json need to be in the same directory as the script
+        drive = GoogleDrive(gauth)
+        return drive
 
-    c = "CS 381"
-    for key, val in d.items():
-        if key.lower().find(c.lower()) != -1:
-            print(val)
-    print(d)
+    def get_all_files_in_google(self, drive):
+        # only querying files (everything) from the 'MyDrive' root
+        fileList = drive.ListFile({'q': "'root' in parents and trashed=false"}).GetList()
+        # Use this to save all the folders in 'MyDrive'
+        folderList = []
+        for file in fileList:
+            if file['mimeType'] == 'application/vnd.google-apps.folder':
+                myFile = File(file['title'], file['id'])
+                myFile.storageType = StorageTypes.GOOGLE_DRIVE
+                folderList.append(myFile)
+
+        return folderList
+
+    # Algorithm to check if path is a valid path
+    def validate_path_drive(self, storage_path, drive):
+        # checks if inputted path is valid or not for their local machine
+        if not os.path.exists(storage_path):
+            # check if its a valid google drive folder in root (update later for nested folders)
+            folderList = self.get_all_files_in_google(drive)
+            for folder in folderList:
+                if folder.fileTitle == storage_path:
+                    return True
+            else:
+                return False
+        return True
