@@ -85,10 +85,19 @@ class BSAPI():
         grade_object = self.__process_api_json("get_grade", url)
 
         # TODO : Should do error checking on if these values are even in the json
-        numerator = grade_object["PointsNumerator"]
-        denominator = grade_object["PointsDenominator"]
-        fraction_string = "{numerator}/{denominator}".format(numerator=numerator, denominator=denominator)
-        percentage_string = grade_object["DisplayedGrade"]
+        numerator = ""
+        denominator = ""
+        percentage_string = ""
+        try:
+            if grade_object["PointsNumerator"] is not None:
+                numerator = grade_object["PointsNumerator"]
+            if grade_object["PointsDenominator"] is not None:
+                denominator = grade_object["PointsDenominator"]
+            fraction_string = "{numerator}/{denominator}".format(numerator=numerator, denominator=denominator)
+            if grade_object["DisplayedGrade"] is not None:
+                percentage_string = grade_object["DisplayedGrade"]
+        except TypeError:
+            return "", ""
 
         return fraction_string, percentage_string
 
