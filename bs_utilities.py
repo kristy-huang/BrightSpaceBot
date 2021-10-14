@@ -143,8 +143,8 @@ class BSUtilities():
                 if not since or self.__timestamp_later_than(since, startDate) <= 0:
                     announce_dict = {
                         'course_id': classes_list[c],
-                        'Title': announce['Title'],
-                        'Text': announce['Body']['Text'],
+                        'Title': announce['Title'].replace("\r\n", "\n"),
+                        'Text': announce['Body']['Text'].replace("\r\n", "\n"),
                         'StartDate': startDate
                     }
                     all_announcements.append(announce_dict)

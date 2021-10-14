@@ -145,7 +145,8 @@ class MySQLDatabase:
 
         table_name(str): table to insert into
         cols(dict): in the format of:
-        {column name 1: value 1,
+        {auto_increment column: None, 
+        column name 1: value 1,
         column name 2: value 2}
 
         returns: None
@@ -153,16 +154,21 @@ class MySQLDatabase:
     def insert_into(self, table_name, cols):
 
         #print(cols)
-        if not cols or not table_name:
+        if not table_name:
             return
 
+    
         columns = ""
         values = ""
         for col in cols.keys():
             columns += str(col) + ","
             val = cols[col]
-            if isinstance(val, str):
-                values += "\'" + cols[col] + "\',"
+            if not val:
+                values += "null,"
+            elif isinstance(val, str):
+                values += "\'" + str(cols[col]) + "\',"
+            else:
+                values += str(cols[col]) + ","
         columns = columns[:-1]
         values = values[:-1]
 
@@ -172,19 +178,23 @@ class MySQLDatabase:
                                                                     cols=columns, 
                                                                     vals=values)
         
-        #print(sql)
+
         # Returns 1 for success
         state = self._cursor.execute(sql)
         if state:
             self._cursor.connection.commit()
 
 
-    def delete(self, table_name, condition):
-        sql = "DELETE FROM {tb_n} WHERE {cond}".format(tb_n=table_name, cond=condition)
+    def delete(self, table_name, condition=None):
+        if not table_name:
+            return
+        sql = "DELETE FROM {tb_n}".format(tb_n=table_name)
         
+        if condition:
+            sql += " WHERE {cond}".format(cond=condition)
+
         state = self._cursor.execute(sql)
-        if state:
-            self._cursor.connection.commit()
+        self._cursor.connection.commit()
 
 
     def update(self, table_name, cols, condition):
@@ -212,11 +222,20 @@ class MySQLDatabase:
         if state:
             self._cursor.connection.commit()
 
+    # returns the last auto incremented id
+    def get_last_inserted_id(self):
+        sql = "SELECT LAST_INSERT_ID()"
+        
+        state = self._cursor.execute(sql)
+        if state:
+            rows = self._cursor.fetchall()
+            return rows[0][0]
+        return -1
+
 
     def general_command(self, command):
         state = self._cursor.execute(command)
-        if state:
-            self._cursor.connection.commit()
-            rows = self._cursor.fetchall()
-            return rows
+        self._cursor.connection.commit()
+        rows = self._cursor.fetchall()
+        return rows
 

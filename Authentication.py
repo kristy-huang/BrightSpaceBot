@@ -55,7 +55,6 @@ def __login_purdue_cas(session, username, password):
     res = session.post("https://www.purdue.edu/apps/account/cas/login", 
         data=cas_data, headers=HEADER)
     #print(res.status_code, res.text, res.cookies)
-
     res.raise_for_status()
     
     return session
