@@ -24,30 +24,32 @@ BS_API = BSAPI()
 @client.event
 async def on_ready():
     BS_UTILS.set_session(USERNAME, PIN)
+
     print("We have logged in as: " + str(client.user))
 
 # looping every day
 # change parameter to minutes=1 and see it happen every minute
-@tasks.loop(hours=24)
-async def called_once_a_day():
-    message_channel = client.get_channel(894700985535058000)
-    dates = BS_UTILS.get_dict_of_discussion_dates()
-    #dates = DATES
-    string = BS_UTILS.find_upcoming_disc_dates(1, dates)
-    if len(string) == 0:
-        ## only for debugging ##
-        # string = "No posts due today"
-        return
-    # send the upcoming discussion due dates
-    await message_channel.send(string)
+# @tasks.loop(minutes=1)
+# async def called_once_a_day():
+#     message_channel = client.get_channel(894700985535058000)
+#     dates = BS_UTILS.get_dict_of_discussion_dates()
+#     #dates = DATES
+#     string = BS_UTILS.find_upcoming_disc_dates(1, dates)
+#     if len(string) == 0:
+#         ## only for debugging ##
+#         # string = "No posts due today"
+#         return
+#     # send the upcoming discussion due dates
+#     await message_channel.send(string)
+#     return
 
 
-@called_once_a_day.before_loop
-async def before():
-    await client.wait_until_ready()
-
-
-called_once_a_day.start()
+# @called_once_a_day.before_loop
+# async def before():
+#     await client.wait_until_ready()
+#
+#
+# called_once_a_day.start()
 
 # This is our input stream for our discord bot
 # Every message that comes from the chat server will go through here
@@ -96,7 +98,7 @@ async def on_message(message):
 
         # getting the type of storage location
         try:
-            path_type = await client.wait_for('message', check=storage_path, timeout=5.0)
+            path_type = await client.wait_for('message', check=storage_path, timeout=30)
         except asyncio.TimeoutError:
             await message.channel.send("taking too long...")
             return
@@ -106,7 +108,7 @@ async def on_message(message):
             await message.channel.send("What folder from root?")
             # checking to see if path is valid
             try:
-                new_storage = await client.wait_for('message', check=storage_path, timeout=10)
+                new_storage = await client.wait_for('message', check=storage_path, timeout=30)
                 drive = init_google_auths()
                 return_val = validate_path_drive(new_storage.content, drive)
                 if not return_val:
@@ -123,7 +125,7 @@ async def on_message(message):
             await message.channel.send("Send your local path")
             # checking to see if path is valid (local)
             try:
-                new_storage = await client.wait_for('message', check=storage_path, timeout=10)
+                new_storage = await client.wait_for('message', check=storage_path, timeout=30)
                 return_val = validate_path_local(new_storage.content)
                 if not return_val:
                     await message.channel.send("Not a valid path. Try the cycle again.")
@@ -138,25 +140,32 @@ async def on_message(message):
             await message.channel.send("Your input isn't valid")
 
     # get a grade for a class
-    elif message.content.startswith("get grade"):
-        # TODO make it so that student can just put the course name
-        await message.channel.send("What is the course ID?")
+    elif message.content.startswith("grades:"):
+        courses = message.content.split(":")[1].split(",")
+        IDs = []
+        for c in courses:
+            course_id = BS_UTILS.find_course_id(c)
+            IDs.append(course_id)
+        print(IDs)
 
-        def check_input(m):
-            return m.author == message.author
-        # getting the course ID
-        try:
-            courseID = await client.wait_for('message', check=check_input, timeout=5.0)
-        except asyncio.TimeoutError:
-            await message.channel.send("taking too long...")
-            return
-        bs = BSAPI()
-        bs.set_session(USERNAME, PIN)
-        fraction_string, percentage_string = bs.get_grade(courseID.content)
-        bs_utils = BSUtilities()
-        letter = bs_utils.get_letter_grade(int(percentage_string.split(" ")[0]))
-        final_string = "Your overall fraction for that class is: " + fraction_string + \
-                       "\nYour percentage is: " + percentage_string + ". That translate to a " + letter
+        grades = {}
+        counter = 0
+        for i in IDs:
+            if i == -1:
+                grades[courses[counter]] = 'Not found'
+            else:
+                fraction_string, percentage_string = BS_UTILS._bsapi.get_grade(i)
+                letter = BS_UTILS.get_letter_grade(int(percentage_string.split(" ")[0]))
+                grades[courses[counter]] = letter
+            counter = counter + 1
+
+        print(grades)
+        grades = dict(sorted(grades.items(), key=lambda item: item[1]))
+        print(grades)
+        final_string = "Your grades are: \n"
+        for key, value in grades.items():
+            final_string = final_string + key.upper() + ": " + value + "\n"
+
         await message.channel.send(final_string)
         return
 
