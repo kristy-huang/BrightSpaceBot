@@ -15,6 +15,10 @@ marshmallow-sqlalchemy = "*"
 flask-login = "*"
 bcrypt = "*"
 flask-jwt-extended = "*"
+pymysql = "*"
+lxml = "*"
+discord = "*"
+pydrive = "*"
 
 [dev-packages]
 

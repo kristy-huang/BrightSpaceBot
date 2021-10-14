@@ -1,2 +1,2 @@
-from app import db
+from webapp import db
 db.create_all()
