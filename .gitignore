@@ -1,2 +1,3 @@
 database/db_config.py
 test.py
+config.py
