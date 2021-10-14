@@ -154,26 +154,47 @@ async def on_message(message):
         bs_utils = BSUtilities()
         bs_utils.set_session(USERNAME, PIN)
        
-    # change bot name 
-    # author: @CHP
+    #changing bot name
     elif message.content.startsWith("change bot name"):
+        # change value used to check if the user keep wants to change the name of the bot
+        # initialized to True
+        change=True;
+
+        # check method for waiting client's reply back
         def check(msg):
-          return msg.author == message.author
-       
-        await message.channel.send("To which name do you want to change?")
+            return msg.author == message.author
 
-        try:
-          new_name=await client.wait_for('message', check=check, timeout=10);
-        except asyncio.TimeoutError:
-          await message.channel.send("Timeout!")
-          return
+        while(change):
+            # ask the user to which name they want to change
+            await message.channel.send("To which name do you want to change?")
 
-        await message.guild.me.edit(nick=new_name.content)
-        await message.channel.send("My name is now changed!")
+            # get reply back from the user for bot's name
+            try:
+                new_name=await client.wait_for('message', check=check);
+            except asyncio.TimeoutError:
+                await message.channel.send("Timeout ERROR has occured. Please try the query again.")
+                return
 
-        
+            # name changed
+            await message.guild.me.edit(nick=new_name.content)
+            await message.channel.send("My name is now changed!")
 
+            # ask if the user wants to change the name again
+            await message.channel.send("Would you like to change my name again? Yes/y or No/n")
 
+            # get reply back from the user if they want to change the bot name again.
+            try:
+                change_again=await client.wait_for('message', check=check);
+
+                # user does not want to change again
+                if change_again.content.lower.startswith('n'):
+                    change = False
+                elif not change_again.content.lower.startswith('y'):    # user input invalid response
+                    await message.channel.send("Invalid response given! Please try the query again.")
+            except asyncio.TimeoutError:
+                await message.channel.send("Timeout ERROR has occured. Please try the query again.")
+                return
+              
 
 # Now to actually run the bot!
 client.run(config['token'])
