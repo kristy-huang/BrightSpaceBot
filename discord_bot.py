@@ -8,6 +8,8 @@ from bs_api import BSAPI
 from bs_utilities import BSUtilities
 from datetime import datetime, timedelta
 import threading
+from database.db_utilities import DBUtilities
+
 
 '''
 To add the bot to your own server and test it out, copy this URL into your browser
@@ -19,37 +21,42 @@ client = discord.Client()
 channelID = 894700985535058000  # TODO save this in the database - right now this is my (Raveena's) channel
 BS_UTILS = BSUtilities()
 BS_API = BSAPI()
+DB_UTILS = DBUtilities()
+
 
 # Having the bot log in and be online
 @client.event
 async def on_ready():
     BS_UTILS.set_session(USERNAME, PIN)
-
+    DB_UTILS.connect_by_config("database/db_config.py")
     print("We have logged in as: " + str(client.user))
 
+
+SCHEDULED_MINUTES = 1 * 60 * 24
 # looping every day
 # change parameter to minutes=1 and see it happen every minute
-# @tasks.loop(minutes=1)
-# async def called_once_a_day():
-#     message_channel = client.get_channel(894700985535058000)
-#     dates = BS_UTILS.get_dict_of_discussion_dates()
-#     #dates = DATES
-#     string = BS_UTILS.find_upcoming_disc_dates(1, dates)
-#     if len(string) == 0:
-#         ## only for debugging ##
-#         # string = "No posts due today"
-#         return
-#     # send the upcoming discussion due dates
-#     await message_channel.send(string)
-#     return
+@tasks.loop(minutes=SCHEDULED_MINUTES)
+async def called_once_a_day():
+    channel = discord.utils.get(client.get_all_channels(), name='specifics')
+    message_channel = client.get_channel(channel.id)
+    #dates = BS_UTILS.get_dict_of_discussion_dates()
+    dates = DATES
+    string = BS_UTILS.find_upcoming_disc_dates(1, dates)
+    if len(string) == 0:
+        ## only for debugging ##
+        # string = "No posts due today"
+        return
+    # send the upcoming discussion due dates
+    await message_channel.send(string)
+    return
 
 
-# @called_once_a_day.before_loop
-# async def before():
-#     await client.wait_until_ready()
-#
-#
-# called_once_a_day.start()
+@called_once_a_day.before_loop
+async def before():
+    await client.wait_until_ready()
+
+
+called_once_a_day.start()
 
 # This is our input stream for our discord bot
 # Every message that comes from the chat server will go through here
