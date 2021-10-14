@@ -196,7 +196,19 @@ class MySQLDatabase:
         state = self._cursor.execute(sql)
         self._cursor.connection.commit()
 
+    
+    '''
+        Inserts a column into a specific table. Very basic functionality. Does no gate
+        keeping.
 
+        table_name(str): table to insert into
+        cols(dict): in the format of:
+        {auto_increment column: None, 
+        column name 1: value 1,
+        column name 2: value 2}
+
+        returns: None
+    '''
     def update(self, table_name, cols, condition):
         if not cols: 
             return

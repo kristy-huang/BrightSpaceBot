@@ -1,4 +1,4 @@
-from Authentication import get_brightspace_session
+from authentication import get_brightspace_session
 
 import requests
 import os

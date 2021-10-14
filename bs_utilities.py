@@ -179,7 +179,7 @@ class BSUtilities():
                 if not since or self.__timestamp_later_than(since, startDate) <= 0:
                     announce_dict = {
                         'course_id': classes_list[c],
-                        'Title': announce['Title'].replace("\r\n", "\n"),
+                        'Title': announce['Title'].replace("\r\n", "\n").replace("\xa0", " "),
                         'Text': announce['Body']['Text'].replace("\r\n", "\n"),
                         'StartDate': startDate
                     }
@@ -231,7 +231,7 @@ class BSUtilities():
             quizzes = self._bsapi.get_quizzes(course)
             for quiz in quizzes:
                 #get today's date
-                current_date = datetime.now()
+                current_date = datetime.datetime.utcnow()
                 quiz_due_date = quiz.json()["DueDate"]
                 #find diff between quiz.due date and today
                 diff = quiz_due_date - current_date
@@ -259,14 +259,13 @@ class BSUtilities():
        Serves user story 9 in Sprint 1. 
 
        Returns:  
-
     '''
 
     def suggest_focus_time(self):
         busiest_weeks = []
         enrollments = self._bsapi.get_enrollments()
         courses = enrollments.json()["Items"]
-        current_date = datetime.now()
+        current_date = datetime.datetime.utcnow()
         end_term_date = self.find_end_term_date()
         return busiest_weeks
 
