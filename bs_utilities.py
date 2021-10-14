@@ -396,3 +396,24 @@ class BSUtilities():
                         string = string + " " + key + ", due " + i.strftime("%d-%b-%Y") + "\n"
 
         return string
+
+    def find_course_id(self, class_name):
+        dictionary = self.get_classes_enrolled()
+        course_id = -1
+        for key, value in dictionary.items():
+            if key.lower().find(class_name.lower()) != -1:
+                course_id = value
+
+
+        return course_id
+
+if __name__ == '__main__':
+    #x = BSUtilities()
+    #x.set_session("nair64", "1500,push2")
+    d = {'BoilerConnect': 134654, 'Spring 2021 Supplemental Instruction': 255533, 'Learning Online 101': 256101, 'Fall 2021 CS 19300-P02 PSO': 335523, 'Fall 2021 CS 38100-LE1 LEC': 335578, 'Fall 2021 CS 37300-LE1 LEC': 335719, 'Fall 2021 CS 30700-LE1 LEC': 335757, 'Fall 2021 EAPS 112 Earth Through Time - Merge': 336112, 'Fall 2021 M201 - Merge': 343395, 'Health and Safety Training (Fall 2021)': 392278, 'Fall 2021 UR SOS Training': 394335, 'Fall 2021 Supplemental Instruction': 395869, 'CS TA Training 21-22': 401998}
+
+    c = "CS 381"
+    for key, val in d.items():
+        if key.lower().find(c.lower()) != -1:
+            print(val)
+    print(d)
