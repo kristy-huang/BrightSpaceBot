@@ -4,6 +4,7 @@ import datetime
 import urllib.parse
 import os
 from pathlib import Path
+from flask_sqlalchemy import SQLAlchemy
 
 
 class BSUtilities():
@@ -361,3 +362,23 @@ class BSUtilities():
             return 'D'
         else:
             return 'F'
+
+    '''
+    
+        
+    '''
+    def get_grade_updates(self):
+        enrolled_courses = self.get_classes_enrolled()
+        print(enrolled_courses)
+        assignment_and_grade = ''
+
+        for course_id in enrolled_courses.values():
+            print(course_id)
+            # g_obj_ids is an array that contains the ids of all the graded assignments for a course
+            g_obj_ids = self._bsapi.get_all_assignments_in_gradebook(course_id)
+            if len(g_obj_ids) != 0 and g_obj_ids is not None and g_obj_ids[0] != -1:
+                for g_obj_id in g_obj_ids:
+                    assignment_and_grade = self._bsapi.get_grade_of_assignment(course_id, g_obj_id)
+                    print(assignment_and_grade)
+
+        # return assignment_and_grade
