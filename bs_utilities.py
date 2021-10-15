@@ -366,8 +366,8 @@ class BSUtilities():
     '''
         Retrieves any assignments that were recently graded
         
-        returns the grade and assignment details of recently graded assignments
-        or if no assignments were recently graded, return -1
+        returns an array with the grade and assignment details of recently graded assignments
+        or if no assignments were recently graded, return empty array
         
     '''
     def get_grade_updates(self):
@@ -387,7 +387,7 @@ class BSUtilities():
         # print(sql.show_tables())
         enrolled_courses = self.get_classes_enrolled()
         # print(enrolled_courses)
-
+        grades = []
         for course_id in enrolled_courses.values():
             # g_obj_ids is an array that contains the ids of all the graded assignments for a course
             g_obj_ids = self._bsapi.get_all_assignments_in_gradebook(course_id)
@@ -409,8 +409,9 @@ class BSUtilities():
                     # if there is a grade for the assignment and that assignment is not in the db yet, insert into db
                     if grade != -1 and sql_response == -1:
                         sql.insert_into('GRADED_ASSIGNMENTS', data)
-                        return data
-                    else:
-                        return -1
+                        grades.append(data)
 
-        print(db_util.show_table_content("GRADED_ASSIGNMENTS"))
+        # print(db_util.show_table_content("GRADED_ASSIGNMENTS"))
+        # for grade in grades:
+        #     print(grade)
+        return grades

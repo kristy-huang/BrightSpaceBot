@@ -116,6 +116,7 @@ async def on_message(message):
 
         def check_input(m):
             return m.author == message.author
+
         # getting the course ID
         try:
             courseID = await client.wait_for('message', check=check_input, timeout=5.0)
@@ -132,48 +133,11 @@ async def on_message(message):
         await message.channel.send(final_string)
         return
 
-    #get upcoming quizzes across all classes
-    elif message.content.startsWith("get upcoming quizzes"):
+    # get upcoming quizzes across all classes
+    elif message.content.startswith("get upcoming quizzes"):
         bs_utils = BSUtilities()
         bs_utils.set_session(USERNAME, PIN)
         upcoming_quizzes = bs_utils.get_upcoming_quizzes()
-        #if there are no upcoming quizzes returned, then we report to the user.
-        if not upcoming_quizzes:
-            await message.channel.send("You have no upcoming quizzes or exams.")
-            return
-        else:
-            await message.channel.send("You have the following upcoming assessments:\n")
-            for quiz in upcoming_quizzes:
-                current_quiz = quiz["Name"]
-                current_quiz_due_date = quiz["DueDate"]
-                output_str = current_quiz + " due " + current_quiz_due_date + "\n"
-                await message.channel.send(output_str)
-            return
-
-    elif message.content.startsWith("get busiest weeks"):
-        bs_utils = BSUtilities()
-        bs_utils.set_session(USERNAME, PIN)
-       
-    # change bot name 
-    # author: @CHP
-    elif message.content.startsWith("change bot name"):
-        def check(msg):
-          return msg.author == message.author
-       
-        await message.channel.send("To which name do you want to change?")
-
-        try:
-          new_name=await client.wait_for('message', check=check, timeout=10);
-        except asyncio.TimeoutError:
-          await message.channel.send("Timeout!")
-          return
-
-        await message.guild.me.edit(nick=new_name.content)
-        await message.channel.send("My name is now changed!")
-    elif message.content.startsWith("get grade updates"):
-        bs_utils = BSUtilities()
-        bs_utils.set_session(USERNAME, PIN)
-        grade_updates = bs_utils.get_grade_updates()
         # if there are no upcoming quizzes returned, then we report to the user.
         if not upcoming_quizzes:
             await message.channel.send("You have no upcoming quizzes or exams.")
@@ -186,8 +150,42 @@ async def on_message(message):
                 output_str = current_quiz + " due " + current_quiz_due_date + "\n"
                 await message.channel.send(output_str)
             return
-        
 
+    elif message.content.startswith("get busiest weeks"):
+        bs_utils = BSUtilities()
+        bs_utils.set_session(USERNAME, PIN)
+
+    # change bot name 
+    # author: @CHP
+    elif message.content.startswith("change bot name"):
+        def check(msg):
+            return msg.author == message.author
+
+        await message.channel.send("To which name do you want to change?")
+
+        try:
+            new_name = await client.wait_for('message', check=check, timeout=10);
+        except asyncio.TimeoutError:
+            await message.channel.send("Timeout!")
+            return
+
+        await message.guild.me.edit(nick=new_name.content)
+        await message.channel.send("My name is now changed!")
+    elif message.content.startswith("get newly graded assignments"):
+        bs_utils = BSUtilities()
+        bs_utils.set_session(USERNAME, PIN)
+        grade_updates = bs_utils.get_grade_updates()
+        await message.channel.send("Retrieving grades...")
+        # if there are no grade updates returned, then we report to the user.
+        if len(grade_updates) == 0:
+            await message.channel.send("You have no new grade updates.")
+            return
+        else:
+            await message.channel.send("The following assignments have been graded:\n")
+            for grade in grade_updates:
+                output_str = "Course Id:" + str(grade['course_id']) + "- " + grade['assignment_name'] + " " + grade['grade'] + "\n"
+                await message.channel.send(output_str)
+            return
 
 
 # Now to actually run the bot!
