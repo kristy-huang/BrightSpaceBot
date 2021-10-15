@@ -170,7 +170,22 @@ async def on_message(message):
 
         await message.guild.me.edit(nick=new_name.content)
         await message.channel.send("My name is now changed!")
-
+    elif message.content.startsWith("get grade updates"):
+        bs_utils = BSUtilities()
+        bs_utils.set_session(USERNAME, PIN)
+        grade_updates = bs_utils.get_grade_updates()
+        # if there are no upcoming quizzes returned, then we report to the user.
+        if not upcoming_quizzes:
+            await message.channel.send("You have no upcoming quizzes or exams.")
+            return
+        else:
+            await message.channel.send("You have the following upcoming assessments:\n")
+            for quiz in upcoming_quizzes:
+                current_quiz = quiz["Name"]
+                current_quiz_due_date = quiz["DueDate"]
+                output_str = current_quiz + " due " + current_quiz_due_date + "\n"
+                await message.channel.send(output_str)
+            return
         
 
 
