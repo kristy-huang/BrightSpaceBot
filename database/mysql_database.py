@@ -239,3 +239,21 @@ class MySQLDatabase:
         self._cursor.connection.commit()
         rows = self._cursor.fetchall()
         return rows
+
+    '''
+        find rows with one attribute
+        
+        return the rows if found, else return -1 if query returns empty
+    '''
+    def find_rows_one_attr(self, table_name, col, condition):
+        sql = 'SELECT * FROM {table_name} WHERE {col} = {condition}'.format(table_name=table_name,
+                                                                            col=col,
+                                                                            condition=condition)
+        state = self._cursor.execute(sql)
+        if state == 1:
+            rows = self._cursor.fetchall()
+            # print(rows)
+            return rows
+        elif state == 0:
+            return -1
+
