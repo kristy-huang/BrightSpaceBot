@@ -117,7 +117,7 @@ class BSAPI():
         
         course_id (str/int): the id of the course
         grade_object_id (str/int): the id the of specific assignment
-        returns: tuple (course_id, assignment_name, percentage_string)
+        returns: tuple (grade_object_id, course_id, assignment_name, percentage_string)
     '''
     def get_grade_of_assignment(self, course_id, grade_object_id):
         url = self._API_URL_PREFIX + "le/1.38/{course_id}/grades/{grade_object_id}/values/myGradeValue".format(
@@ -127,12 +127,12 @@ class BSAPI():
         grade_object = self.__process_api_json("get_grade_of_assignment", url)
         # print(grade_object)
         if grade_object is None:
-            return course_id, -1, -1
+            return grade_object_id, course_id, -1, -1
 
         assignment_name = grade_object["GradeObjectName"]
         percentage_string = grade_object["DisplayedGrade"]
 
-        return course_id, assignment_name, percentage_string
+        return grade_object_id, course_id, assignment_name, percentage_string
 
     '''
         This gets a file and saves it to a given destination 
