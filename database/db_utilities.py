@@ -115,6 +115,7 @@ class DBUtilities():
 
 
 
+
 if __name__ == '__main__':
     sql = DBUtilities()
     sql.connect_by_config("db_config.py")
@@ -122,8 +123,6 @@ if __name__ == '__main__':
     print(sql.show_table_content("USERS"))
     sql._mysql.general_command("UPDATE USERS SET Storage_method = 'LOCAL' WHERE first_name = 'katherine';")
     print(sql.show_table_content("USERS"))
-
-
 
 
 '''sql = DBUtilities()

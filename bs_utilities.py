@@ -5,6 +5,8 @@ import datetime
 import urllib.parse
 import os
 from pathlib import Path
+from database.db_utilities import DBUtilities
+from database.mysql_database import MySQLDatabase
 from pydrive.auth import GoogleAuth
 from pydrive.drive import GoogleDrive
 from File import File, StorageTypes
@@ -19,19 +21,17 @@ class BSUtilities():
 
     def set_session(self, session):
         self._bsapi.set_session(session)
- 
 
     def set_session(self, username, password):
         self._bsapi.set_session(username, password)
-
 
     '''
         Replaces the BSAPI() object with a new one.
         bsapi: instance of BSAPI()
     '''
+
     def replace_bsapi(self, bsapi):
         self._bsapi = bsapi
-    
 
     '''
         Downloads one file from a topic with a given course id and topic id.
@@ -40,12 +40,13 @@ class BSUtilities():
         topic_id (int / str): id of the topic
         destination (str): location the files are downloaded.
     '''
+
     def download_file(self, course_id, topic_id, destination, type, drive):
         res = self._bsapi.get_file_from_request(course_id, topic_id)
-        
+
         filename = res.headers['Content-Disposition']
         filename = filename[:filename.rindex("\"")]
-        filename = filename[filename.rindex("\"") + 1: ]
+        filename = filename[filename.rindex("\"") + 1:]
         filename = urllib.parse.unquote(filename)
         print(filename)
         if type == 'LOCAL':
@@ -89,15 +90,17 @@ class BSUtilities():
         # handles memory leaks
         gd_file = None
 
+
     '''
         Downloads all files for a course recursively.
 
         course_id (int / str): id of the course
         destination (str): location the files are downloaded.
     '''
+
     # TODO: files not located in a sub-module are not downloaded.
+
     def download_files(self, course_id, destination, t):
-    
         modules = self._bsapi.get_topics(course_id)["Modules"]
         if t != "LOCAL":
             drive = self.init_google_auths()
@@ -119,7 +122,6 @@ class BSUtilities():
                     if extension == ".pdf":
                         self.download_file(course_id, m_topics[k]["TopicId"], destination=destination, type=t, drive=drive)
 
-
     '''
         Gets a list of classes the user is currently enrolled in.
         Returns a dictionary in the format of 
@@ -128,6 +130,7 @@ class BSUtilities():
 
         return: dict
     '''
+
     def get_classes_enrolled(self):
         ORG_ID_CLASS = 3
         ORG_ID_GROUP = 4
@@ -143,9 +146,8 @@ class BSUtilities():
                     class_name = item['OrgUnit']['Name']
                     class_id = item['OrgUnit']['Id']
                     enrolled_classes[class_name] = class_id
-                
-        return enrolled_classes
 
+        return enrolled_classes
 
     '''
         Pulls all announcements from every class the user is currently enrolled in.
@@ -163,13 +165,14 @@ class BSUtilities():
                 'StartDate': datetime
          }
     '''
+
     def get_announcements(self, since=None):
         try:
             if isinstance(since, str):
                 since = datetime.datetime.strptime(since, "%Y-%m-%dT%H:%M:%S.%fZ")
         except ValueError:
             return False
-        
+
         classes_list = self.get_classes_enrolled()
         all_announcements = []
         for c in classes_list.keys():
@@ -185,9 +188,8 @@ class BSUtilities():
                     }
                     all_announcements.append(announce_dict)
         return all_announcements
-        #sorted(ann, key = lambda i: i['StartDate'], reverse=True)
-        #sorted(ann, key = lambda i: i['course_id'], reverse=True)
-
+        # sorted(ann, key = lambda i: i['StartDate'], reverse=True)
+        # sorted(ann, key = lambda i: i['course_id'], reverse=True)
 
     '''
         Get the discussion due dates of a given course.
@@ -195,6 +197,7 @@ class BSUtilities():
         course_id (int / str): id of the course
         returns: an array of dates(str).
     '''
+
     def get_discussion_due_dates(self, course_id):
         dates = []
 
@@ -222,6 +225,7 @@ class BSUtilities():
         
         returns: list of QuizReadDate blocks.
     '''
+
     def get_upcoming_quizzes(self):
         enrolled_courses = self.get_classes_enrolled()
         upcoming_quizzes = {}
@@ -265,7 +269,6 @@ class BSUtilities():
                 
         return end_term_date
 
-
     '''
        This function calculates the total number of assignments across all courses for each week, from now until
 
@@ -303,7 +306,6 @@ class BSUtilities():
         return
         #return busiest_weeks
 
-
     '''
         Pulls events of a specific type from currently enrolled classes that  
         happened between startDateTime and endDateTime. 
@@ -331,10 +333,11 @@ class BSUtilities():
                 'StartDate': datetime
                 }
     '''
+
     def get_events_by_type(self, startDateTime=None, endDateTime=None, eventType=1):
         if not startDateTime and not endDateTime:
             endDateTime = datetime.datetime.utcnow()
-            startDateTime = endDateTime - datetime.timedelta(days = 365) 
+            startDateTime = endDateTime - datetime.timedelta(days=365)
             endDateTime = endDateTime.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
             startDateTime = startDateTime.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
         elif not startDateTime:
@@ -343,8 +346,8 @@ class BSUtilities():
             except:
                 print("startDateTime format incorrect.")
                 return None
-        
-            endDateTime = datetime_start + datetime.timedelta(days = 365) 
+
+            endDateTime = datetime_start + datetime.timedelta(days=365)
             endDateTime = endDateTime.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         elif not endDateTime:
             try:
@@ -353,7 +356,7 @@ class BSUtilities():
                 print("endDateTime format incorrect.")
                 return None
 
-            startDateTime = datetime_end - datetime.timedelta(days = 365) 
+            startDateTime = datetime_end - datetime.timedelta(days=365)
             startDateTime = startDateTime.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
 
         if isinstance(eventType, str):
@@ -369,11 +372,12 @@ class BSUtilities():
                 eventType = 5
             elif eventType == "DueDate":
                 eventType = 6
-        
+
         events = []
         classes_list = self.get_classes_enrolled()
         for c in classes_list.keys():
-            cal_events = self._bsapi.get_calender_events(classes_list[c], startDateTime, endDateTime, eventType=eventType)
+            cal_events = self._bsapi.get_calender_events(classes_list[c], startDateTime, endDateTime,
+                                                         eventType=eventType)
             cal_events = cal_events['Objects']
             for cal_event in cal_events:
                 startDate = datetime.datetime.strptime(cal_event['StartDateTime'], "%Y-%m-%dT%H:%M:%S.%fZ")
@@ -384,7 +388,6 @@ class BSUtilities():
 
         return events
 
-
     '''
         Returns True if time_str is later than (or at the same time as) the current time
         or the time_str is None (which means infinitly later in the future!)
@@ -393,6 +396,7 @@ class BSUtilities():
                         of yyyy-MM-ddTHH:mm:ss.fffZ, zero padded. 
                         e.g. 2046-05-20T13:15:30.067Z
     '''
+
     def __timestamp_later_than_current(self, time_str):
 
         if not isinstance(time_str, str):
@@ -407,7 +411,6 @@ class BSUtilities():
 
         return self.__timestamp_later_than(reference_time, now) >= 0
 
-
     '''
         Returns 1 if time1 is later than the time2.
         Returns 0 if time1 is equal the time2.
@@ -416,6 +419,7 @@ class BSUtilities():
     
         time1, time2 (datetime objects): represent times with timezone UTC+0
     '''
+
     def __timestamp_later_than(self, time1, time2):
         if time1 > time2:
             return 1
@@ -435,6 +439,59 @@ class BSUtilities():
             return 'D'
         else:
             return 'F'
+
+    '''
+        Retrieves any assignments that were recently graded
+        
+        returns an array with the grade and assignment details of recently graded assignments
+        or if no assignments were recently graded, return empty array
+        
+    '''
+    def get_grade_updates(self):
+        db_util = DBUtilities()
+        db_util.connect_by_config('database/db_config.py')
+        db_util.use_database("BSBOT")
+
+        sql = MySQLDatabase()
+        sql.connect_by_config('database/db_config.py')
+        sql.use_database("BSBOT")
+        # sql.drop_table('GRADED_ASSIGNMENTS')
+        sql.create_table('GRADED_ASSIGNMENTS', 'grade_object_id INT PRIMARY KEY, '
+                                               'course_id INT,'
+                                               'assignment_name VARCHAR(255), '
+                                               'grade VARCHAR(255)')
+
+        # print(sql.show_tables())
+        enrolled_courses = self.get_classes_enrolled()
+        # print(enrolled_courses)
+        grades = []
+        for course_id in enrolled_courses.values():
+            # g_obj_ids is an array that contains the ids of all the graded assignments for a course
+            g_obj_ids = self._bsapi.get_all_assignments_in_gradebook(course_id)
+            if len(g_obj_ids) != 0 and g_obj_ids is not None and g_obj_ids[0] != -1:
+                for g_obj_id in g_obj_ids:
+                    assignment_and_grade = self._bsapi.get_grade_of_assignment(course_id, g_obj_id)
+                    g_id = assignment_and_grade[0]
+                    c_id = assignment_and_grade[1]
+                    assignment_name = assignment_and_grade[2]
+                    grade = assignment_and_grade[3]
+                    # print(assignment_and_grade)
+                    data = {
+                        "grade_object_id": g_id,
+                        "course_id": c_id,
+                        "assignment_name": assignment_name,
+                        "grade": grade
+                    }
+                    sql_response = sql.find_rows_one_attr('GRADED_ASSIGNMENTS', 'grade_object_id', g_id)
+                    # if there is a grade for the assignment and that assignment is not in the db yet, insert into db
+                    if grade != -1 and sql_response == -1:
+                        sql.insert_into('GRADED_ASSIGNMENTS', data)
+                        grades.append(data)
+
+        # print(db_util.show_table_content("GRADED_ASSIGNMENTS"))
+        # for grade in grades:
+        #     print(grade)
+        return grades
 
     def get_dict_of_discussion_dates(self):
         classes = self.get_classes_enrolled()
@@ -510,3 +567,4 @@ class BSUtilities():
             else:
                 return False
         return True
+
