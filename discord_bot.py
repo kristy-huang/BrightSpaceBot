@@ -184,7 +184,7 @@ async def on_message(message):
         bs_utils = BSUtilities()
         bs_utils.set_session(USERNAME, PIN)
         upcoming_quizzes = bs_utils.get_upcoming_quizzes()
-        #if there are no upcoming quizzes returned, then we report to the user.
+        # if there are no upcoming quizzes returned, then we report to the user.
         if not upcoming_quizzes:
             await message.channel.send("You have no upcoming quizzes or exams.")
             return
@@ -202,6 +202,21 @@ async def on_message(message):
     elif message.content.startswith("get busiest weeks"):
         bs_utils = BSUtilities()
         bs_utils.set_session(USERNAME, PIN)
+
+    elif message.content.startswith("get newly graded assignments"):
+        bs_utils = BSUtilities()
+        bs_utils.set_session(USERNAME, PIN)
+        grade_updates = bs_utils.get_grade_updates()
+        await message.channel.send("Retrieving grades...")
+        # if there are no grade updates returned, then we report to the user.
+        if len(grade_updates) == 0:
+            await message.channel.send("You have no new grade updates.")
+            return
+        else:
+            await message.channel.send("The following assignments have been graded:\n")
+            for grade in grade_updates:
+                output_str = "Course Id:" + str(grade['course_id']) + "- " + grade['assignment_name'] + " " + grade['grade'] + "\n"
+                await message.channel.send(output_str)
        
     #changing bot name
     elif message.content.startswith("change bot name"):
