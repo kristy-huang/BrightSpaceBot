@@ -1,0 +1,13 @@
+.container {
+    margin: 50px;
+}
+
+.form {
+    margin:auto;
+    width: 80%;
+}
+
+.btn-primary {
+    background-color: #f9759e !important;
+    border-color: #f9759e !important;
+}
