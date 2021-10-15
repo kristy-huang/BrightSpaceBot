@@ -98,6 +98,7 @@ class BSUtilities():
     def download_files(self, course_id, destination, t):
     
         modules = self._bsapi.get_topics(course_id)["Modules"]
+        drive = None
         if t != "LOCAL":
             drive = self.init_google_auths()
 
