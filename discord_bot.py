@@ -218,45 +218,48 @@ async def on_message(message):
                 output_str = "Course Id:" + str(grade['course_id']) + "- " + grade['assignment_name'] + " " + grade['grade'] + "\n"
                 await message.channel.send(output_str)
        
-    #changing bot name
+    # changing bot name
     elif message.content.startswith("change bot name"):
         # change value used to check if the user keep wants to change the name of the bot
         # initialized to True
-        change=True;
+        change = True
+        valid_change_response = True
 
         # check method for waiting client's reply back
         def check(msg):
             return msg.author == message.author
 
-        while(change):
+        while change:
             # ask the user to which name they want to change
             await message.channel.send("To which name do you want to change?")
 
             # get reply back from the user for bot's name
             try:
-                new_name=await client.wait_for('message', check=check);
+                new_name = await client.wait_for('message', check=check)
             except asyncio.TimeoutError:
                 await message.channel.send("Timeout ERROR has occured. Please try the query again.")
                 return
 
-            # name changed
+            # name changed message.
             await message.guild.me.edit(nick=new_name.content)
             await message.channel.send("My name is now changed!")
 
             # ask if the user wants to change the name again
-            await message.channel.send("Would you like to change my name again? Yes/y or No/n")
+            await message.channel.send("Would you like to change my name again? Yes or No")
 
             # get reply back from the user if they want to change the bot name again.
             try:
-                change_again=await client.wait_for('message', check=check);
+                change_again = await client.wait_for('message', check=check)
 
                 # user does not want to change again
-                if change_again.content.lower.startswith('n'):
+                if change_again.content.startswith('No'):
                     change = False
-                elif not change_again.content.lower.startswith('y'):    # user input invalid response
+                    await message.channel.send("Thank you for changing my name!")
+                elif not change_again.content.startswith('Yes'):  # user input invalid response
                     await message.channel.send("Invalid response given! Please try the query again.")
+                    return
             except asyncio.TimeoutError:
-                await message.channel.send("Timeout ERROR has occured. Please try the query again.")
+                await message.channel.send("Timeout ERROR has occurred. Please try the query again.")
                 return
 
     elif message.content.startswith("upcoming discussion"):
@@ -292,6 +295,85 @@ async def on_message(message):
             await message.channel.send(string)
             return
 
+    # returning user course priority by either grade or upcoming events
+    elif message.content.startswith("course priority"):
 
+        def check(msg):
+            return msg.author == message.author
+
+        # list of courses in preferred priority
+        course_priority = []
+
+        # ask user for pick grade or by due date
+        await message.channel.send("Please pick between grade or due dates for prioritizing your courses.")
+
+        try:
+            priority_option = await client.wait_for('message', check=check)
+
+            if priority_option.content.startswith("grade"):
+                # api call for grades
+                await message.channel.send("Setting course priority by grade ...")
+
+                # get user's enrolled classes
+                user_classes = BS_UTILS.get_classes_enrolled()
+                class_names = []
+                class_ids = []
+                grades_tuple = []
+                for name, course_id in user_classes.items():
+                    class_names.append(name)
+                    class_ids.append(course_id)
+                    grades_tuple.append(BS_UTILS._bsapi.get_grade(course_id))
+
+                grades_frac = []
+                for t in grades_tuple:
+                    if not t[0] == '':
+                        nums_str = t[0].split('/')
+                        grade_frac = float(nums_str[0]) / float(nums_str[1])
+                        grades_frac.append(grade_frac)
+                    else:
+                        grades_frac.append(0)
+
+                # print(class_names)
+                # print(grades_frac)
+
+                #class_grade_tracker = []
+               # for x in range(0, len(class_names)):
+                 #   class_grade_tracker.append((grades_frac[x], class_names[x]))
+
+                sorted_grade_frac = sorted(grades_frac)
+
+                # print(sorted_grade_frac)
+
+                for x in sorted_grade_frac:
+                    if not x == 0:
+                        index = grades_frac.index(x)
+                        course_name = class_names[index]
+                        course_priority.append(course_name)
+
+                # print(course_priority)
+
+                suggested_course_priority = ""
+
+                for x in range (0, len(course_priority)):
+                    suggested_course_priority += course_priority[x]
+                    if not x == len(course_priority) - 1:
+                        suggested_course_priority += " >> "
+
+                await message.channel.send("The suggested course priority is:\n" + suggested_course_priority)
+
+            elif priority_option.content.startswith("due dates"):
+                # api call for due dates
+                await message.channel.send("Setting course priority by upcoming due dates ...")
+                await message.channel.send("Sorry we are adjusting function at the moment, please try it next time")
+            else:
+                await message.channel.send("Invalid response given! Please try the query again.")
+                return
+
+        except asyncio.TimeoutError:
+            await message.channel.send("Timeout ERROR has occurred. Please try the query again.")
+            return
+
+        return
+          
 # Now to actually run the bot!
 client.run(config['token'])
