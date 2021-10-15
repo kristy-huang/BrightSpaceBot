@@ -1,7 +1,7 @@
 # Our discord token is saved in another file for security
 from discord_config import config, USERNAME, PIN, DATES
 import discord
-from discord.ext import tasks
+from discord.ext import tasks, commands
 import asyncio
 from file_storage import *
 from bs_api import BSAPI
@@ -29,18 +29,23 @@ DB_UTILS = DBUtilities()
 async def on_ready():
     BS_UTILS.set_session(USERNAME, PIN)
     DB_UTILS.connect_by_config("database/db_config.py")
+    DB_UTILS.use_database("BSBOT")
     print("We have logged in as: " + str(client.user))
 
+@commands.command()
+async def quit(ctx):
+    await ctx.send("Shutting down the bot")
+    return await client.logout() # this just shuts down the bot.
 
-SCHEDULED_MINUTES = 1 * 60 * 24
+SCHEDULED_MINUTES = 1
 # looping every day
 # change parameter to minutes=1 and see it happen every minute
 @tasks.loop(minutes=SCHEDULED_MINUTES)
 async def called_once_a_day():
     channel = discord.utils.get(client.get_all_channels(), name='specifics')
     message_channel = client.get_channel(channel.id)
-    #dates = BS_UTILS.get_dict_of_discussion_dates()
-    dates = DATES
+    dates = BS_UTILS.get_dict_of_discussion_dates()
+    #dates = DATES
     string = BS_UTILS.find_upcoming_disc_dates(1, dates)
     if len(string) == 0:
         ## only for debugging ##
@@ -91,8 +96,12 @@ async def on_message(message):
     # get the current storage path
     elif user_message.lower() == 'current storage location':
         # todo: access database and get the actual value
-        storage_path = "Some/default/location"
-        await message.channel.send(f'Your current storage location: {storage_path}')
+
+        storage_path = DB_UTILS._mysql.general_command("SELECT STORAGE_PATH from USERS WHERE FIRST_NAME = 'Raveena';")
+        if storage_path[0][0] is None:
+            await message.channel.send('No storage path specified. Type update storage to save something')
+        else:
+            await message.channel.send(f'Current location: {storage_path[0][0]}')
         return
 
     # update the current storage path (used starts with so they can type update storage destination or path)
@@ -122,6 +131,14 @@ async def on_message(message):
                     await message.channel.send("Not a valid path. Try the cycle again.")
                 else:
                     # todo add saving mechanism to cloud database
+                    DB_UTILS.use_database("BSBOT")
+                    sql_type = "UPDATE USERS SET Storage_method = '{path_type}' WHERE first_name = '{f_name}';" \
+                        .format(path_type="GDRIVE", f_name=username.split(" ")[0])
+                    DB_UTILS._mysql.general_command(sql_type)
+                    sql_path = "UPDATE USERS SET Storage_path = '{path}' WHERE first_name = '{f_name}';" \
+                        .format(path=new_storage.content, f_name=username.split(" ")[0])
+                    DB_UTILS._mysql.general_command(sql_path)
+
                     await message.channel.send("New path saved")
                 return
             except asyncio.TimeoutError:
@@ -138,6 +155,13 @@ async def on_message(message):
                     await message.channel.send("Not a valid path. Try the cycle again.")
                 else:
                     # todo add saving mechanism to cloud database
+                    DB_UTILS.use_database("BSBOT")
+                    sql_type = "UPDATE USERS SET Storage_method = '{path_type}' WHERE first_name = '{f_name}';" \
+                        .format(path_type="LOCAL", f_name=username.split(" ")[0])
+                    DB_UTILS._mysql.general_command(sql_type)
+                    sql_path = "UPDATE USERS SET Storage_path = '{path}' WHERE first_name = '{f_name}';" \
+                        .format(path=new_storage.content, f_name=username.split(" ")[0])
+                    DB_UTILS._mysql.general_command(sql_path)
                     await message.channel.send("New path saved")
                 return
             except asyncio.TimeoutError:
@@ -245,7 +269,7 @@ async def on_message(message):
     elif message.content.startswith("upcoming discussion"):
         # dictionary of class_name, [list of dates]
         dates = BS_UTILS.get_dict_of_discussion_dates()
-        # dates = DATES ONLY FOR DEBUG
+        #dates = DATES #ONLY FOR DEBUG
         def check(msg):
             return msg.author == message.author
 
@@ -273,6 +297,19 @@ async def on_message(message):
                 return
         else:
             await message.channel.send(string)
+            return
+
+    elif message.content.startswith("download: "):
+        course = message.content.split(":")[1]
+        storage_path = DB_UTILS._mysql.general_command("SELECT STORAGE_PATH from USERS WHERE FIRST_NAME = 'Raveena';")
+        storage_type = DB_UTILS._mysql.general_command("SELECT STORAGE_METHOD from USERS WHERE FIRST_NAME = 'Raveena';")
+        course_id = BS_UTILS.find_course_id(course)
+        if storage_path[0][0] is not None:
+            BS_UTILS.download_files(course_id, storage_path[0][0], storage_type[0][0])
+            await message.channel.send("Files downloaded successfully!")
+            return
+        else:
+            await message.channel.send("Files not downloaded successfully")
             return
 
 
