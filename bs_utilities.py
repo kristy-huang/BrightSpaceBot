@@ -1,3 +1,4 @@
+import json
 from bs_api import BSAPI
 
 import datetime
@@ -182,32 +183,47 @@ class BSUtilities():
         returns: list of QuizReadDate blocks.
     '''
     def get_upcoming_quizzes(self):
-        #enrollments = self._bsapi.get_enrollments()
         enrolled_courses = self.get_classes_enrolled()
-        #courses = enrollments.json()["Items"]
-        upcoming_quizzes = []
-        for course in enrolled_courses.values():
-            quizzes = self._bsapi.get_quizzes(course)
-            for quiz in quizzes:
+        upcoming_quizzes = {}
+        for course in enrolled_courses: 
+            result = self._bsapi.get_quizzes(enrolled_courses[course])        #returns a list of QuizReadData blocks - dictionaries
+            quizzes = result['Objects']
+            for quiz in quizzes:       #for each block in the list,
                 #get today's date
-                current_date = datetime.now()
-                quiz_due_date = quiz.json()["DueDate"]
+                current_date = datetime.datetime.utcnow()
+                if quiz['DueDate'] is not None:
+                    quiz_due_date = datetime.datetime.strptime(quiz['DueDate'], "%Y-%m-%dT%H:%M:%S.%fZ")
                 #find diff between quiz.due date and today
-                diff = quiz_due_date - current_date
+                    diff = quiz_due_date - current_date
                 #if diff less than or equal to 7 days = 604800 seconds
-                diff_in_seconds = diff.total_seconds()
-                if diff_in_seconds <= 604800:
-                    #this is an upcoming quiz within the next week
-                    upcoming_quizzes.append(quiz)
-
+                #for 2 weeks = 1209600 seconds
+                    diff_in_seconds = diff.total_seconds()
+                    if diff_in_seconds <= 1209600 and diff_in_seconds > 0:
+                        #this is an upcoming quiz within the next week/2 weeks
+                        #print('found quiz within a week')       #debug statement
+                        course_name = course
+                        upcoming_quizzes[course_name] = quiz
+                        #upcoming_quizzes['name'] = course_name
+                        #quiz_due_date_local_time = self.datetime_from_utc_to_local(quiz['DueDate'])
+                        #quiz['DueDate'] = quiz_due_date_local_time
         return upcoming_quizzes
-
-
-    #sub function of suggest_focus_time(), maybe need this idk. May delete.
+    
+    #sub-function of suggest_focus_time(), maybe need this idk. May delete.
     def find_end_term_date(self):
-        enrollments = self._bsapi.get_enrollments()
-        courses = enrollments.json()["Items"]
-        return
+        ORG_ID_CLASS = 3
+        ORG_ID_GROUP = 4
+
+        enrolled_classes = {}
+        end_term_date = datetime.datetime.now()
+        enroll = self._bsapi.get_enrollments()
+        for item in enroll['Items']:
+            if item['OrgUnit']['Type']['Id'] == ORG_ID_CLASS:
+                # Check if the class ended already
+                end_date = item['Access']['EndDate']
+                if self.__timestamp_later_than(end_date, end_term_date):
+                    end_term_date = end_date
+                
+        return end_term_date
 
 
     '''
@@ -222,12 +238,30 @@ class BSUtilities():
     '''
 
     def suggest_focus_time(self):
-        busiest_weeks = []
-        enrollments = self._bsapi.get_enrollments()
-        courses = enrollments.json()["Items"]
+        enrolled_courses = self.get_classes_enrolled()
         current_date = datetime.now()
+        end_date = current_date + datetime.timedelta(days = 7)
+        item_counts = self._bsapi.get_scheduled_item_counts(enrolled_courses.values(), current_date, end_date)
+
+        
+
+
+        future_scheduled_items = []
+        #for each course, grab all the scheduled items. 
+        for course_id in enrolled_courses.values():
+            course_items = self._bsapi.get_scheduled(course_id)
+            for item in course_items:
+                due_date = item.json()["DueDate"]
+                if due_date:
+                    if self.__timestamp_later_than_current(due_date):
+                        future_scheduled_items.append(item)
+        #we now have all future scheduled_items. 
+            
+
+
         end_term_date = self.find_end_term_date()
-        return busiest_weeks
+        return
+        #return busiest_weeks
 
 
     '''

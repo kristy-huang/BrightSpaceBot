@@ -1,4 +1,5 @@
 # Our discord token is saved in another file for security
+import datetime
 from discord_config import config, USERNAME, PIN
 import discord
 import asyncio
@@ -18,7 +19,9 @@ client = discord.Client()
 # Having the bot log in and be online
 @client.event
 async def on_ready():
+    #call set_session()
     print("We have logged in as: " + str(client.user))
+
 
 
 # This is our input stream for our discord bot
@@ -123,7 +126,7 @@ async def on_message(message):
             await message.channel.send("taking too long...")
             return
         bs = BSAPI()
-        bs.set_session(USERNAME, PIN)
+        bs.set_session(USERNAME, PIN)    #thoma854,   2804,push
         fraction_string, percentage_string = bs.get_grade(courseID.content)
         bs_utils = BSUtilities()
         letter = bs_utils.get_letter_grade(int(percentage_string.split(" ")[0]))
@@ -133,7 +136,7 @@ async def on_message(message):
         return
 
     #get upcoming quizzes across all classes
-    elif message.content.startsWith("get upcoming quizzes"):
+    elif message.content.startswith("get upcoming quizzes"):
         bs_utils = BSUtilities()
         bs_utils.set_session(USERNAME, PIN)
         upcoming_quizzes = bs_utils.get_upcoming_quizzes()
@@ -144,13 +147,16 @@ async def on_message(message):
         else:
             await message.channel.send("You have the following upcoming assessments:\n")
             for quiz in upcoming_quizzes:
-                current_quiz = quiz["Name"]
-                current_quiz_due_date = quiz["DueDate"]
-                output_str = current_quiz + " due " + current_quiz_due_date + "\n"
+                course_name = quiz
+                current_quiz = upcoming_quizzes[quiz]
+                current_quiz_name = current_quiz["Name"]
+                current_quiz_due_date = current_quiz["DueDate"]
+                output_str = course_name + " - " + current_quiz_name + " due " + current_quiz_due_date + "\n"
                 await message.channel.send(output_str)
             return
 
-    elif message.content.startsWith("get busiest weeks"):
+    #get the top 3 most busy weeks
+    elif message.content.startswith("get busiest weeks"):
         bs_utils = BSUtilities()
         bs_utils.set_session(USERNAME, PIN)
         

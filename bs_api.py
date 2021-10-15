@@ -71,6 +71,27 @@ class BSAPI():
         url = self._API_URL_PREFIX + "le/1.38/{course_id}/quizzes/".format(course_id=course_id)
         return self.__process_api_json("get_quizzes", url)
 
+    '''
+        Pulls the number of scheduled items with a list of given course_ids and start_date and end_date. 
+
+        course_ids: the list of course_ids
+        start_date: start_date for time range to query
+        end_date: end_date for time range to query
+
+        return: ObjectListPage JSON block containing a list of ScheduledItem blocks. 
+    '''
+    def get_scheduled_item_counts(self, course_ids, start_date, end_date):
+        url = self._API_URL_PREFIX + "le/1.41/content/myItems/due/itemCounts/?startDateTime={start_date}&endDateTime={end_date}&orgUnitIdsCSV=".\
+            format(start_date=start_date, end_date=end_date)
+        #test for if course_ids is a single-entry list. or null. 
+        for index in range(len(course_ids)-1):
+            url += course_ids[index]
+            url += ","
+        
+        url += course_ids[len(course_ids)-1]
+
+        return self.__process_api_json("get_scheduled_item_counts", url)
+
 
     '''
         This gets the numeric points and percentage grade of a course.
