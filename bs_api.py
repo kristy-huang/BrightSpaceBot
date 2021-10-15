@@ -94,7 +94,7 @@ class BSAPI():
         regardless if the grade of the assignment is 0 or empty
         
         course_id (str/int): the id of the course
-        returns: array of grade_object_ids 
+        returns: array of grade_object_ids or -1 if no grades
     '''
     def get_all_assignments_in_gradebook(self, course_id):
         url = self._API_URL_PREFIX + "le/1.38/{course_id}/grades/".format(course_id=course_id)

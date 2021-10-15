@@ -241,9 +241,9 @@ class MySQLDatabase:
         return rows
 
     '''
-        find rows in the with one attribute
+        find rows with one attribute
         
-        returns the rows if found, else returns -1 query returns empty
+        return the rows if found, else return -1 if query returns empty
     '''
     def find_rows_one_attr(self, table_name, col, condition):
         sql = 'SELECT * FROM {table_name} WHERE {col} = {condition}'.format(table_name=table_name,
