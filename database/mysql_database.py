@@ -256,3 +256,4 @@ class MySQLDatabase:
             return rows
         elif state == 0:
             return -1
+

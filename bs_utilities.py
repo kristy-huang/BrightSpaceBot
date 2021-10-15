@@ -1,3 +1,4 @@
+import json
 from bs_api import BSAPI
 
 import datetime
@@ -6,6 +7,9 @@ import os
 from pathlib import Path
 from database.db_utilities import DBUtilities
 from database.mysql_database import MySQLDatabase
+from pydrive.auth import GoogleAuth
+from pydrive.drive import GoogleDrive
+from File import File, StorageTypes
 
 
 class BSUtilities():
@@ -37,22 +41,55 @@ class BSUtilities():
         destination (str): location the files are downloaded.
     '''
 
-    def download_file(self, course_id, topic_id, destination):
+    def download_file(self, course_id, topic_id, destination, type, drive):
         res = self._bsapi.get_file_from_request(course_id, topic_id)
 
         filename = res.headers['Content-Disposition']
         filename = filename[:filename.rindex("\"")]
         filename = filename[filename.rindex("\"") + 1:]
         filename = urllib.parse.unquote(filename)
+        print(filename)
+        if type == 'LOCAL':
+            destination += "/" if destination[-1] != '/' else ""
+            if not os.path.exists(destination):
+                os.makedirs(destination)
+            full_path = destination + filename
+            # saving the path in the right place
+            open(full_path, 'wb').write(res.content)
+            if self._debug:
+                print("File {filename}: downloaded.".format(filename=filename))
+        else:
+            # TODO download to google drive
+            return_val = self.validate_path_drive(destination, drive)
+            open(filename, 'wb').write(res.content)
+            # for debugging, just using this default file
+            self.upload_to_google_drive(drive, destination, filename)
+            os.remove(filename)
 
-        destination += "/" if destination[-1] != '/' else ""
-        if not os.path.exists(destination):
-            os.makedirs(destination)
-        full_path = destination + filename
+    def upload_to_google_drive(self, drive, storage_path, file):
+        file_to_upload = file
+        # finding the folder to upload to
+        folders = self.get_all_files_in_google(drive)
+        folder_id = -1
+        for folder in folders:
+            if folder.fileTitle == storage_path:
+                folder_id = folder.filePath
+                break
+        print(folder_id)
+        if folder_id == -1:
+            # upload it to the root (My Drive)
+            gd_file = drive.CreateFile({'title': file})
+        else:
+            # currently takes the folder id from browser of url for the folder they want to upload something in
+            gd_file = drive.CreateFile({'parents': [{'id': folder_id}]})
 
-        open(full_path, 'wb').write(res.content)
-        if self._debug:
-            print("File {filename}: downloaded.".format(filename=filename))
+        # Read file and set it as the content of this instance.
+        gd_file.SetContentFile(file)
+        # Upload the file
+        gd_file.Upload()
+        # handles memory leaks
+        gd_file = None
+
 
     '''
         Downloads all files for a course recursively.
@@ -62,9 +99,11 @@ class BSUtilities():
     '''
 
     # TODO: files not located in a sub-module are not downloaded.
-    def download_files(self, course_id, destination):
 
+    def download_files(self, course_id, destination, t):
         modules = self._bsapi.get_topics(course_id)["Modules"]
+        if t != "LOCAL":
+            drive = self.init_google_auths()
 
         if self._debug:
             print("number of big sections:", len(modules))
@@ -81,7 +120,7 @@ class BSUtilities():
                     extension = suffix[len(suffix) - 1]
                     # currently only saving pdf files
                     if extension == ".pdf":
-                        self.download_file(course_id, m_topics[k]["TopicId"], destination=destination)
+                        self.download_file(course_id, m_topics[k]["TopicId"], destination=destination, type=t, drive=drive)
 
     '''
         Gets a list of classes the user is currently enrolled in.
@@ -172,7 +211,11 @@ class BSUtilities():
             for t in topics:
                 # if its null, then we don't need the value
                 if t["EndDate"] is not None:
-                    dates.append(t["EndDate"])
+                    string_rep = t["EndDate"]
+                    mdy = string_rep.split(" ")[0].split("-")
+                    end = datetime(int(mdy[0]), int(mdy[1]), int(mdy[2]))
+                    # saving datetime objects
+                    dates.append(end)
         return dates
 
     '''
@@ -184,31 +227,47 @@ class BSUtilities():
     '''
 
     def get_upcoming_quizzes(self):
-        # enrollments = self._bsapi.get_enrollments()
         enrolled_courses = self.get_classes_enrolled()
-        # courses = enrollments.json()["Items"]
-        upcoming_quizzes = []
-        for course in enrolled_courses.values():
-            quizzes = self._bsapi.get_quizzes(course)
-            for quiz in quizzes:
-                # get today's date
-                current_date = datetime.now()
-                quiz_due_date = quiz.json()["DueDate"]
-                # find diff between quiz.due date and today
-                diff = quiz_due_date - current_date
-                # if diff less than or equal to 7 days = 604800 seconds
-                diff_in_seconds = diff.total_seconds()
-                if diff_in_seconds <= 604800:
-                    # this is an upcoming quiz within the next week
-                    upcoming_quizzes.append(quiz)
-
+        upcoming_quizzes = {}
+        for course in enrolled_courses: 
+            result = self._bsapi.get_quizzes(enrolled_courses[course])        #returns a list of QuizReadData blocks - dictionaries
+            quizzes = result['Objects']
+            for quiz in quizzes:       #for each block in the list,
+                #get today's date
+                current_date = datetime.datetime.utcnow()
+                if quiz['DueDate'] is not None:
+                    quiz_due_date = datetime.datetime.strptime(quiz['DueDate'], "%Y-%m-%dT%H:%M:%S.%fZ")
+                #find diff between quiz.due date and today
+                    diff = quiz_due_date - current_date
+                #if diff less than or equal to 7 days = 604800 seconds
+                #for 2 weeks = 1209600 seconds
+                    diff_in_seconds = diff.total_seconds()
+                    if diff_in_seconds <= 1209600 and diff_in_seconds > 0:
+                        #this is an upcoming quiz within the next week/2 weeks
+                        #print('found quiz within a week')       #debug statement
+                        course_name = course
+                        upcoming_quizzes[course_name] = quiz
+                        #upcoming_quizzes['name'] = course_name
+                        #quiz_due_date_local_time = self.datetime_from_utc_to_local(quiz['DueDate'])
+                        #quiz['DueDate'] = quiz_due_date_local_time
         return upcoming_quizzes
-
-    # sub function of suggest_focus_time(), maybe need this idk. May delete.
+    
+    #sub-function of suggest_focus_time(), maybe need this idk. May delete.
     def find_end_term_date(self):
-        enrollments = self._bsapi.get_enrollments()
-        courses = enrollments.json()["Items"]
-        return
+        ORG_ID_CLASS = 3
+        ORG_ID_GROUP = 4
+
+        enrolled_classes = {}
+        end_term_date = datetime.datetime.now()
+        enroll = self._bsapi.get_enrollments()
+        for item in enroll['Items']:
+            if item['OrgUnit']['Type']['Id'] == ORG_ID_CLASS:
+                # Check if the class ended already
+                end_date = item['Access']['EndDate']
+                if self.__timestamp_later_than(end_date, end_term_date):
+                    end_term_date = end_date
+                
+        return end_term_date
 
     '''
        This function calculates the total number of assignments across all courses for each week, from now until
@@ -222,12 +281,30 @@ class BSUtilities():
     '''
 
     def suggest_focus_time(self):
-        busiest_weeks = []
-        enrollments = self._bsapi.get_enrollments()
-        courses = enrollments.json()["Items"]
+        enrolled_courses = self.get_classes_enrolled()
         current_date = datetime.now()
+        end_date = current_date + datetime.timedelta(days = 7)
+        item_counts = self._bsapi.get_scheduled_item_counts(enrolled_courses.values(), current_date, end_date)
+
+        
+
+
+        future_scheduled_items = []
+        #for each course, grab all the scheduled items. 
+        for course_id in enrolled_courses.values():
+            course_items = self._bsapi.get_scheduled(course_id)
+            for item in course_items:
+                due_date = item.json()["DueDate"]
+                if due_date:
+                    if self.__timestamp_later_than_current(due_date):
+                        future_scheduled_items.append(item)
+        #we now have all future scheduled_items. 
+            
+
+
         end_term_date = self.find_end_term_date()
-        return busiest_weeks
+        return
+        #return busiest_weeks
 
     '''
         Pulls events of a specific type from currently enrolled classes that  
@@ -415,3 +492,79 @@ class BSUtilities():
         # for grade in grades:
         #     print(grade)
         return grades
+
+    def get_dict_of_discussion_dates(self):
+        classes = self.get_classes_enrolled()
+        dates = {}
+        for key, value in classes.items():
+            dates[key] = self.get_discussion_due_dates(value)
+        return dates
+
+    # given end time (24 hrs or 2 weeks) give the list of upcoming dates
+    def find_upcoming_disc_dates(self, add_days, dates):
+        current_date = datetime.datetime.now()  # saving the current date
+        ending_date = datetime.datetime.today() + datetime.timedelta(days=add_days)
+        string = ""
+        for key, value in dates.items():
+            for i in value:
+                # less than 24 hours left
+                if add_days == 1:
+                    diff = i - current_date
+                    if diff.days == 0 or diff.days == -1:
+                        string = string + " " + key + ", due " + i.strftime("%d-%b-%Y") + "\n"
+                elif add_days == 14:
+                    diff = ending_date - i
+                    if 0 <= diff.days <= 14:
+                        string = string + " " + key + ", due " + i.strftime("%d-%b-%Y") + "\n"
+                # just give everything upcoming
+                else:
+                    diff = i - current_date
+                    if diff.days >= 0:
+                        string = string + " " + key + ", due " + i.strftime("%d-%b-%Y") + "\n"
+
+        return string
+
+    def find_course_id(self, class_name):
+        dictionary = self.get_classes_enrolled()
+        course_id = -1
+        for key, value in dictionary.items():
+            if key.lower().find(class_name.lower()) != -1:
+                course_id = value
+
+
+        return course_id
+
+    # Since our project is in "testing" phase, you have to manually add test users until you publish the app
+    # My personal email is the only test user now, but we can add more
+    def init_google_auths(self):
+        gauth = GoogleAuth()
+        gauth.LocalWebserverAuth()  # client_secrets.json need to be in the same directory as the script
+        drive = GoogleDrive(gauth)
+        return drive
+
+    def get_all_files_in_google(self, drive):
+        # only querying files (everything) from the 'MyDrive' root
+        fileList = drive.ListFile({'q': "'root' in parents and trashed=false"}).GetList()
+        # Use this to save all the folders in 'MyDrive'
+        folderList = []
+        for file in fileList:
+            if file['mimeType'] == 'application/vnd.google-apps.folder':
+                myFile = File(file['title'], file['id'])
+                myFile.storageType = StorageTypes.GOOGLE_DRIVE
+                folderList.append(myFile)
+
+        return folderList
+
+    # Algorithm to check if path is a valid path
+    def validate_path_drive(self, storage_path, drive):
+        # checks if inputted path is valid or not for their local machine
+        if not os.path.exists(storage_path):
+            # check if its a valid google drive folder in root (update later for nested folders)
+            folderList = self.get_all_files_in_google(drive)
+            for folder in folderList:
+                if folder.fileTitle == storage_path:
+                    return True
+            else:
+                return False
+        return True
+
