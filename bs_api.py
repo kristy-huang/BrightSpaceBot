@@ -68,6 +68,30 @@ class BSAPI():
         url = self._API_URL_PREFIX + "le/1.38/{course_id}/quizzes/".format(course_id=course_id)
         return self.__process_api_json("get_quizzes", url)
 
+
+    '''
+        Pulls the number of scheduled items with a list of given course_ids and start_date and end_date. 
+
+        course_ids: the list of course_ids
+        start_date: start_date for time range to query
+        end_date: end_date for time range to query
+
+        return: ObjectListPage JSON block containing a list of ScheduledItem blocks. 
+    '''
+    def get_scheduled_item_counts(self, course_ids, start_date, end_date):
+        url = self._API_URL_PREFIX + "le/1.41/content/myItems/due/itemCounts/?startDateTime={start_date}&endDateTime={end_date}&orgUnitIdsCSV=".\
+            format(start_date=start_date, end_date=end_date)
+        #test for if course_ids is a single-entry list. or null. 
+        for index in range(len(course_ids)-1):
+            url += course_ids[index]
+            url += ","
+        
+        url += course_ids[len(course_ids)-1]
+
+        return self.__process_api_json("get_scheduled_item_counts", url)
+
+
+
     '''
         This gets the numeric points and percentage grade of a course.
         
@@ -82,10 +106,19 @@ class BSAPI():
         grade_object = self.__process_api_json("get_grade", url)
 
         # TODO : Should do error checking on if these values are even in the json
-        numerator = grade_object["PointsNumerator"]
-        denominator = grade_object["PointsDenominator"]
-        fraction_string = "{numerator}/{denominator}".format(numerator=numerator, denominator=denominator)
-        percentage_string = grade_object["DisplayedGrade"]
+        numerator = ""
+        denominator = ""
+        percentage_string = ""
+        try:
+            if grade_object["PointsNumerator"] is not None:
+                numerator = grade_object["PointsNumerator"]
+            if grade_object["PointsDenominator"] is not None:
+                denominator = grade_object["PointsDenominator"]
+            fraction_string = "{numerator}/{denominator}".format(numerator=numerator, denominator=denominator)
+            if grade_object["DisplayedGrade"] is not None:
+                percentage_string = grade_object["DisplayedGrade"]
+        except TypeError:
+            return "", ""
 
         return fraction_string, percentage_string
 

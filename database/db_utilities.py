@@ -114,6 +114,17 @@ class DBUtilities():
             self.reset_auto_increment(table_name, auto_id_name)
 
 
+
+
+if __name__ == '__main__':
+    sql = DBUtilities()
+    sql.connect_by_config("db_config.py")
+    sql.use_database("BSBOT")
+    print(sql.show_table_content("USERS"))
+    sql._mysql.general_command("UPDATE USERS SET Storage_method = 'LOCAL' WHERE first_name = 'katherine';")
+    print(sql.show_table_content("USERS"))
+
+
 '''sql = DBUtilities()
 sql.connect_by_config("database/db_config.py")
 sql.use_database("BSBOT")
