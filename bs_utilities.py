@@ -215,6 +215,7 @@ class BSUtilities():
                     dates.append(end)
         return dates
 
+
     '''
         This functions pulls up a student's upcoming quizzes across all their
 
@@ -463,6 +464,24 @@ class BSUtilities():
                 folderList.append(myFile)
 
         return folderList
+
+
+    def get_notifications_past_24h(self):
+        utc_one_day_before = datetime.datetime.utcnow() - datetime.timedelta(days = 5)
+        utc_one_day_before = utc_one_day_before.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+        announcements = self.get_announcements(since=utc_one_day_before)
+        #announcements = self.get_announcements()
+
+        notification_header = "Announcements from the past 24 hours: \n\n"
+        notification = ""
+        for announcement in announcements:
+            # TODO: get a mapping from course id to course names from the database
+            notification += "Class: {}\n".format(announcement['course_id'])
+            notification += "{}\n\n".format(announcement['Title'])
+            notification += "{}\n".format(announcement['Text'])
+            notification += "-----------------------------------\n\n"
+        return notification_header + notification if notification else ""
+
 
     # Algorithm to check if path is a valid path
     def validate_path_drive(self, storage_path, drive):

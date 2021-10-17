@@ -41,7 +41,12 @@ def __login_purdue_cas(session, username, password):
     res.raise_for_status() 
 
     tree = etree.HTML(res.text)
-    lt = tree.xpath('//*[@name="lt"]/@value')[0]
+    try:
+        lt = tree.xpath('//*[@name="lt"]/@value')[0]
+    except:
+        print("Login failed. Please check your credentials.")
+        return None
+
 
     cas_data = {
                 "username": username,
@@ -77,6 +82,9 @@ def __login_brightspace(session):
         )
     except:
         print("Login failed. Please check your cridentials. ")
+        return None
 
     return session
+
+
 
