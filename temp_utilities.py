@@ -22,8 +22,9 @@ cre_col = {
         }
 
 
+from discord_config import USERNAME, PIN, PIN_WRONG
 bsu = BSUtilities()
-bsu.set_session("xiong109", "1486,push")
+bsu.set_session(USERNAME, PIN)
 dsu = DBUtilities()
 dsu.connect_by_config("database/db_config.py")
 
@@ -31,12 +32,13 @@ utc_one_day_before = datetime.datetime.utcnow() - datetime.timedelta(days = 1)
 utc_one_day_before = utc_one_day_before.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
 announcements = bsu.get_announcements(since=utc_one_day_before)
 
-notification = "Announcements from the past 24 hours: \n"
+header = "Announcements from the past 24 hours: \n"
+notification = ""
 for announcement in announcements:
     # TODO: get a mapping from course id to course names from the database
     notification += "Class: {}\n".format(announcement['course_id'])
     notification += "{}\n\n".format(announcement['Title'])
     notification += "{}\n".format(announcement['Text'])
-    pass
+header += notification if notification else "No posts in the past 24 hours!"
     
 print(notification)

@@ -1,10 +1,10 @@
 # Our discord token is saved in another file for security
-from discord_config import config, USERNAME, PIN, DATES
+from discord_config import config, USERNAME, PIN
 import discord
 from discord.ext import tasks
 import asyncio
 from file_storage import *
-from datetime import datetime, timedelta
+import datetime
 import threading
 
 from bs_api import BSAPI
@@ -19,10 +19,14 @@ https://discord.com/api/oauth2/authorize?client_id=894695859567083520&permission
 
 # This will be our discord client. From here we will get our input
 client = discord.Client()
-channelID = 894700985535058000  # TODO save this in the database - right now this is my (Raveena's) channel
+channelID = 663863991218733058 #mine!
+  # TODO save this in the database - right now this is my (Raveena's) channel
 BS_UTILS = BSUtilities()
 BS_API = BSAPI()
 DB_UTILS = DBUtilities()
+
+# hour in 24 hours
+SCHEDULED_HOURS = []
 
 # Having the bot log in and be online
 @client.event
@@ -32,58 +36,58 @@ async def on_ready():
 
     print("We have logged in as: " + str(client.user))
 
+
 # looping every day
 # change parameter to minutes=1 and see it happen every minute
-# @tasks.loop(minutes=1)
-async def called_once_a_day():
-    message_channel = client.get_channel(894700985535058000)
-    dates = BS_UTILS.get_dict_of_discussion_dates()
-    #dates = DATES
-    string = BS_UTILS.find_upcoming_disc_dates(1, dates)
-    string += get_notifications_past_24h()
-
-    if len(string) == 0:
-        ## only for debugging ##
-        # string = "No posts due today"
+@tasks.loop(minutes=1)
+async def notification_loop():
+    if not SCHEDULED_HOURS:
         return
-    # send the upcoming discussion due dates
-    await message_channel.send(string)
-    return
-
-
-def get_notifications_past_24h():
-    utc_one_day_before = datetime.datetime.utcnow() - datetime.timedelta(days = 1)
-    utc_one_day_before = utc_one_day_before.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
-    announcements = BS_UTILS.get_announcements(since=utc_one_day_before)
-
-    notification_header = "Announcements from the past 24 hours: \n"
-    notification = ""
-    for announcement in announcements:
-        # TODO: get a mapping from course id to course names from the database
-        notification += "Class: {}\n".format(announcement['course_id'])
-        notification += "{}\n\n".format(announcement['Title'])
-        notification += "{}\n".format(announcement['Text'])
-    return notification_header + notification if notification else ""
         
+    #print("called_once_a_day:")
+    async def send_notifications():
+        #print(datetime.datetime.now().hour)
+        message_channel = client.get_channel(channelID)
+        dates = BS_UTILS.get_dict_of_discussion_dates()
+        #dates = DATES
+        string = BS_UTILS.find_upcoming_disc_dates(1, dates)
+        string += BS_UTILS.get_notifications_past_24h()
+
+        #print("str: ", string)
+        if len(string) == 0:
+            ## only for debugging ##
+            string = "No posts today"
+        # send the upcoming discussion due dates
+        await message_channel.send(string)
+        return
+
+    for s_hour in SCHEDULED_HOURS:
+        now = datetime.datetime.now()
+        next_notification = datetime.datetime.combine(now.date(), s_hour)
+        if next_notification.hour == now.hour and next_notification.minute == now.minute:
+            await send_notifications()
 
 
-# @called_once_a_day.before_loop
-# async def before():
-#     await client.wait_until_ready()
-#
-#
-# called_once_a_day.start()
+# TODO: stop notifying immediately after running program.
+@notification_loop.before_loop
+async def notification_before():
+    await client.wait_until_ready()
+
+
+notification_loop.start()
 
 # This is our input stream for our discord bot
 # Every message that comes from the chat server will go through here
 @client.event
 async def on_message(message):
+    
+    global SCHEDULED_HOURS 
     # this message will be every single message that enters the server
     # currently saving this info so its easier for us to debug
     username = str(message.author).split('#')[0]
     user_message = str(message.content)
     channel = str(message.channel.name)
-    print(f'{username}: {user_message} ({channel})')
+    print(f'{username}: {user_message} ({channel}) ({message.channel.id})')
 
     # just so that bot does not respond back to itself
     if message.author == client.user:
@@ -161,6 +165,7 @@ async def on_message(message):
 
         else:
             await message.channel.send("Your input isn't valid")
+            
 
     # get a grade for a class
     elif message.content.startswith("grades:"):
@@ -219,9 +224,10 @@ async def on_message(message):
        
     #changing bot name
     elif message.content.startswith("change bot name"):
+        
         # change value used to check if the user keep wants to change the name of the bot
         # initialized to True
-        change=True;
+        change=True
 
         # check method for waiting client's reply back
         def check(msg):
@@ -290,6 +296,77 @@ async def on_message(message):
         else:
             await message.channel.send(string)
             return
+    
+    elif message.content.startswith("update schedule"):
+        def check(msg):
+            return msg.author == message.author
+
+        await message.channel.send("What time? (e.g. 09: 12, 10:00, 23:24)")
+        try:
+            new_time = await client.wait_for('message', check=check)
+        except asyncio.TimeoutError:
+            await message.channel.send("Timed out.")
+            return
+
+        
+        try:
+            h = int(new_time.content[:2])
+            m = int(new_time.content[3:])
+
+            if h < 0 or h > 23 or m < 0 or m > 59:
+                await message.channel.send("Please re-enter your time as the format given.")
+                return
+
+            new_hour = datetime.time(h, m, 0)
+        except ValueError:
+            await message.channel.send("Please re-enter your time as the format given.")
+            return
+
+
+        await message.channel.send(f"Do you want to add this time to your schedule, or you want notifications only for this time?")
+        
+        try:
+            res = await client.wait_for('message', check=check)
+        except asyncio.TimeoutError:
+            await message.channel.send("Timed out.")
+            return
+
+        res = res.content
+        add = False
+        if "add" in res:
+            add = True
+
+        await message.channel.send(f"{new_time.content}, right?")
+        try:
+            res = await client.wait_for('message', check=check)
+        except asyncio.TimeoutError:
+            await message.channel.send("Timed out.")
+            return
+        
+        res = res.content
+        if res.startswith("y") or res.startswith("right"):
+            
+            if add:
+                SCHEDULED_HOURS.append(new_hour)
+            else:
+                SCHEDULED_HOURS = [new_hour]
+
+            await message.channel.send(f"Changed.")
+        else:
+            await message.channel.send(f"No changes are made to your schedule.")
+
+    
+    elif message.content.startswith("check notification schedule"):
+        if not SCHEDULED_HOURS:
+            await message.channel.send("No schedules now!")
+        else:
+            msg = ""
+            for hour in SCHEDULED_HOURS:
+                msg += f"{hour}\n"
+                
+            await message.channel.send(msg)
+
+        
 
 
 # Now to actually run the bot!
