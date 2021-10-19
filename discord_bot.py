@@ -203,12 +203,10 @@ async def on_message(message):
         await message.channel.send(final_string)
         return
 
-    #get upcoming quizzes across all classes
+   #get upcoming quizzes across all classes
     elif message.content.startswith("get upcoming quizzes"):
-        bs_utils = BSUtilities()
-        bs_utils.set_session(USERNAME, PIN)
-        upcoming_quizzes = bs_utils.get_upcoming_quizzes()
-        # if there are no upcoming quizzes returned, then we report to the user.
+        upcoming_quizzes = BS_UTILS.get_upcoming_quizzes()
+        #if there are no upcoming quizzes returned, then we report to the user.
         if not upcoming_quizzes:
             await message.channel.send("You have no upcoming quizzes or exams.")
             return
