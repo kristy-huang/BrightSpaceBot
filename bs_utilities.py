@@ -218,15 +218,28 @@ class BSUtilities():
                     # saving datetime objects
                     dates.append(end)
         return dates
-
+    
     '''
+        This is a helper function for get_upcoming_quizzes(). It is used to determine whether a given 
+
+        quiz has been attempted or not. Returns true if it is unattempted, or false it has been been attempted.  
+        
+        returns: True or False.
+    '''
+
+    def isQuizUnattempted(self, course_id, quiz_id):
+        result = self._bsapi.get_quiz_attempts(course_id, quiz_id)  #returns a list of QuizAttemptData blocks. 
+        if result is not None:
+            return False
+
+        return True
+   '''
         This functions pulls up a student's upcoming quizzes across all their
 
         enrolled classes. By "upcoming", we mean within the next week. Serves user story 6 from Sprint 1. 
         
         returns: list of QuizReadDate blocks.
     '''
-
     def get_upcoming_quizzes(self):
         enrolled_courses = self.get_classes_enrolled()
         upcoming_quizzes = {}
@@ -243,14 +256,11 @@ class BSUtilities():
                 #if diff less than or equal to 7 days = 604800 seconds
                 #for 2 weeks = 1209600 seconds
                     diff_in_seconds = diff.total_seconds()
-                    if diff_in_seconds <= 1209600 and diff_in_seconds > 0:
-                        #this is an upcoming quiz within the next week/2 weeks
-                        #print('found quiz within a week')       #debug statement
-                        course_name = course
-                        upcoming_quizzes[course_name] = quiz
-                        #upcoming_quizzes['name'] = course_name
-                        #quiz_due_date_local_time = self.datetime_from_utc_to_local(quiz['DueDate'])
-                        #quiz['DueDate'] = quiz_due_date_local_time
+                    if diff_in_seconds <= 604800 and diff_in_seconds > 0:
+                        #if the quiz isUnattempted, we can add it to our output array.
+                        if self.isQuizUnattempted(enrolled_courses[course], quiz):
+                            course_name = course
+                            upcoming_quizzes[course_name] = quiz
         return upcoming_quizzes
     
     #sub-function of suggest_focus_time(), maybe need this idk. May delete.
