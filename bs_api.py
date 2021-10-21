@@ -21,15 +21,13 @@ class BSAPI():
     def set_session_by_object(self, session):
         if not session:
             raise ValueError("Session provided is Null.")
-        
+
         if type(session) != type(requests.session()):
             raise ValueError("Session provided is not a request.session instance.")
         self._session = session
-        
- 
+
     def set_session(self, username, password):
         self._session = get_brightspace_session(username=username, password=password)
-       
 
     '''
         ---------- Actual API call functions! -----------
@@ -40,25 +38,24 @@ class BSAPI():
         information.
     '''
 
-
     '''
         Pulls user "who am i" information.
         
         returns: WhoAmIUser JSON
     '''
+
     def get_user_info(self):
         url = self._API_URL_PREFIX + "lp/1.21/users/"
         return self.__process_api_json("get_user_info", url)
-
 
     '''
         Pulls all organizations (classes, groups, etc.) the user is enrolled in
         return: an array of JSON blocks
     '''
+
     def get_enrollments(self):
         url = self._API_URL_PREFIX + "lp/1.26/enrollments/myenrollments/"
         return self.__process_api_json("get_enrollments", url)
-
 
     '''
         Pulls all quiz information from BrightSpace with a given course id.
@@ -67,9 +64,44 @@ class BSAPI():
 
         return: ObjectListPage JSON block containing a list of QuizReadData blocks.
     '''
+
     def get_quizzes(self, course_id):
         url = self._API_URL_PREFIX + "le/1.38/{course_id}/quizzes/".format(course_id=course_id)
         return self.__process_api_json("get_quizzes", url)
+
+    '''
+        Pulls information about a quiz attempt for a specific quiz, queried by the quiz_id.
+        
+        quiz_id (number) the id of the quiz
+
+        return: ObjectListPage JSON block containing a list of QuizAttemptData blocks.
+    '''
+    
+    def get_quiz_attempts(self, course_id, quiz_id):
+        url = self._API_URL_PREFIX + "le/1.45/{course_id}/quizzes/{quiz_id}/attempts/".format(course_id=course_id, quiz_id=quiz_id)
+        return self.__process_api_json("get_quiz_attempts", url)
+  
+    '''
+        Pulls the number of scheduled items with a list of given course_ids and start_date and end_date. 
+
+        course_ids: the list of course_ids
+        start_date: start_date for time range to query
+        end_date: end_date for time range to query
+
+        return: ObjectListPage JSON block containing a list of ScheduledItem blocks. 
+    '''
+    def get_scheduled_item_counts(self, course_ids, start_date, end_date):
+        url = self._API_URL_PREFIX + "le/1.41/content/myItems/due/itemCounts/?startDateTime={start_date}&endDateTime={end_date}&orgUnitIdsCSV=".\
+            format(start_date=start_date, end_date=end_date)
+        #test for if course_ids is a single-entry list. or null. 
+        for index in range(len(course_ids)-1):
+            url += course_ids[index]
+            url += ","
+        
+        url += course_ids[len(course_ids)-1]
+
+        return self.__process_api_json("get_scheduled_item_counts", url)
+
 
 
     '''
@@ -77,7 +109,8 @@ class BSAPI():
         
         course_id (str / int): the id of the course
         returns: tuple (fraction_string, percentage_string)
-    ''' 
+    '''
+
     def get_grade(self, course_id):
         url = self._API_URL_PREFIX + "le/1.38/{course_id}/grades/final/values/myGradeValue".format(
                 course_id=course_id)
@@ -101,6 +134,50 @@ class BSAPI():
 
         return fraction_string, percentage_string
 
+    '''
+        This retrieves all the assignments in gradebook for a particular course for the current logged in user,
+        regardless if the grade of the assignment is 0 or empty
+        
+        course_id (str/int): the id of the course
+        returns: array of grade_object_ids or -1 if no grades
+    '''
+    def get_all_assignments_in_gradebook(self, course_id):
+        url = self._API_URL_PREFIX + "le/1.38/{course_id}/grades/".format(course_id=course_id)
+        grade_objects = self.__process_api_json("get_all_graded_assignments_in_gradebook", url)
+        # print(grade_objects)
+
+        # No graded assignments in course
+        if grade_objects is None:
+            return [-1]
+
+        g_obj_ids = []
+        for g_obj in grade_objects:
+            g_obj_ids.append(g_obj['Id'])
+
+        # print(g_obj_ids)
+        return g_obj_ids
+
+    '''
+        This gets the assignment name and percentage grade of a specific assignment.
+        
+        course_id (str/int): the id of the course
+        grade_object_id (str/int): the id the of specific assignment
+        returns: tuple (grade_object_id, course_id, assignment_name, percentage_string)
+    '''
+    def get_grade_of_assignment(self, course_id, grade_object_id):
+        url = self._API_URL_PREFIX + "le/1.38/{course_id}/grades/{grade_object_id}/values/myGradeValue".format(
+            course_id=course_id, grade_object_id=grade_object_id
+        )
+        # returns a dict with assignment info or 'None' if assignment has no grade yet
+        grade_object = self.__process_api_json("get_grade_of_assignment", url)
+        # print(grade_object)
+        if grade_object is None:
+            return grade_object_id, course_id, -1, -1
+
+        assignment_name = grade_object["GradeObjectName"]
+        percentage_string = grade_object["DisplayedGrade"]
+
+        return grade_object_id, course_id, assignment_name, percentage_string
 
     '''
         This gets a file and saves it to a given destination 
@@ -109,7 +186,7 @@ class BSAPI():
         topic_id (str / int): the id of the topic
 
         returns: a requests.response object containing a file
-    ''' 
+    '''
     def get_file_from_request(self, course_id, topic_id):
         # formatting downloadable link
         url = self._API_URL_PREFIX + "le/1.38/{course_id}/content/topics/{topic_id}/file" \
@@ -118,30 +195,27 @@ class BSAPI():
         # Making the request to retrieve the file
         return self.__process_api_file("get_file_from_request", url)
 
-
     '''
         Get all topics for a given course.
         
         course_id (str / int): the id of the course
         returns: a TableOfContents JSON block, in a dictionary. 
     '''
+
     def get_topics(self, course_id):
         url = self._API_URL_PREFIX + "le/1.38/{course_id}/content/toc".format(course_id=course_id)
         return self.__process_api_json("get_topics", url)
-      
 
     def get_forums(self, course_id):
         url = "https://purdue.brightspace.com/d2l/api/le/1.38/{course_id}/discussions/forums/" \
                 .format(course_id=course_id)
         return self.__process_api_json("get_forums", url)
 
-
     def get_discussion_topics(self, course_id, forum_id):
         url = "https://purdue.brightspace.com/d2l/api/le/1.38/{course_id}/discussions/forums/{forum_id}/topics/" \
                 .format(course_id=course_id,
                         forum_id=forum_id)
         return self.__process_api_json("get_disscussion_topics", url)
-
 
     '''
         Pulls all announcements from BrightSpace with a given course id.
@@ -153,13 +227,13 @@ class BSAPI():
         since (str): announcements before this time won't be returned. 
         return: a JSON array of NewsItem
     '''
+
     def get_class_announcements(self, course_id, since=None):
         url = self._API_URL_PREFIX + "le/1.38/{course_id}/news/".format(course_id=course_id)
         since = "since=" + since if since else ""
         url += "?" + since if since else ""
 
         return self.__process_api_json("get_news_class", url)
-        
 
     '''
         Gets calender events from a class. The events that happen between startDateTime
@@ -172,6 +246,7 @@ class BSAPI():
 
         returns: An ObjectListPage JSON block containing a list of EventDataInfo JSON data blocks.
     '''
+
     def get_calender_events(self, course_id, startDateTime, endDateTime, eventType=None):
         url = self._API_URL_PREFIX
         url += "le/1.38/{course_id}/calendar/events/myEvents/".format(course_id=course_id)
@@ -180,7 +255,6 @@ class BSAPI():
         url += "startDateTime={sDate}&endDateTime={eDate}".format(sDate=startDateTime, eDate=endDateTime)
 
         return self.__process_api_json("get_calender_events", url)
-    
 
     '''
         Processing an api call that returns a json.
@@ -190,11 +264,10 @@ class BSAPI():
         api_url:   The url for the api call
         
         return: a json dictionary. See references for more informtion.
-    ''' 
+    '''
     def __process_api_json(self, call_name, api_url):
         res = self.__process_api(call_name, api_url)
         return res.json() if res else None
-
 
     '''
         Processing an api call that returns a file.
@@ -204,11 +277,10 @@ class BSAPI():
         api_url:   The url for the api call
         
         return: a file. See references for more informtion.
-    ''' 
+    '''
     def __process_api_file(self, call_name, api_url):
         res = self.__process_api(call_name, api_url)
         return res
-
 
     '''
         A general process for processing an api call.
@@ -219,6 +291,7 @@ class BSAPI():
         
         return: the response from api call, could be many things. 
     '''
+
     def __process_api(self, call_name, api_url):
         if not self._session:
             if self._debug:
@@ -234,7 +307,6 @@ class BSAPI():
             return res
         return None
 
-
     ''' ---------- Utilities & others ----------- '''
 
     '''
@@ -242,6 +314,6 @@ class BSAPI():
     
     debug (bool) : False for off, True for on.
     '''
+
     def set_debug_mode(self, debug):
         self._debug = debug
-
