@@ -1,5 +1,5 @@
 # Our discord token is saved in another file for security
-from discord_config import config, USERNAME, PIN, DATES
+from discord_config import config, USERNAME, PIN
 import discord
 from discord.ext import tasks, commands
 import asyncio
@@ -45,7 +45,6 @@ async def called_once_a_day():
     channel = discord.utils.get(client.get_all_channels(), name='specifics')
     message_channel = client.get_channel(channel.id)
     dates = BS_UTILS.get_dict_of_discussion_dates()
-    #dates = DATES
     string = BS_UTILS.find_upcoming_disc_dates(1, dates)
     if len(string) == 0:
         ## only for debugging ##
@@ -226,10 +225,11 @@ async def on_message(message):
         bs_utils.set_session(USERNAME, PIN)
 
     elif message.content.startswith("get newly graded assignments"):
+        await message.channel.send("Authorizing...")
         bs_utils = BSUtilities()
         bs_utils.set_session(USERNAME, PIN)
-        grade_updates = bs_utils.get_grade_updates()
         await message.channel.send("Retrieving grades...")
+        grade_updates = bs_utils.get_grade_updates()
         # if there are no grade updates returned, then we report to the user.
         if len(grade_updates) == 0:
             await message.channel.send("You have no new grade updates.")
@@ -239,6 +239,7 @@ async def on_message(message):
             for grade in grade_updates:
                 output_str = "Course Id:" + str(grade['course_id']) + "- " + grade['assignment_name'] + " " + grade['grade'] + "\n"
                 await message.channel.send(output_str)
+            return
        
     # changing bot name
     elif message.content.startswith("change bot name"):
