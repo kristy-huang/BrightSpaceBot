@@ -599,3 +599,9 @@ class BSUtilities():
                 return False
         return True
 
+if __name__ == '__main__':
+    bs = BSUtilities()
+    bs.set_session("nair64", "1500,push2")
+    x = bs.find_course_id("eaps")
+    print(x)
+
