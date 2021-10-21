@@ -68,7 +68,18 @@ class BSAPI():
         url = self._API_URL_PREFIX + "le/1.38/{course_id}/quizzes/".format(course_id=course_id)
         return self.__process_api_json("get_quizzes", url)
 
+    '''
+        Pulls information about a quiz attempt for a specific quiz, queried by the quiz_id.
+        
+        quiz_id (number) the id of the quiz
 
+        return: ObjectListPage JSON block containing a list of QuizAttemptData blocks.
+    '''
+    
+    def get_quiz_attempts(self, course_id, quiz_id):
+        url = self._API_URL_PREFIX + "le/1.45/{course_id}/quizzes/{quiz_id}/attempts/".format(course_id=course_id, quiz_id=quiz_id)
+        return self.__process_api_json("get_quiz_attempts", url)
+  
     '''
         Pulls the number of scheduled items with a list of given course_ids and start_date and end_date. 
 
