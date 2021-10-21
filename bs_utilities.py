@@ -472,6 +472,7 @@ class BSUtilities():
                                                'assignment_name VARCHAR(255), '
                                                'grade VARCHAR(255)')
 
+        # sql.delete("GRADED_ASSIGNMENTS", "grade_object_id = 1537997")
         # print(sql.show_tables())
         enrolled_courses = self.get_classes_enrolled()
         # print(enrolled_courses)
