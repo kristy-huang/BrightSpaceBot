@@ -205,11 +205,13 @@ async def on_message(message):
             if i == -1:
                 grades[courses[counter]] = 'Not found'
             else:
-                fraction_string, percentage_string = BS_UTILS._bsapi.get_grade(i)
-                if len(fraction_string) == 1 or len(percentage_string) == 0:
+                fraction_string, percentage = BS_UTILS._bsapi.get_grade(i)
+                print(fraction_string)
+                print(percentage)
+                if len(fraction_string) == 1:
                     grades[courses[counter]] = 'Not found'
                 else:
-                    letter = BS_UTILS.get_letter_grade(int(percentage_string.split(" ")[0]))
+                    letter = BS_UTILS.get_letter_grade(percentage)
                     grades[courses[counter]] = letter
             counter = counter + 1
 

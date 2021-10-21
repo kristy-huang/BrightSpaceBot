@@ -124,15 +124,20 @@ class BSAPI():
         try:
             if grade_object["PointsNumerator"] is not None:
                 numerator = grade_object["PointsNumerator"]
+                num = int(numerator)
             if grade_object["PointsDenominator"] is not None:
                 denominator = grade_object["PointsDenominator"]
+                den = int(denominator)
             fraction_string = "{numerator}/{denominator}".format(numerator=numerator, denominator=denominator)
+
             if grade_object["DisplayedGrade"] is not None:
                 percentage_string = grade_object["DisplayedGrade"]
         except TypeError:
             return "", ""
 
-        return fraction_string, percentage_string
+        percentage = num/den
+        percentage = percentage * 100
+        return fraction_string, percentage
 
     '''
         This retrieves all the assignments in gradebook for a particular course for the current logged in user,
