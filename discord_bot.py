@@ -35,28 +35,27 @@ async def on_ready():
 SCHEDULED_MINUTES = 1 * 60 * 24
 # looping every day
 # change parameter to minutes=1 and see it happen every minute
-# @tasks.loop(minutes=SCHEDULED_MINUTES)
-# async def called_once_a_day():
-#     channel = discord.utils.get(client.get_all_channels(), name='specifics')
-#     message_channel = client.get_channel(channel.id)
-#     #dates = BS_UTILS.get_dict_of_discussion_dates()
-#     dates = DATES
-#     string = BS_UTILS.find_upcoming_disc_dates(1, dates)
-#     if len(string) == 0:
-#         ## only for debugging ##
-#         # string = "No posts due today"
-#         return
-#     # send the upcoming discussion due dates
-#     await message_channel.send(string)
-#     return
+@tasks.loop(minutes=SCHEDULED_MINUTES)
+async def called_once_a_day():
+    channel = discord.utils.get(client.get_all_channels(), name='specifics')
+    message_channel = client.get_channel(channel.id)
+    dates = BS_UTILS.get_dict_of_discussion_dates()
+    string = BS_UTILS.find_upcoming_disc_dates(1, dates)
+    if len(string) == 0:
+        ## only for debugging ##
+        # string = "No posts due today"
+        return
+    # send the upcoming discussion due dates
+    await message_channel.send(string)
+    return
 
 
-# @called_once_a_day.before_loop
-# async def before():
-#     await client.wait_until_ready()
+@called_once_a_day.before_loop
+async def before():
+    await client.wait_until_ready()
 
 
-# called_once_a_day.start()
+called_once_a_day.start()
 
 # This is our input stream for our discord bot
 # Every message that comes from the chat server will go through here
