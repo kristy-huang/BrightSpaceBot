@@ -1,3 +1,6 @@
+
+database/db_config.py
+test.py
 config.py
 discord_config.py
 db_config.py

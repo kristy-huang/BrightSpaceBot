@@ -1,4 +1,4 @@
-from Authentication import get_brightspace_session
+from authentication import get_brightspace_session
 
 import requests
 import os
@@ -17,7 +17,8 @@ class BSAPI():
             "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9"
         }
 
-    def set_session(self, session):
+
+    def set_session_by_object(self, session):
         if not session:
             raise ValueError("Session provided is Null.")
 
