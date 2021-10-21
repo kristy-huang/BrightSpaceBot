@@ -234,7 +234,7 @@ class BSUtilities():
             return False
 
         return True
-   '''
+    '''
         This functions pulls up a student's upcoming quizzes across all their
 
         enrolled classes. By "upcoming", we mean within the next week. Serves user story 6 from Sprint 1. 
