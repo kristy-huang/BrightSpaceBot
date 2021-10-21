@@ -17,6 +17,7 @@ class BSUtilities():
         self._bsapi = BSAPI(debug=debug)
         self._debug = debug
 
+
     # Same as set_session in BSAPI
 
     def set_session(self, session):
@@ -183,8 +184,8 @@ class BSUtilities():
                 if not since or self.__timestamp_later_than(since, startDate) <= 0:
                     announce_dict = {
                         'course_id': classes_list[c],
-                        'Title': announce['Title'],
-                        'Text': announce['Body']['Text'],
+                        'Title': announce['Title'].replace("\r\n", "\n").replace("\xa0", " "),
+                        'Text': announce['Body']['Text'].replace("\r\n", "\n"),
                         'StartDate': startDate
                     }
                     all_announcements.append(announce_dict)
@@ -249,8 +250,10 @@ class BSUtilities():
             for quiz in quizzes:       #for each block in the list,
                 #get today's date
                 current_date = datetime.datetime.utcnow()
+
                 if quiz['DueDate'] is not None:
                     quiz_due_date = datetime.datetime.strptime(quiz['DueDate'], "%Y-%m-%dT%H:%M:%S.%fZ")
+
                 #find diff between quiz.due date and today
                     diff = quiz_due_date - current_date
                 #if diff less than or equal to 7 days = 604800 seconds
@@ -288,10 +291,10 @@ class BSUtilities():
        Serves user story 9 in Sprint 1. 
 
        Returns:  
-
     '''
 
     def suggest_focus_time(self):
+
         enrolled_courses = self.get_classes_enrolled()
         current_date = datetime.now()
         end_date = current_date + datetime.timedelta(days = 7)
@@ -310,8 +313,6 @@ class BSUtilities():
                     if self.__timestamp_later_than_current(due_date):
                         future_scheduled_items.append(item)
         #we now have all future scheduled_items. 
-            
-
 
         end_term_date = self.find_end_term_date()
         return
@@ -566,6 +567,24 @@ class BSUtilities():
                 folderList.append(myFile)
 
         return folderList
+
+
+    def get_notifications_past_24h(self):
+        utc_one_day_before = datetime.datetime.utcnow() - datetime.timedelta(days = 5)
+        utc_one_day_before = utc_one_day_before.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+        announcements = self.get_announcements(since=utc_one_day_before)
+        #announcements = self.get_announcements()
+
+        notification_header = "Announcements from the past 24 hours: \n\n"
+        notification = ""
+        for announcement in announcements:
+            # TODO: get a mapping from course id to course names from the database
+            notification += "Class: {}\n".format(announcement['course_id'])
+            notification += "{}\n\n".format(announcement['Title'])
+            notification += "{}\n".format(announcement['Text'])
+            notification += "-----------------------------------\n\n"
+        return notification_header + notification if notification else ""
+
 
     # Algorithm to check if path is a valid path
     def validate_path_drive(self, storage_path, drive):

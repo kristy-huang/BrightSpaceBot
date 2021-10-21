@@ -26,6 +26,7 @@ class DBUtilities():
         res = res.replace("), (", "),\n(")
         return res
 
+      
     def get_bs_cridential(self, user_id):
         sql = "SELECT BS_USERNAME , BS_PASSWORD FROM CREDENTIALS WHERE USER_ID = {}".format(user_id)
         res = self._mysql.general_command(sql)
@@ -36,6 +37,8 @@ class DBUtilities():
         pin and password will be encypted using md5.
         bs password would not.
         Works with any number of columns provided - even with 2 empty dictionaries
+
+
         user_cols: 
         {"USER_ID": null, (Can left to be blank!)
         "FIRST_NAME": VARCHAR(50),
@@ -46,6 +49,8 @@ class DBUtilities():
         "STORAGE_METHOD": VARCHAR(10),
         "STORAGE_PATH": TEXT
         }
+
+
         credential_cols:
         {
             "USER_ID": null,
@@ -54,11 +59,14 @@ class DBUtilities():
             "BS_USERNAME": VARCHAR(50),
             "BS_PASSWORD": VARCHAR(255)
         }
+
+
         returns: 
             Success: the user id of the new added user.
             Fail: -1
     '''
 
+    
     def insert_user(self, user_cols, credential_cols):
 
         if not user_cols:
@@ -72,6 +80,7 @@ class DBUtilities():
             sql = "SELECT user_id FROM CREDENTIALS WHERE USERNAME = '{}'".format(username)
             res = self._mysql.general_command(sql)
 
+            
             if res and res[0]:
                 print("Username already exsists.")
                 return -1
@@ -83,6 +92,8 @@ class DBUtilities():
         if "PASSWORD" in credential_cols.keys():
             credential_cols["PASSWORD"] = self.get_encrypted(credential_cols["PASSWORD"])
 
+
+            
         self._mysql.insert_into("USERS", user_cols)
         user_id = self._mysql.get_last_inserted_id()
 
@@ -92,10 +103,14 @@ class DBUtilities():
 
         return user_id
 
+
+      
     def get_encrypted(self, string):
         string = string.encode('utf-8')
         string = hashlib.md5(string).hexdigest()
         return string
+
+
 
     '''
         Resets an auto increment back to 1
@@ -108,26 +123,11 @@ class DBUtilities():
                                                                                                 id=auto_id_name)
         self._mysql.general_command(sql)
 
+
+        
     def clear_table(self, table_name, auto_id_name=None):
         self._mysql.delete(table_name)
         if auto_id_name:
             self.reset_auto_increment(table_name, auto_id_name)
 
-
-
-
-if __name__ == '__main__':
-    sql = DBUtilities()
-    sql.connect_by_config("db_config.py")
-    sql.use_database("BSBOT")
-    print(sql.show_table_content("USERS"))
-    sql._mysql.general_command("UPDATE USERS SET Storage_method = 'LOCAL' WHERE first_name = 'katherine';")
-    print(sql.show_table_content("USERS"))
-
-
-'''sql = DBUtilities()
-sql.connect_by_config("database/db_config.py")
-sql.use_database("BSBOT")
-sql.clear_table("USERS", "USER_ID")
-sql.insert_user({}, {})
-print(sql.show_table_content("USERS"))'''
+            
