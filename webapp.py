@@ -5,13 +5,12 @@ from flask_cors import CORS
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended import JWTManager, create_access_token, create_refresh_token, jwt_required
 import config
-# import models
 
 webapp = Flask(__name__)
 CORS(webapp)
 JWTManager(webapp)
 
-webapp.config['SQLALCHEMY_DATABASE_URI'] = config.database_uri_dev
+webapp.config['SQLALCHEMY_DATABASE_URI'] = config.database_uri_prod
 webapp.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = config.track_modifications
 webapp.config['SECRET_KEY'] = config.secret_key
 
@@ -21,6 +20,7 @@ marshmallow = Marshmallow(webapp)
 
 # db schema for a user
 class Users(db.Model):
+    __tablename__ = 'USERS'
     username = db.Column(db.String(50), primary_key=True)
     first_name = db.Column(db.String(50))
     last_name = db.Column(db.String(50))
@@ -45,6 +45,7 @@ users_schema = UsersSchema(many=True)
 
 
 class Preferences(db.Model):
+    __tablename__ = 'PREFERENCES'
     username = db.Column(db.String(50), primary_key=True)
     storage_location = db.Column(db.String(100))
     notification_frequency = db.Column(db.String(50))
