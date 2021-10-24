@@ -220,6 +220,51 @@ class BSUtilities():
                     dates.append(end)
         return dates
     
+    
+    '''
+        This is a subfunction for get_assignment_feedback. It finds the courseID/orgUnitID 
+
+        for an inputted course_name. We need this ID for future API calls. 
+
+        returns: int course_ID, or None if the inputted course_name is not a valid course that the user is enrolled in. 
+
+    '''
+    
+    def find_course_ID(self, course_name):
+        course_name_str = str(course_name.content)
+        enrolled_courses = self.get_classes_enrolled()
+        for course in enrolled_courses:
+            class_name = str(course)
+            #print(class_name)
+            #print(type(class_name))
+            if class_name.__contains__(course_name_str):
+              #print(course)
+              return enrolled_courses[course]    
+        
+        return None
+    
+
+    '''
+        This is a function that grabs feedback (if it exists) for an assignment in a course. 
+
+        returns: String of feedback, or NULL if there is no feedback, or error message if parameters are incorrect. 
+    '''
+
+    def get_assignment_feedback(self, course_name, assignment_name):
+        #enrolled_courses = self.get_classes_enrolled()
+        #print(type(course_name))
+        course_ID = self.find_course_ID(course_name)
+        dropbox_folders = self._bsapi.get_dropbox_folders_for_org_unit(course_ID)
+        #print("Going to print dropbox folders!!")
+        #print(dropbox_folders)
+        
+        #for folder in dropbox_folders:
+         #   folder_name = folder['Name']
+          #  print(folder_name)
+        #print(course_ID)
+        return
+    
+    
     '''
         This is a helper function for get_upcoming_quizzes(). It is used to determine whether a given 
 
