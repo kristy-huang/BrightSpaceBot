@@ -6,13 +6,23 @@ class DBUtilities():
         self._mysql = MySQLDatabase(db_config)
 
 
-    def add_notifictaion_schedule(self, user_name, scheduled_time):
+    def add_notifictaion_schedule(self, user_name, scheduled_time, interval_time, channel_id):
         cols = {
             "USERNAME": user_name,
-            "SCHEDULE": scheduled_time
+            "TIME": scheduled_time,
+            "TIME_INTERVAL": interval_time,
+            "CHANNEL_ID": scheduled_time
         }
 
         self._mysql.insert_into("NOTIFICATION_SCHEDULE", cols)
+
+
+    def get_notifictaion_schedule(self, user_name):
+        return self._mysql.general_command(f"SELECT DISTINCT TIME FROM NOTIFICATION_SCHEDULE WHERE USERNAME = \"{user_name}\"")
+
+
+    def clear_notification_schedule(self, user_name):
+        self._mysql.delete("NOTIFICATION_SCHEDULE", f"USERNAME = \"{user_name}\"")
 
     '''
         Resets an auto increment back to 1
@@ -32,4 +42,3 @@ class DBUtilities():
         if auto_id_name:
             self.reset_auto_increment(table_name, auto_id_name)
 
-            

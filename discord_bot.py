@@ -23,7 +23,7 @@ channelID = 663863991218733058 #mine!
   # TODO save this in the database - right now this is my (Raveena's) channel
 
 db_config = "./database/db_config.py"
-BS_UTILS = BSUtilities()
+#BS_UTILS = BSUtilities()
 DB_UTILS = DBUtilities(db_config)
 
 author_id_to_username_map = {}
@@ -44,9 +44,6 @@ async def quit(ctx):
 # change parameter to minutes=1 and see it happen every minute
 @tasks.loop(minutes=1)
 async def notification_loop():
-    if not SCHEDULED_HOURS:
-        return
-        
     #print("called_once_a_day:")
     async def send_notifications():
         #print(datetime.datetime.now().hour)
@@ -381,9 +378,9 @@ async def on_message(message):
                         await message.channel.send("Please re-enter your time as the format given.")
                         continue
 
-                new_hour = datetime.time(h, m, 0)
                 break
 
+            new_hour = datetime.time(h, m, 0)
 
             await message.channel.send(f"Do you want to add this time to your schedule, or you want notifications only for this time?")
             res = await recieve_response()
@@ -402,7 +399,7 @@ async def on_message(message):
 
                 if add:
                     print(author_id_to_username_map)
-                    DB_UTILS.add_notifictaion_schedule(author_id_to_username_map[res.author.id], new_time.content)
+                    DB_UTILS.add_notifictaion_schedule(author_id_to_username_map[res.author.id], new_time.content, 1 * 24 * 60, res.channel.id)
                     #SCHEDULED_HOURS.append(new_hour)
                 else:
                     SCHEDULED_HOURS = [new_hour]
@@ -414,14 +411,64 @@ async def on_message(message):
 
         await naive_change()
         
-    
-    elif message.content.startswith("check notification schedule"):
-        if not SCHEDULED_HOURS:
+    elif message.content.startswith("delete notification schedule"):     
+        def check(msg):
+            return msg.author == message.author
+
+        async def recieve_response():
+            try:
+                res = await client.wait_for('message', check=check)
+            except asyncio.TimeoutError:
+                await message.channel.send("Timed out.")
+                return None
+            return res
+   
+        async def request_username():
+            await message.channel.send("What is your username?")
+            username = await recieve_response()
+            author_id_to_username_map[username.author.id] = username.content
+
+        if message.author.id not in author_id_to_username_map:
+            await request_username()
+
+        await message.channel.send("Are you sure to delete all of your scheduled times?")
+
+        res = await recieve_response()
+        if res.content.startswith("y") or res.content.startswith("right"):
+            DB_UTILS.clear_notification_schedule(author_id_to_username_map[message.author.id])
+            await message.channel.send("Schedule deleted")
+        else:
+            await message.channel.send(f"No changes are made to your schedule.")
+            
+    elif message.content.startswith("check notification schedule"):     
+        def check(msg):
+            return msg.author == message.author
+
+
+        async def recieve_response():
+            try:
+                res = await client.wait_for('message', check=check)
+            except asyncio.TimeoutError:
+                await message.channel.send("Timed out.")
+                return None
+            return res
+   
+        async def request_username():
+            await message.channel.send("What is your username?")
+            username = await recieve_response()
+            author_id_to_username_map[username.author.id] = username.content
+
+
+        if message.author.id not in author_id_to_username_map:
+            await request_username()
+
+        s_times = DB_UTILS.get_notifictaion_schedule(author_id_to_username_map[message.author.id])
+        if not s_times:
             await message.channel.send("No schedules now!")
         else:
-            msg = ""
-            for hour in SCHEDULED_HOURS:
-                msg += f"{hour}\n"
+            msg = f"Scheduled times for {author_id_to_username_map[message.author.id]}:\n"
+            for hour in s_times:
+                msg += f"{hour[0]}\n"
                 
             await message.channel.send(msg)
 
