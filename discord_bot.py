@@ -190,7 +190,7 @@ async def on_message(message):
             await message.channel.send("Your input isn't valid")
             
 
-    # get a grade for a class
+    # get a letter grade for a class
     elif message.content.startswith("grades:"):
         courses = message.content.split(":")[1].split(",")
         IDs = []
@@ -506,6 +506,38 @@ async def on_message(message):
             await message.channel.send("Timeout ERROR has occurred. Please try the query again.")
             return
 
+        return
+
+        # get a letter grade for a class
+    elif message.content.startswith("overall points:"):
+        courses = message.content.split(":")[1].split(",")
+        IDs = []
+        for c in courses:
+            course_id = BS_UTILS.find_course_id(c)
+            IDs.append(course_id)
+        print(IDs)
+
+        grades = {}
+        counter = 0
+        for i in IDs:
+            if i == -1:
+                grades[courses[counter]] = 'No overall points calculated'
+            else:
+                fraction_string, percentage = BS_UTILS._bsapi.get_grade(i)
+                if len(fraction_string) <= 1:
+                    grades[courses[counter]] = 'No overall points calculated'
+                else:
+                    grades[courses[counter]] = fraction_string
+            counter = counter + 1
+
+        print(grades)
+        grades = dict(sorted(grades.items(), key=lambda item: item[1]))
+        print(grades)
+        final_string = "Your overall grades are: \n"
+        for key, value in grades.items():
+            final_string = final_string + key.upper() + ": " + value + "\n"
+
+        await message.channel.send(final_string)
         return
           
 # Now to actually run the bot!
