@@ -80,7 +80,22 @@ notification_loop.start()
 # Every message that comes from the chat server will go through here
 @client.event
 async def on_message(message):
-    
+    def check(msg):
+        return msg.author == message.author
+
+    async def recieve_response():
+        try:
+            res = await client.wait_for('message', check=check)
+        except asyncio.TimeoutError:
+            await message.channel.send("Timed out.")
+            return None
+        return res
+
+    async def request_username():
+        await message.channel.send("What is your username?")
+        username = await recieve_response()
+        author_id_to_username_map[username.author.id] = username.content
+
     global SCHEDULED_HOURS 
     # this message will be every single message that enters the server
     # currently saving this info so its easier for us to debug
@@ -338,49 +353,34 @@ async def on_message(message):
             return
     
     elif message.content.startswith("update schedule"):
-        global SCHEDULED_HOURS 
-        
-        def check(msg):
-            return msg.author == message.author
+        async def get_time():
+            await message.channel.send("What time? (e.g. 09: 12, 10:00, 23:24)")
 
+            new_time = await recieve_response()
+            if not new_time:
+                return
 
-        async def recieve_response():
             try:
-                res = await client.wait_for('message', check=check)
-            except asyncio.TimeoutError:
-                await message.channel.send("Timed out.")
+                h = int(new_time.content[:2])
+                m = int(new_time.content[3:])
+            except ValueError:
+                await message.channel.send("Please re-enter your time as the format given.")
                 return None
-            return res
 
-        async def request_username():
-            await message.channel.send("What is your username?")
-            username = await recieve_response()
-            author_id_to_username_map[username.author.id] = username.content
-
-
-        async def naive_change():
-
-            while True:
-                await message.channel.send("What time? (e.g. 09: 12, 10:00, 23:24)")
-
-                new_time = await recieve_response()
-                if not new_time:
-                    return
-
-                try:
-                    h = int(new_time.content[:2])
-                    m = int(new_time.content[3:])
-                except ValueError:
+            if h < 0 or h > 23 or m < 0 or m > 59:
                     await message.channel.send("Please re-enter your time as the format given.")
-                    continue
+                    return None
 
-                if h < 0 or h > 23 or m < 0 or m > 59:
-                        await message.channel.send("Please re-enter your time as the format given.")
-                        continue
+            return new_time
 
-                break
+        if message.author.id not in author_id_to_username_map:
+            await request_username()
+   
+        async def everyday():
+            new_time = None
+            while not new_time:
+                new_time = await get_time()
 
-            new_hour = datetime.time(h, m, 0)
 
             await message.channel.send(f"Do you want to add this time to your schedule, or you want notifications only for this time?")
             res = await recieve_response()
@@ -394,12 +394,10 @@ async def on_message(message):
             res = await recieve_response()
 
             if res.content.startswith("y") or res.content.startswith("right"):
-                if res.author.id not in author_id_to_username_map:
-                    await request_username()
+
 
                 if add:
-                    print(author_id_to_username_map)
-                    DB_UTILS.add_notifictaion_schedule(author_id_to_username_map[res.author.id], new_time.content, 1 * 24 * 60, res.channel.id)
+                    DB_UTILS.add_notifictaion_schedule(author_id_to_username_map[res.author.id], new_time.content, 1 * 24 * 60, res.channel.id, description="EVERYDAY")
                     #SCHEDULED_HOURS.append(new_hour)
                 else:
                     SCHEDULED_HOURS = [new_hour]
@@ -409,37 +407,122 @@ async def on_message(message):
                 await message.channel.send(f"No changes are made to your schedule.")
 
 
-        await naive_change()
+        async def every_week():
+            def get_weekday(msg):
+                msg = msg.lower()
+                if "mon" in msg:
+                    return "EVERY MONDAY"
+                elif "tue" in msg:
+                    return "EVERY TUESDAY"
+                elif "wed" in msg:
+                    return "EVERY WEDNSDAY"
+                elif "thur" in msg:
+                    return "EVERY THURSDAY"
+                elif "fri" in msg:
+                    return "EVERY FRIDAY"
+                elif "sat" in msg:
+                    return "EVERY SATURDAY"
+                elif "sun" in msg:
+                    return "EVERY SUNDAY"
+
+                return None
+
+
+            await message.channel.send("Which week day?")
+            while True:
+                res = await recieve_response()
+                day = get_weekday(res.content)
+                if not day:
+                    await message.channel.send("Please choose from Mon/Tues/Wends/Thurs/Fri/Sat/Sun")
+                    continue
+                break     
+            
+            new_time = None
+            while not new_time:
+                new_time = await get_time()
+                
+            await message.channel.send(f"{new_time.content} for {day.lower()}?")
+            res = await recieve_response()
+            if res.content.startswith("y") or res.content.startswith("right"):
+                await message.channel.send(f"Do you want to add this time to your schedule, or you want notifications only for this time?")
+                res = await recieve_response()
+
+                add = False
+                if "add" in res.content:
+                    add = True
+
+
+                if add:
+                    DB_UTILS.add_notifictaion_schedule(author_id_to_username_map[res.author.id], new_time.content, 1 * 24 * 7 * 60, res.channel.id, description=day)
+                else:
+                    #TODO:CHANGE
+                    SCHEDULED_HOURS = [new_time]
+
+                await message.channel.send(f"Schedule changed.")
+            else:
+                await message.channel.send(f"No changes are made to your schedule.") 
+
+        await every_week()
         
     elif message.content.startswith("delete notification schedule"):     
-        def check(msg):
-            return msg.author == message.author
-
-        async def recieve_response():
-            try:
-                res = await client.wait_for('message', check=check)
-            except asyncio.TimeoutError:
-                await message.channel.send("Timed out.")
-                return None
-            return res
-   
-        async def request_username():
-            await message.channel.send("What is your username?")
-            username = await recieve_response()
-            author_id_to_username_map[username.author.id] = username.content
-
         if message.author.id not in author_id_to_username_map:
             await request_username()
 
-        await message.channel.send("Are you sure to delete all of your scheduled times?")
+        current_times = DB_UTILS.get_notifictaion_schedule_with_description(author_id_to_username_map[message.author.id])
+        
+        if not current_times:
+            await message.channel.send("You don't have any scheduled times now.")
+            return
 
-        res = await recieve_response()
-        if res.content.startswith("y") or res.content.startswith("right"):
-            DB_UTILS.clear_notification_schedule(author_id_to_username_map[message.author.id])
-            await message.channel.send("Schedule deleted")
-        else:
-            await message.channel.send(f"No changes are made to your schedule.")
+
+        async def delete_all():
+            await message.channel.send("Are you sure to delete all of your scheduled times?")
+
+            res = await recieve_response()
+            if res.content.startswith("y") or res.content.startswith("right"):
+                DB_UTILS.clear_notification_schedule(author_id_to_username_map[message.author.id])
+                await message.channel.send("Schedule deleted")
+            else:
+                await message.channel.send(f"No changes are made to your schedule.")
+    
+        async def delete_some():
+            msg = ""
+            for i, time in enumerate(current_times):
+                msg += f"{i + 1}: {time[0]} {time[1]}\n"
+                
+            await message.channel.send("Which time do you want to delete?")
+            await message.channel.send(msg)
+
+            while True:
+                res = await recieve_response()
+
+                try:
+                    num = int(res.content)
+                except ValueError:
+                    await message.channel.send(f"Please choose a number between 1 ~ {i + 1}")
+                    continue
+
+                if num not in range(1, i + 2):
+                    await message.channel.send(f"Please choose a number between 1 ~ {i + 1}")
+                    continue
+
+                break
+
+            num -= 1
+            await message.channel.send(f"Delete time: {current_times[num][0]} {current_times[num][1]}?")
             
+            res = await recieve_response()
+
+            if res.content.startswith("y") or res.content.startswith("right"):
+                DB_UTILS.delete_notification_schedule(author_id_to_username_map[message.author.id], current_times[num][0], current_times[num][1])
+                
+                await message.channel.send("Schedule deleted")
+            else:
+                await message.channel.send(f"No changes are made to your schedule.")
+    
+        await delete_some() 
+    
+    
     elif message.content.startswith("check notification schedule"):     
         def check(msg):
             return msg.author == message.author
@@ -462,13 +545,13 @@ async def on_message(message):
         if message.author.id not in author_id_to_username_map:
             await request_username()
 
-        s_times = DB_UTILS.get_notifictaion_schedule(author_id_to_username_map[message.author.id])
+        s_times = DB_UTILS.get_notifictaion_schedule_with_description(author_id_to_username_map[message.author.id])
         if not s_times:
             await message.channel.send("No schedules now!")
         else:
             msg = f"Scheduled times for {author_id_to_username_map[message.author.id]}:\n"
             for hour in s_times:
-                msg += f"{hour[0]}\n"
+                msg += f"{hour[0]} {hour[1].lower()}\n"
                 
             await message.channel.send(msg)
 
