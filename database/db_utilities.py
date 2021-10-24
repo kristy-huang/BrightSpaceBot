@@ -34,6 +34,16 @@ class DBUtilities():
         self._mysql.delete("NOTIFICATION_SCHEDULE", f"USERNAME = \"{user_name}\" AND TIME = \"{scheduled_time}\" AND DESCRIPTION = \"{decription}\"")
 
 
+    def add_class_schedule(self, user_name, course_name, scheduled_time, description=""):
+        cols = {
+            "USERNAME": user_name,
+            "TIME": scheduled_time,
+            "COURSE_NAME": course_name,
+            "DESCRIPTION": description
+        }
+
+        self._mysql.insert_into("CLASS_SCHEDULE", cols)
+
 
     '''
         Resets an auto increment back to 1

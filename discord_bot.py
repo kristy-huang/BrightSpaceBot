@@ -96,7 +96,47 @@ async def on_message(message):
         username = await recieve_response()
         author_id_to_username_map[username.author.id] = username.content
 
-    global SCHEDULED_HOURS 
+    def get_weekday(msg):
+        msg = msg.lower()
+        if "mon" in msg:
+            return "EVERY MONDAY"
+        elif "tue" in msg:
+            return "EVERY TUESDAY"
+        elif "wed" in msg:
+            return "EVERY WEDNSDAY"
+        elif "thur" in msg:
+            return "EVERY THURSDAY"
+        elif "fri" in msg:
+            return "EVERY FRIDAY"
+        elif "sat" in msg:
+            return "EVERY SATURDAY"
+        elif "sun" in msg:
+            return "EVERY SUNDAY"
+
+        return None
+
+
+    async def get_time():
+        await message.channel.send("What time? (e.g. 09: 12, 10:00, 23:24)")
+
+        new_time = await recieve_response()
+        if not new_time:
+            return
+
+        try:
+            h = int(new_time.content[:2])
+            m = int(new_time.content[3:])
+        except ValueError:
+            await message.channel.send("Please re-enter your time as the format given.")
+            return None
+
+        if h < 0 or h > 23 or m < 0 or m > 59:
+                await message.channel.send("Please re-enter your time as the format given.")
+                return None
+
+        return new_time
+
+
     # this message will be every single message that enters the server
     # currently saving this info so its easier for us to debug
     username = str(message.author).split('#')[0]
@@ -408,25 +448,6 @@ async def on_message(message):
 
 
         async def every_week():
-            def get_weekday(msg):
-                msg = msg.lower()
-                if "mon" in msg:
-                    return "EVERY MONDAY"
-                elif "tue" in msg:
-                    return "EVERY TUESDAY"
-                elif "wed" in msg:
-                    return "EVERY WEDNSDAY"
-                elif "thur" in msg:
-                    return "EVERY THURSDAY"
-                elif "fri" in msg:
-                    return "EVERY FRIDAY"
-                elif "sat" in msg:
-                    return "EVERY SATURDAY"
-                elif "sun" in msg:
-                    return "EVERY SUNDAY"
-
-                return None
-
 
             await message.channel.send("Which week day?")
             while True:
@@ -523,25 +544,7 @@ async def on_message(message):
         await delete_some() 
     
     
-    elif message.content.startswith("check notification schedule"):     
-        def check(msg):
-            return msg.author == message.author
-
-
-        async def recieve_response():
-            try:
-                res = await client.wait_for('message', check=check)
-            except asyncio.TimeoutError:
-                await message.channel.send("Timed out.")
-                return None
-            return res
-   
-        async def request_username():
-            await message.channel.send("What is your username?")
-            username = await recieve_response()
-            author_id_to_username_map[username.author.id] = username.content
-
-
+    elif message.content.startswith("check notification schedule"):
         if message.author.id not in author_id_to_username_map:
             await request_username()
 
@@ -555,7 +558,39 @@ async def on_message(message):
                 
             await message.channel.send(msg)
 
+
+    elif message.content.startswith("update class"):
+        if message.author.id not in author_id_to_username_map:
+            await request_username()
+        await message.channel.send("What is the class name?")
+        res = await recieve_response()
+        class_name = res.content
+
+        await message.channel.send("Which week day?")
+        while True:
+            res = await recieve_response()
+            day = get_weekday(res.content)
+            if not day:
+                await message.channel.send("Please choose from Mon/Tues/Wends/Thurs/Fri/Sat/Sun")
+                continue
+            break
+
+        new_time = None
+        while not new_time:
+            new_time = await get_time()
+            
+        await message.channel.send(f"{new_time.content} for {day.lower()}?")
+        res = await recieve_response()
+        if res.content.startswith("y") or res.content.startswith("right"):
+            DB_UTILS.add_class_schedule(author_id_to_username_map[res.author.id], class_name, new_time.content, description=day)
+            await message.channel.send(f"Schedule changed.")
+        else:
+            await message.channel.send(f"No changes are made to your schedule.") 
+
+
+
         
+        pass
 
     elif message.content.startswith("download: "):
         course = message.content.split(":")[1]

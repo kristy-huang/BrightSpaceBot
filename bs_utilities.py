@@ -539,6 +539,8 @@ class BSUtilities():
 
     def find_course_id(self, class_name):
         dictionary = self.get_classes_enrolled()
+        
+        class_name = class_name.replace(' ', '')
         course_id = -1
         for key, value in dictionary.items():
             if key.lower().find(class_name.lower()) != -1:
@@ -546,6 +548,17 @@ class BSUtilities():
 
 
         return course_id
+
+
+    def find_course_id_and_fullname(self, class_name):
+        dictionary = self.get_classes_enrolled()
+        
+        class_name = class_name.replace(' ', '')
+        course_id = -1
+        for c_full_name, c_id in dictionary.items():
+            if c_full_name.lower().find(class_name.lower()) != -1:
+                return c_full_name, c_id
+        return None
 
     # Since our project is in "testing" phase, you have to manually add test users until you publish the app
     # My personal email is the only test user now, but we can add more
