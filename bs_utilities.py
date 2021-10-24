@@ -599,3 +599,19 @@ class BSUtilities():
                 return False
         return True
 
+    # Algorithm to get overall points received in a class if not displayed at top
+    def sum_total_points(self, courseID):
+        gradeIDs = self._bsapi.get_all_assignments_in_gradebook(courseID)
+        print(gradeIDs)
+        yourTotal = 0
+        classTotal = 0
+        for id in gradeIDs:
+            yourGrade, total = self._bsapi.get_grade_received(courseID, id)
+            print(str(total) + " " + str(yourGrade))
+            yourTotal = yourTotal + yourGrade
+            classTotal = classTotal + total
+
+        return yourTotal, classTotal
+
+
+
