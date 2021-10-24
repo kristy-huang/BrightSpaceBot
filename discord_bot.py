@@ -7,7 +7,6 @@ from file_storage import *
 import datetime
 import threading
 
-from bs_api import BSAPI
 from bs_utilities import BSUtilities
 import threading
 from database.db_utilities import DBUtilities
@@ -22,17 +21,17 @@ https://discord.com/api/oauth2/authorize?client_id=894695859567083520&permission
 client = discord.Client()
 channelID = 663863991218733058 #mine!
   # TODO save this in the database - right now this is my (Raveena's) channel
-BS_UTILS = BSUtilities()
-BS_API = BSAPI()
-DB_UTILS = DBUtilities()
 
-SCHEDULED_HOURS = []
+db_config = "./database/db_config.py"
+BS_UTILS = BSUtilities()
+DB_UTILS = DBUtilities(db_config)
+
+author_id_to_username_map = {}
 
 # Having the bot log in and be online
 @client.event
 async def on_ready():
     BS_UTILS.set_session(USERNAME, PIN)
-    DB_UTILS.connect_by_config("database/db_config.py")
 
     print("We have logged in as: " + str(client.user))
   
@@ -150,7 +149,6 @@ async def on_message(message):
                     await message.channel.send("Not a valid path. Try the cycle again.")
                 else:
                     # todo add saving mechanism to cloud database
-                    DB_UTILS.use_database("BSBOT")
                     sql_type = "UPDATE USERS SET Storage_method = '{path_type}' WHERE first_name = '{f_name}';" \
                         .format(path_type="GDRIVE", f_name=username.split(" ")[0])
                     DB_UTILS._mysql.general_command(sql_type)
@@ -174,7 +172,6 @@ async def on_message(message):
                     await message.channel.send("Not a valid path. Try the cycle again.")
                 else:
                     # todo add saving mechanism to cloud database
-                    DB_UTILS.use_database("BSBOT")
                     sql_type = "UPDATE USERS SET Storage_method = '{path_type}' WHERE first_name = '{f_name}';" \
                         .format(path_type="LOCAL", f_name=username.split(" ")[0])
                     DB_UTILS._mysql.general_command(sql_type)
@@ -225,7 +222,7 @@ async def on_message(message):
         await message.channel.send(final_string)
         return
 
-   #get upcoming quizzes across all classes
+    #get upcoming quizzes across all classes
     elif message.content.startswith("get upcoming quizzes"):
         upcoming_quizzes = BS_UTILS.get_upcoming_quizzes()
         #if there are no upcoming quizzes returned, then we report to the user.
@@ -344,63 +341,79 @@ async def on_message(message):
             return
     
     elif message.content.startswith("update schedule"):
+        global SCHEDULED_HOURS 
+        
         def check(msg):
             return msg.author == message.author
 
-        await message.channel.send("What time? (e.g. 09: 12, 10:00, 23:24)")
-        try:
-            new_time = await client.wait_for('message', check=check)
-        except asyncio.TimeoutError:
-            await message.channel.send("Timed out.")
-            return
 
-        
-        try:
-            h = int(new_time.content[:2])
-            m = int(new_time.content[3:])
+        async def recieve_response():
+            try:
+                res = await client.wait_for('message', check=check)
+            except asyncio.TimeoutError:
+                await message.channel.send("Timed out.")
+                return None
+            return res
 
-            if h < 0 or h > 23 or m < 0 or m > 59:
-                await message.channel.send("Please re-enter your time as the format given.")
-                return
-
-            new_hour = datetime.time(h, m, 0)
-        except ValueError:
-            await message.channel.send("Please re-enter your time as the format given.")
-            return
+        async def request_username():
+            await message.channel.send("What is your username?")
+            username = await recieve_response()
+            author_id_to_username_map[username.author.id] = username.content
 
 
-        await message.channel.send(f"Do you want to add this time to your schedule, or you want notifications only for this time?")
-        
-        try:
-            res = await client.wait_for('message', check=check)
-        except asyncio.TimeoutError:
-            await message.channel.send("Timed out.")
-            return
+        async def naive_change():
 
-        res = res.content
-        add = False
-        if "add" in res:
-            add = True
+            while True:
+                await message.channel.send("What time? (e.g. 09: 12, 10:00, 23:24)")
 
-        await message.channel.send(f"{new_time.content}, right?")
-        try:
-            res = await client.wait_for('message', check=check)
-        except asyncio.TimeoutError:
-            await message.channel.send("Timed out.")
-            return
-        
-        res = res.content
-        if res.startswith("y") or res.startswith("right"):
-            
-            if add:
-                SCHEDULED_HOURS.append(new_hour)
+                new_time = await recieve_response()
+                if not new_time:
+                    return
+
+                try:
+                    h = int(new_time.content[:2])
+                    m = int(new_time.content[3:])
+                except ValueError:
+                    await message.channel.send("Please re-enter your time as the format given.")
+                    continue
+
+                if h < 0 or h > 23 or m < 0 or m > 59:
+                        await message.channel.send("Please re-enter your time as the format given.")
+                        continue
+
+                new_hour = datetime.time(h, m, 0)
+                break
+
+
+            await message.channel.send(f"Do you want to add this time to your schedule, or you want notifications only for this time?")
+            res = await recieve_response()
+
+            res = res.content
+            add = False
+            if "add" in res:
+                add = True
+
+            await message.channel.send(f"{new_time.content}, right?")
+            res = await recieve_response()
+
+            if res.content.startswith("y") or res.content.startswith("right"):
+                if res.author.id not in author_id_to_username_map:
+                    await request_username()
+
+                if add:
+                    print(author_id_to_username_map)
+                    DB_UTILS.add_notifictaion_schedule(author_id_to_username_map[res.author.id], new_time.content)
+                    #SCHEDULED_HOURS.append(new_hour)
+                else:
+                    SCHEDULED_HOURS = [new_hour]
+
+                await message.channel.send(f"Schedule changed.")
             else:
-                SCHEDULED_HOURS = [new_hour]
+                await message.channel.send(f"No changes are made to your schedule.")
 
-            await message.channel.send(f"Changed.")
-        else:
-            await message.channel.send(f"No changes are made to your schedule.")
 
+        await naive_change()
+        
     
     elif message.content.startswith("check notification schedule"):
         if not SCHEDULED_HOURS:

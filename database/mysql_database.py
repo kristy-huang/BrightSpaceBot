@@ -2,8 +2,10 @@ import pymysql
 
 
 class MySQLDatabase:
-    def __init__(self):
+    def __init__(self, config_filename):
         self._cursor = None
+        self.connect_by_config(config_filename)
+        self.use_database("BSBOT")
 
 
 
@@ -64,6 +66,7 @@ class MySQLDatabase:
         state = self._cursor.execute(sql)
         if state:
             self._cursor.connection.commit()
+
 
     def drop_database(self, database_name):
         sql = "DROP DATABASE IF EXISTS {database_name}".format(database_name=database_name)
