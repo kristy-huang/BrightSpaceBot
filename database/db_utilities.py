@@ -12,7 +12,7 @@ class DBUtilities():
             "TIME": scheduled_time,
             "TIME_INTERVAL": interval_time,
             "CHANNEL_ID": channel_id,
-            "DESCRIPTION": description
+            "DESCRIPTION": str(description)
         }
 
         self._mysql.insert_into("NOTIFICATION_SCHEDULE", cols)
@@ -39,10 +39,15 @@ class DBUtilities():
             "USERNAME": user_name,
             "TIME": scheduled_time,
             "COURSE_NAME": course_name,
-            "DESCRIPTION": description
+            "DESCRIPTION": str(description)
         }
 
         self._mysql.insert_into("CLASS_SCHEDULE", cols)
+
+
+    def get_class_schedule_with_description(self, user_name):
+        return self._mysql.general_command(f"SELECT DISTINCT COURSE_NAME,TIME,DESCRIPTION FROM CLASS_SCHEDULE WHERE USERNAME = \"{user_name}\" ORDER BY COURSE_NAME, DESCRIPTION ASC, TIME ASC")
+
 
 
     '''
