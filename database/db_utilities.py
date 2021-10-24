@@ -49,6 +49,15 @@ class DBUtilities():
         return self._mysql.general_command(f"SELECT DISTINCT COURSE_NAME,TIME,DESCRIPTION FROM CLASS_SCHEDULE WHERE USERNAME = \"{user_name}\" ORDER BY COURSE_NAME, DESCRIPTION ASC, TIME ASC")
 
 
+    def get_classes_in_schedule(self, user_name):
+        res = self._mysql.general_command(f"SELECT DISTINCT COURSE_NAME FROM CLASS_SCHEDULE WHERE USERNAME = \"{user_name}\"")
+     
+        res = list(res)
+        if res:
+            for i in range(len(res)):
+                res[i] = res[i][0]
+
+        return res       
 
     '''
         Resets an auto increment back to 1

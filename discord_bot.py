@@ -1,4 +1,5 @@
 # Our discord token is saved in another file for security
+from os import execv
 from discord.errors import NotFound
 from discord_config import config, USERNAME, PIN
 import discord
@@ -127,6 +128,16 @@ async def on_message(message):
             return 6
 
         return -1
+
+
+    def parse_time(string):
+        time = datetime.datetime.strptime(string, "%H:%M")
+        return time
+
+    def time_to_string(time):
+        time_str = time.strftime("%H:%M")
+        return time_str
+
 
 
     async def get_time():
@@ -495,10 +506,62 @@ async def on_message(message):
                 
 
         async def by_class_schedule():
-            pass
+            scheduled_classes = DB_UTILS.get_classes_in_schedule(author_id_to_username_map[message.author.id])
+            if not scheduled_classes:
+                await message.channel.send("You don't have any scheduled classes.")
+                return
+            
+            msg = "Which class do you want to recieve notifications before?\n\n"
+            msg += "List of classes:\n"
+            for i, c in enumerate(scheduled_classes):
+                msg += f"{i + 1}. {c}\n"
 
+            await message.channel.send(msg)
 
-        await by_amount()
+            while True:
+                res = await recieve_response()
+
+                try:
+                    num = int(res.content)
+                except ValueError:
+                    await message.channel.send(f"Please choose a number between 1 ~ {i + 1}")
+                    continue
+
+                if num not in range(1, i + 2):
+                    await message.channel.send(f"Please choose a number between 1 ~ {i + 1}")
+                    continue
+
+                break
+
+            class_name = scheduled_classes[num - 1]
+            
+            await message.channel.send("How many minutes before class?")
+            while True:
+                res = await recieve_response()
+                try:
+                    mins = int(res.content)
+                except ValueError:
+                    await message.channel.send("Please enter a number")
+                    continue
+                break
+
+            scheduled_classes = DB_UTILS.get_class_schedule_with_description(author_id_to_username_map[message.author.id])
+            print(scheduled_classes)
+            for c in scheduled_classes:
+                print(c[0])
+                if c[0] != class_name:
+                    continue
+
+                time_str = c[1]
+                time = parse_time(time_str)
+                time = time - datetime.timedelta(minutes=mins)
+                new_time_str = time_to_string(time)
+
+                DB_UTILS.add_notifictaion_schedule(author_id_to_username_map[message.author.id], new_time_str, 1 * 60 * 24 * 7, res.channel.id, c[2] )
+
+            await message.channel.send("Schedule modified.")
+
+        await by_class_schedule()
 
         
     elif message.content.startswith("delete noti"):     
