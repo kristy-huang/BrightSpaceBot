@@ -81,6 +81,22 @@ class BSAPI():
         url = self._API_URL_PREFIX + "le/1.45/{course_id}/quizzes/{quiz_id}/attempts/".format(course_id=course_id, quiz_id=quiz_id)
         return self.__process_api_json("get_quiz_attempts", url)
   
+
+    '''
+        Retrieves all dropbox folders for an org unit. Each dropbox folder provides a place for
+        org unit entities (users or groups of users) to submit work for assessment. Each dropbox folder
+        represents a single opportunity for assessment(submission of a single paper for grading, quiz for testing, etc.)
+
+        course_id: the orgUnitID, the ID of the course that the user is enrolled in.
+
+        return: JSON array of DropboxFolder blocks.
+    '''
+    
+    def get_dropbox_folders_for_org_unit(self, course_id):
+        url = self._API_URL_PREFIX + "le/(1.41)/{course_id}/dropbox/folders/".format(course_id=course_id)
+        return self.__process_api_json("get_dropbox_folders_for_org_unit", url) 
+    
+    
     '''
         Pulls the number of scheduled items with a list of given course_ids and start_date and end_date. 
 
