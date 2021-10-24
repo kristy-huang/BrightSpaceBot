@@ -1,4 +1,5 @@
 # Our discord token is saved in another file for security
+from discord.errors import NotFound
 from discord_config import config, USERNAME, PIN
 import discord
 from discord.ext import tasks, commands
@@ -27,6 +28,18 @@ db_config = "./database/db_config.py"
 DB_UTILS = DBUtilities(db_config)
 
 author_id_to_username_map = {}
+NOT_FREQ_MAP = {
+    0: "EVERY MONDAY",
+    1: "EVERY TUESDAY",
+    2: "EVERY WEDNSDAY",
+    3: "EVERY THURSDAY",
+    4: "EVERY FRIDAY",
+    5: "EVERY SATURDAY",
+    6: "EVERY SUNDAY",
+    7: "EVERYDAY"
+}
+
+
 
 # Having the bot log in and be online
 @client.event
@@ -99,21 +112,21 @@ async def on_message(message):
     def get_weekday(msg):
         msg = msg.lower()
         if "mon" in msg:
-            return "EVERY MONDAY"
+            return 0
         elif "tue" in msg:
-            return "EVERY TUESDAY"
+            return 1
         elif "wed" in msg:
-            return "EVERY WEDNSDAY"
+            return 2
         elif "thur" in msg:
-            return "EVERY THURSDAY"
+            return 3
         elif "fri" in msg:
-            return "EVERY FRIDAY"
+            return 4
         elif "sat" in msg:
-            return "EVERY SATURDAY"
+            return 5
         elif "sun" in msg:
-            return "EVERY SUNDAY"
+            return 6
 
-        return None
+        return -1
 
 
     async def get_time():
@@ -122,6 +135,10 @@ async def on_message(message):
         new_time = await recieve_response()
         if not new_time:
             return
+
+        if len(new_time.content) != 5 or new_time.content[2] != ":":
+            await message.channel.send("Please re-enter your time as the format given.")
+            return None
 
         try:
             h = int(new_time.content[:2])
@@ -393,25 +410,6 @@ async def on_message(message):
             return
     
     elif message.content.startswith("update schedule"):
-        async def get_time():
-            await message.channel.send("What time? (e.g. 09: 12, 10:00, 23:24)")
-
-            new_time = await recieve_response()
-            if not new_time:
-                return
-
-            try:
-                h = int(new_time.content[:2])
-                m = int(new_time.content[3:])
-            except ValueError:
-                await message.channel.send("Please re-enter your time as the format given.")
-                return None
-
-            if h < 0 or h > 23 or m < 0 or m > 59:
-                    await message.channel.send("Please re-enter your time as the format given.")
-                    return None
-
-            return new_time
 
         if message.author.id not in author_id_to_username_map:
             await request_username()
@@ -422,26 +420,12 @@ async def on_message(message):
                 new_time = await get_time()
 
 
-            await message.channel.send(f"Do you want to add this time to your schedule, or you want notifications only for this time?")
-            res = await recieve_response()
-
-            res = res.content
-            add = False
-            if "add" in res:
-                add = True
-
             await message.channel.send(f"{new_time.content}, right?")
             res = await recieve_response()
 
             if res.content.startswith("y") or res.content.startswith("right"):
-
-
-                if add:
-                    DB_UTILS.add_notifictaion_schedule(author_id_to_username_map[res.author.id], new_time.content, 1 * 24 * 60, res.channel.id, description="EVERYDAY")
-                    #SCHEDULED_HOURS.append(new_hour)
-                else:
-                    SCHEDULED_HOURS = [new_hour]
-
+                DB_UTILS.add_notifictaion_schedule(author_id_to_username_map[res.author.id], new_time.content, 1 * 24 * 60, res.channel.id, description=7) # 7 = everyday
+                #SCHEDULED_HOURS.append(new_hour)
                 await message.channel.send(f"Schedule changed.")
             else:
                 await message.channel.send(f"No changes are made to your schedule.")
@@ -453,8 +437,8 @@ async def on_message(message):
             while True:
                 res = await recieve_response()
                 day = get_weekday(res.content)
-                if not day:
-                    await message.channel.send("Please choose from Mon/Tues/Wends/Thurs/Fri/Sat/Sun")
+                if day == -1:
+                    await message.channel.send("Please choose from Mon/Tues/Wed/Thurs/Fri/Sat/Sun")
                     continue
                 break     
             
@@ -462,30 +446,62 @@ async def on_message(message):
             while not new_time:
                 new_time = await get_time()
                 
-            await message.channel.send(f"{new_time.content} for {day.lower()}?")
+            day_str = NOT_FREQ_MAP[day]
+            await message.channel.send(f"{new_time.content} for {day_str.lower()}?")
             res = await recieve_response()
             if res.content.startswith("y") or res.content.startswith("right"):
-                await message.channel.send(f"Do you want to add this time to your schedule, or you want notifications only for this time?")
-                res = await recieve_response()
-
-                add = False
-                if "add" in res.content:
-                    add = True
-
-
-                if add:
-                    DB_UTILS.add_notifictaion_schedule(author_id_to_username_map[res.author.id], new_time.content, 1 * 24 * 7 * 60, res.channel.id, description=day)
-                else:
-                    #TODO:CHANGE
-                    SCHEDULED_HOURS = [new_time]
-
+                DB_UTILS.add_notifictaion_schedule(author_id_to_username_map[res.author.id], new_time.content, 1 * 24 * 7 * 60, res.channel.id, description=day)
                 await message.channel.send(f"Schedule changed.")
             else:
                 await message.channel.send(f"No changes are made to your schedule.") 
 
-        await every_week()
+
+        async def add_week_or_everyday():
+            await message.channel.send(f"Do you want to be notified everyday, or by a specific weekday?")
+            res = await recieve_response()
+            if "every" in res.content:
+                await everyday()
+            else:
+                await every_week()
+
+
+        async def by_amount():
+            s_times = DB_UTILS.get_notifictaion_schedule_with_description(author_id_to_username_map[message.author.id])
+            
+            await message.channel.send("How many schedules do you want?")
+            res = await recieve_response()
+
+            try:
+                freq = int(res.content)
+            except ValueError:
+                await message.channel.send("Please enter a number")
+
+            curr_len = len(s_times)
+            if curr_len < freq:
+                await message.channel.send(f"There are currently {len(s_times)} schedules. Do you want to add more?")
+                
+                res = await recieve_response()
+                if res.content.startswith("y") or res.content.startswith("right"):
+                    while curr_len < freq:
+                        await add_week_or_everyday()
+                        curr_len += 1
+                        await message.channel.send(f"Do you want to add more?")
+                        res = await recieve_response()
+                        if res.content.startswith("y") or res.content.startswith("right"):
+                            continue
+                        break
+            else:
+                await message.channel.send(f"There are currently more than {freq} scheduled times.")
+                
+
+        async def by_class_schedule():
+            pass
+
+
+        await by_amount()
+
         
-    elif message.content.startswith("delete notification schedule"):     
+    elif message.content.startswith("delete noti"):     
         if message.author.id not in author_id_to_username_map:
             await request_username()
 
@@ -544,7 +560,7 @@ async def on_message(message):
         await delete_some() 
     
     
-    elif message.content.startswith("check notification schedule"):
+    elif message.content.startswith("check noti"):
         if message.author.id not in author_id_to_username_map:
             await request_username()
 
@@ -554,7 +570,7 @@ async def on_message(message):
         else:
             msg = f"Scheduled times for {author_id_to_username_map[message.author.id]}:\n"
             for hour in s_times:
-                msg += f"{hour[0]} {hour[1].lower()}\n"
+                msg += f"{hour[0]} {NOT_FREQ_MAP[int(hour[1])].lower()}\n"
                 
             await message.channel.send(msg)
 
@@ -562,35 +578,64 @@ async def on_message(message):
     elif message.content.startswith("update class"):
         if message.author.id not in author_id_to_username_map:
             await request_username()
-        await message.channel.send("What is the class name?")
-        res = await recieve_response()
-        class_name = res.content
 
-        await message.channel.send("Which week day?")
         while True:
+            await message.channel.send("What is the class name?")
             res = await recieve_response()
-            day = get_weekday(res.content)
-            if not day:
-                await message.channel.send("Please choose from Mon/Tues/Wends/Thurs/Fri/Sat/Sun")
+            class_name = res.content
+
+            while True:
+                await message.channel.send("Which week day?")
+                while True:
+                    res = await recieve_response()
+                    day = get_weekday(res.content)
+                    if day == -1:
+                        await message.channel.send("Please choose from Mon/Tues/Wed/Thurs/Fri/Sat/Sun")
+                        continue
+                    break
+
+                new_time = None
+                while not new_time:
+                    new_time = await get_time()
+                    
+                day_str = NOT_FREQ_MAP[day]
+                await message.channel.send(f"{new_time.content} for {day_str.lower()}?")
+                res = await recieve_response()
+                if res.content.startswith("y") or res.content.startswith("right"):
+                    DB_UTILS.add_class_schedule(author_id_to_username_map[res.author.id], class_name, new_time.content, description=day)
+                    await message.channel.send(f"Schedule changed.")
+                else:
+                    await message.channel.send(f"No changes are made to your schedule.")
+                
+                await message.channel.send(f"Do you want to add another time for this class?")
+                res = await recieve_response()
+                if res.content.startswith("y") or res.content.startswith("right"):
+                    continue
+                break
+
+            
+            await message.channel.send(f"Do you want to add another class?")
+            res = await recieve_response()
+            if res.content.startswith("y") or res.content.startswith("right"):
                 continue
             break
 
-        new_time = None
-        while not new_time:
-            new_time = await get_time()
-            
-        await message.channel.send(f"{new_time.content} for {day.lower()}?")
-        res = await recieve_response()
-        if res.content.startswith("y") or res.content.startswith("right"):
-            DB_UTILS.add_class_schedule(author_id_to_username_map[res.author.id], class_name, new_time.content, description=day)
-            await message.channel.send(f"Schedule changed.")
+
+    elif message.content.startswith("check class"):
+        if message.author.id not in author_id_to_username_map:
+            await request_username()
+
+        c_times = DB_UTILS.get_class_schedule_with_description(author_id_to_username_map[message.author.id])
+
+        if not c_times:
+            await message.channel.send("No schedules now!")
         else:
-            await message.channel.send(f"No changes are made to your schedule.") 
+            msg = f"Scheduled classes for {author_id_to_username_map[message.author.id]}:\n"
+            for hour in c_times:
+                msg += f"{hour[0]} {hour[1]} {NOT_FREQ_MAP[int(hour[2])].lower()}\n"
+                
+            await message.channel.send(msg)
 
-
-
-        
-        pass
 
     elif message.content.startswith("download: "):
         course = message.content.split(":")[1]
