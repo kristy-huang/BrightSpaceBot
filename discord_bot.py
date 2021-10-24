@@ -514,28 +514,31 @@ async def on_message(message):
         IDs = []
         for c in courses:
             course_id = BS_UTILS.find_course_id(c)
-            IDs.append(course_id)
+            IDs.append(course_id)  # getting the list of course IDs
         print(IDs)
 
         grades = {}
+        tosort = {}
         counter = 0
         for i in IDs:
             if i == -1:
-                grades[courses[counter]] = 'No overall points calculated'
+                grades[courses[counter]] = 'Course not recognized'
+                tosort[courses[counter]] = 0
             else:
-                fraction_string, percentage = BS_UTILS._bsapi.get_grade(i)
-                if len(fraction_string) <= 1:
-                    grades[courses[counter]] = 'No overall points calculated'
-                else:
-                    grades[courses[counter]] = fraction_string
+                yourTotal, classTotal = BS_UTILS.sum_total_points(i)
+                percentage = (yourTotal/classTotal) * 100
+                grades[courses[counter]] = '{num:.2f}/{den:.2f}'.format(num=yourTotal, den=classTotal)
+                tosort[courses[counter]] = percentage
             counter = counter + 1
 
         print(grades)
-        grades = dict(sorted(grades.items(), key=lambda item: item[1]))
+        print(tosort)
+        sorted_list = dict(sorted(tosort.items(), key=lambda item: item[1]))
         print(grades)
+        print(sorted_list)
         final_string = "Your overall grades are: \n"
-        for key, value in grades.items():
-            final_string = final_string + key.upper() + ": " + value + "\n"
+        for key, value in sorted_list.items():
+            final_string = final_string + key + ": " + str(grades[key]) + "\n"
 
         await message.channel.send(final_string)
         return

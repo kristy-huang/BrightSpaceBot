@@ -322,3 +322,21 @@ class BSAPI():
 
     def set_debug_mode(self, debug):
         self._debug = debug
+
+    # Modification of 'get_grade_of_assignment' to return just the overall points received
+    def get_grade_received(self, course_id, grade_object_id):
+        url = self._API_URL_PREFIX + "le/1.38/{course_id}/grades/{grade_object_id}/values/myGradeValue".format(
+            course_id=course_id, grade_object_id=grade_object_id
+        )
+        # returns a dict with assignment info or 'None' if assignment has no grade yet
+        grade_object = self.__process_api_json("get_grade_of_assignment", url)
+        # print(grade_object)
+        if grade_object is None:
+            # meaning no points yet
+            return 0, 0
+
+        total = grade_object["PointsDenominator"]
+        grade_received = grade_object["PointsNumerator"]
+
+        return grade_received, total
+
