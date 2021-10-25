@@ -230,10 +230,8 @@ async def on_message(message):
         course_name = await client.wait_for('message', check=author_check)
         await message.channel.send("Please provide the full assignment name (for ex, 'Recitation Assignment 1')\n")
         assignment_name = await client.wait_for('message', check=author_check)
-        #print(course_name.content)
-        #print(assignment_name.content)
         feedback = BS_UTILS.get_assignment_feedback(course_name, assignment_name)
-        return  
+        return
        
     #get upcoming quizzes across all classes
     elif message.content.startswith("get upcoming quizzes"):
