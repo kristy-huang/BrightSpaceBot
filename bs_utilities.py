@@ -237,12 +237,46 @@ class BSUtilities():
             class_name = str(course)
             #print(class_name)
             #print(type(class_name))
+            #print("The current courseID from enrolled_courses is ", enrolled_courses[course])
             if class_name.__contains__(course_name_str):
               #print(course)
               return enrolled_courses[course]    
         
         return None
     
+    '''
+        This is a subfunction that finds the folderID of the specific dropbox folder we need to access the feedback on an assignment
+        
+        dropbox_folders: JSON array of DropboxFolder blocks.
+
+        Returns: int folder_ID, or None if the inputted assignment_name is not a valid assignment in this course. 
+    '''
+    def get_folder_ID_from_dropbox(self, dropbox_folders, assignment_name):
+        assignment_name_str = str(assignment_name.content)
+
+        for folder in dropbox_folders:
+            folder_name = folder['Name']
+            folder_name_str = str(folder_name)
+            if folder_name_str.__contains__(assignment_name_str):
+                folder_ID = folder['Id']
+                return folder_ID
+            
+        return None
+    
+    
+    '''
+        This is a helper function for get_assignment_feedback(). 
+    '''
+    
+    def get_feedback(self, submissions_arr):
+        x = 1
+        for entity_dropbox in submissions_arr:
+            entity = entity_dropbox['Entity']
+            display_name = entity['DisplayName']
+            print(display_name)
+            print (x)
+            x+=1
+        return None
 
     '''
         This is a function that grabs feedback (if it exists) for an assignment in a course. 
@@ -251,17 +285,16 @@ class BSUtilities():
     '''
 
     def get_assignment_feedback(self, course_name, assignment_name):
-        #enrolled_courses = self.get_classes_enrolled()
-        #print(type(course_name))
         course_ID = self.find_course_ID(course_name)
-        dropbox_folders = self._bsapi.get_dropbox_folders_for_org_unit(course_ID)
-        #print("Going to print dropbox folders!!")
-        #print(dropbox_folders)
+        if course_ID is not None:
+            dropbox_folders = self._bsapi.get_dropbox_folders_for_org_unit(course_ID)
+            folder_ID = self.get_folder_ID_from_dropbox(dropbox_folders, assignment_name)
+            if folder_ID is not None:
+                submissions_arr = self._bsapi.get_submissions_for_dropbox_folder(course_ID, folder_ID)
+                if submissions_arr is not None:
+                    feedback = self.get_feedback(submissions_arr)
+
         
-        #for folder in dropbox_folders:
-         #   folder_name = folder['Name']
-          #  print(folder_name)
-        #print(course_ID)
         return
     
     
