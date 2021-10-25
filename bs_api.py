@@ -96,6 +96,18 @@ class BSAPI():
         url = self._API_URL_PREFIX + "le/1.41/{course_id}/dropbox/folders/".format(course_id=course_id)
         return self.__process_api_json("get_dropbox_folders_for_org_unit", url) 
     
+    '''
+        Retrieves all submissions for a specific dropbox folder. 
+        
+        course_id: ID of the course that the user is enrolled in.
+        folder_id: Folder ID for a specific dropbox folder
+
+        return: JSON array of EntityDropbox structures that fully enumerates all
+        submissions currently provided to the dropbox folders by all the entities.
+    '''
+    def get_submissions_for_dropbox_folder(self, course_id, folder_id):
+        url = self._API_URL_PREFIX + "le/1.41/{course_id}/dropbox/folders/{folder_id}/submissions/?activeOnly=true".format(course_id=course_id,folder_id=folder_id)
+        return self.__process_api_json("get_submissions_for_dropbox_folder", url)
     
     '''
         Pulls the number of scheduled items with a list of given course_ids and start_date and end_date. 
