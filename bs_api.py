@@ -93,7 +93,7 @@ class BSAPI():
     '''
     
     def get_dropbox_folders_for_org_unit(self, course_id):
-        url = self._API_URL_PREFIX + "le/(1.41)/{course_id}/dropbox/folders/".format(course_id=course_id)
+        url = self._API_URL_PREFIX + "le/1.41/{course_id}/dropbox/folders/".format(course_id=course_id)
         return self.__process_api_json("get_dropbox_folders_for_org_unit", url) 
     
     
