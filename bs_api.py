@@ -278,6 +278,21 @@ class BSAPI():
         return self.__process_api_json("get_calender_events", url)
 
     '''
+        Gets all the assignment due dates
+        which are quizzes, discussions, and homework due dates.
+        
+        The returning list will be sorted from the earliest due date to the latest
+        starting from the date the request was called
+
+        returns: An ObjectListPage JSON block containing a list of EventDataInfo JSON data blocks.
+    '''
+
+    def get_all_events_on_calendar(self):
+        url = self._API_URL_PREFIX + "le/1.38/calendar/events/myEvents/"
+
+        return self.__process_api_json("get_all_events_on_calendar", url)
+
+    '''
         Processing an api call that returns a json.
         
         call_name: The name of the functionality that is being processed. 
