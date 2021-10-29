@@ -1,60 +1,11 @@
-import React from 'react'
+import React, {useState} from 'react'
 import {Link} from 'react-router-dom'
 import {useAuth} from '../auth'
-
-function LoggedIn() {
-    return (
-        <div>
-            <div className="form">
-                <h1>Update Profile</h1>
-                <br></br>
-                <form>
-                    <Form.Group>
-                        <Form.Label>Username</Form.Label>
-                        <Form.Control
-                            type="text"
-                            placeholder="Username"
-                          
-                            {errors.username && <span style={{color:"red"}}>Username is required</span>}
-                    </Form.Group>
-                    <br></br>
-                    <Form.Group>
-                        <Form.Label>Password</Form.Label>
-                        <Form.Control
-                            type="password"
-                            placeholder="Password"
-
-                            {errors.password && <span style={{color:"red"}}>Password is required</span>}
-                    </Form.Group>
-                    <br></br>
-                    <Form.Group>
-                        <Form.Label>Password</Form.Label>
-                        <Form.Control
-                            type="major"
-                            placeholder="major"
-
-                            {errors.password && <span style={{color:"red"}}>Password is required</span>}
-                    </Form.Group>
-                    <br></br>
-                    <Form.Group>
-                        <Button as="sub" variant="primary" onClick={handleSubmit(updateProfile)}>Update</Button>
-                    </Form.Group>
-                </form>
-            </div>
-        </div>
-    )
-}
-
-function LoggedOut() {
-    return (
-        <>
-        </>
-    )
-}
+import {useForm} from 'react-hook-form'
+import {Form, Button} from 'react-bootstrap'
 
 function UpdateProfile(props) {
-    const [loggedIn] = useAuth()
-
+    const {register, watch, handleSubmit, reset, formState:{errors}} = useForm();
     const updateProfile = (data)=>{
         console.log(data)
         const requestOptions = {
@@ -72,8 +23,6 @@ function UpdateProfile(props) {
             .then(res=>res.json())
             .then(data=>{
                 //console.log(data)
-
-
             })
             .catch(err=>console.log(err))
         reset()
@@ -81,9 +30,44 @@ function UpdateProfile(props) {
 
     return (
         <div className="container">
-            {loggedIn?<LoggedIn/>:<LoggedOut/>}
+            <div className="form">
+                <h1>Update Profile</h1>
+                <br></br>
+                <form>
+                    <Form.Group>
+                        <Form.Label>Major</Form.Label>
+                        <Form.Control
+                            type="major"
+                            placeholder="Major"/>
+                    </Form.Group>
+                    <br></br>
+                    <Form.Group>
+                        <Form.Label>Storage Location</Form.Label>
+                        <Form.Select>
+                            <option value="-1">--</option>
+                            <option value="Google Drive">Google Drive</option>
+                            <option value="Local Machine">Local Machine</option>
+                        </Form.Select>
+                    </Form.Group>
+                    <br></br>
+                    <Form.Group>
+                        <Form.Label>Notification Frequency</Form.Label>
+                        <Form.Select>
+                            <option value="-1">--</option>
+                            <option value="1">Every 4 hours</option>
+                            <option value="2">Every 6 hours</option>
+                            <option value="3">Once a day</option>
+                            <option value="4">Once a week</option>
+                            <option value="5">Custom</option>
+                        </Form.Select>
+                    </Form.Group>
+                    <Form.Group>
+                        <Button as="sub" variant="primary" onClick={handleSubmit(updateProfile)}>Update</Button>
+                    </Form.Group>
+                </form>
+            </div>
         </div>
     )
 }
 
-export default Home
+export default UpdateProfile
