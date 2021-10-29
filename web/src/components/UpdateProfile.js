@@ -7,6 +7,8 @@ import {Form, Button} from 'react-bootstrap'
 function UpdateProfile(props) {
     const {register, watch, handleSubmit, reset, formState:{errors}} = useForm();
     const updateProfile = (data)=>{
+        const username = sessionStorage.getItem('username');
+        console.log(username)
         console.log(data)
         const requestOptions = {
             method: 'POST',
@@ -15,14 +17,17 @@ function UpdateProfile(props) {
             },
             body:
               JSON.stringify({
-
+                "username": username,
+                "major": data.major,
+                "storageLocation": data.storageLocation,
+                "notificationFrequency": data.notificationFrequency
               })
         };
 
         fetch('http://localhost:5000/updateProfile', requestOptions)
             .then(res=>res.json())
             .then(data=>{
-                //console.log(data)
+                console.log(data)
             })
             .catch(err=>console.log(err))
         reset()
