@@ -96,6 +96,18 @@ class BSAPI():
         url = self._API_URL_PREFIX + "le/1.41/{course_id}/dropbox/folders/".format(course_id=course_id)
         return self.__process_api_json("get_dropbox_folders_for_org_unit", url) 
     
+    '''
+        Retrieves all submissions for a specific dropbox folder. 
+        
+        course_id: ID of the course that the user is enrolled in.
+        folder_id: Folder ID for a specific dropbox folder
+
+        return: JSON array of EntityDropbox structures that fully enumerates all
+        submissions currently provided to the dropbox folders by all the entities.
+    '''
+    def get_submissions_for_dropbox_folder(self, course_id, folder_id):
+        url = self._API_URL_PREFIX + "le/1.41/{course_id}/dropbox/folders/{folder_id}/submissions/?activeOnly=true".format(course_id=course_id,folder_id=folder_id)
+        return self.__process_api_json("get_submissions_for_dropbox_folder", url)
     
     '''
         Pulls the number of scheduled items with a list of given course_ids and start_date and end_date. 
@@ -276,7 +288,22 @@ class BSAPI():
         url += "startDateTime={sDate}&endDateTime={eDate}".format(sDate=startDateTime, eDate=endDateTime)
 
         return self.__process_api_json("get_calender_events", url)
+    
+    '''
+        Gets all the assignment due dates
+        which are quizzes, discussions, and homework due dates.
+        
+        The returning list will be sorted from the earliest due date to the latest
+        starting from the date the request was called
 
+        returns: An ObjectListPage JSON block containing a list of EventDataInfo JSON data blocks.
+    '''
+
+    def get_all_events_on_calendar(self):
+        url = self._API_URL_PREFIX + "le/1.38/calendar/events/myEvents/"
+
+        return self.__process_api_json("get_all_events_on_calendar", url)
+    
     '''
         Gets all the assignment due dates
         which are quizzes, discussions, and homework due dates.

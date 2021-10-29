@@ -96,6 +96,11 @@ async def on_message(message):
     if message.author == client.user:
         return
 
+    # test gate to prevent multiple responses from the bot to the user
+    guild_members = message.guild.members
+    if message.author not in guild_members:
+        return
+     
     # Lets say that we want the bot to only respond to a specific text channel in a server named 'todo'
     if message.channel.name == 'specifics':
         if user_message.lower() == 'im bored':
