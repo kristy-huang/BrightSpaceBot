@@ -1,15 +1,23 @@
 import React, {useState} from 'react'
-import {Link} from 'react-router-dom'
-import {useAuth} from '../auth'
-import {useForm} from 'react-hook-form'
 import {Form, Button} from 'react-bootstrap'
+import {Link} from 'react-router-dom'
+import {useForm} from 'react-hook-form'
+import {useAuth} from '../auth'
 
 function UpdateProfile(props) {
     const {register, watch, handleSubmit, reset, formState:{errors}} = useForm();
-    const updateProfile = (data)=>{
+
+    const submitForm = (data)=>{
         const username = sessionStorage.getItem('username');
         console.log(username)
         console.log(data)
+        let major
+        if (data.major === "") {
+            major = '-1';
+        }
+        else {
+            major = data.major
+        }
         const requestOptions = {
             method: 'POST',
             headers: {
@@ -18,7 +26,7 @@ function UpdateProfile(props) {
             body:
               JSON.stringify({
                 "username": username,
-                "major": data.major,
+                "major": major,
                 "storageLocation": data.storageLocation,
                 "notificationFrequency": data.notificationFrequency
               })
@@ -27,7 +35,7 @@ function UpdateProfile(props) {
         fetch('http://localhost:5000/updateProfile', requestOptions)
             .then(res=>res.json())
             .then(data=>{
-                console.log(data)
+                alert(data.message)
             })
             .catch(err=>console.log(err))
         reset()
@@ -43,12 +51,13 @@ function UpdateProfile(props) {
                         <Form.Label>Major</Form.Label>
                         <Form.Control
                             type="major"
-                            placeholder="Major"/>
+                            placeholder="Major"
+                            {...register('major')}/>
                     </Form.Group>
                     <br></br>
                     <Form.Group>
                         <Form.Label>Storage Location</Form.Label>
-                        <Form.Select>
+                        <Form.Select {...register('storageLocation')}>
                             <option value="-1">--</option>
                             <option value="Google Drive">Google Drive</option>
                             <option value="Local Machine">Local Machine</option>
@@ -57,7 +66,7 @@ function UpdateProfile(props) {
                     <br></br>
                     <Form.Group>
                         <Form.Label>Notification Frequency</Form.Label>
-                        <Form.Select>
+                        <Form.Select {...register('notificationFrequency')}>
                             <option value="-1">--</option>
                             <option value="1">Every 4 hours</option>
                             <option value="2">Every 6 hours</option>
@@ -67,7 +76,7 @@ function UpdateProfile(props) {
                         </Form.Select>
                     </Form.Group>
                     <Form.Group>
-                        <Button as="sub" variant="primary" onClick={handleSubmit(updateProfile)}>Update</Button>
+                        <Button as="sub" variant="primary" onClick={handleSubmit(submitForm)}>Update</Button>
                     </Form.Group>
                 </form>
             </div>
