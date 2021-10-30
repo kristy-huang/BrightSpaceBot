@@ -12,6 +12,9 @@ function LoggedInLinks() {
                 <Link className="nav-link active" aria-current="page" to="/updateProfile">Update Profile</Link>
             </li>
             <li className="nav-item">
+                <Link className="nav-link" to="/getBot">Get Bot</Link>
+            </li>
+            <li className="nav-item">
                 <a className="nav-link" onClick={()=>logout()}>Log Out</a>
             </li>
         </>
