@@ -77,3 +77,34 @@ class DBUtilities():
         if auto_id_name:
             self.reset_auto_increment(table_name, auto_id_name)
 
+
+    def update_hotp_secret_counter(self, username, hotp_secret, counter):
+        cols = {
+            "hotp_secret": hotp_secret,
+            "hotp_counter": counter
+        }
+        
+        self._mysql.update("CREDENTIALS", cols, "username = \"{}\"".format(username))
+
+    def get_hotp_secret_counter(self, user_name):
+        return self._mysql.general_command(f"SELECT DISTINCT hotp_secret,hotp_counter FROM CREDENTIALS WHERE USERNAME = \"{user_name}\"")
+
+
+    def increase_hotp_counter(self, user_name):
+        return self._mysql.general_command(f"UPDATE CREDENTIALS SET hotp_counter = hotp_counter + 1 WHERE USERNAME = \"{user_name}\"")
+
+
+    def update_bs_username_pin(self, user_name, bs_username, bs_pin):
+        cols = {
+            "BS_USERNAME": bs_username,
+            "bs_pin": bs_pin
+        }
+        
+        self._mysql.update("CREDENTIALS", cols, "username = \"{}\"".format(user_name))
+
+
+    def get_bs_username_pin(self, user_name):
+        return self._mysql.general_command(f"SELECT DISTINCT BS_USERNAME,bs_pin FROM CREDENTIALS WHERE USERNAME = \"{user_name}\"")
+
+
+

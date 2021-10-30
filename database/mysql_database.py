@@ -207,7 +207,7 @@ class MySQLDatabase:
     '''
         Inserts a column into a specific table. Very basic functionality. Does no gate
         keeping.
-        table_name(str): table to insert into
+        table_name(str): table to update
         cols(dict): in the format of:
         {auto_increment column: None, 
         column name 1: value 1,

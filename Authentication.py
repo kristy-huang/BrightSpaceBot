@@ -1,5 +1,9 @@
+from typing import Counter
+from database.db_utilities import DBUtilities
 import requests
 from lxml import etree
+import pyotp
+import base64
 
 HEADER = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3626.121 Safari/537.36",
@@ -23,6 +27,30 @@ def get_brightspace_session(username, password):
     session = __login_brightspace(session)
     return session
     
+
+def get_brightspace_session_auto(discord_username):
+    session = requests.session()
+
+    dbu = DBUtilities("./database/db_config.py")
+    db_res = dbu.get_bs_username_pin(discord_username)
+    if not db_res:
+        print("Set up first")
+
+    user_name = db_res[0][0]
+    pin = db_res[0][1]
+
+    passcode = get_password(dbu, "test1")
+    password = "{},{}".format(pin, passcode)
+    #print(password)
+
+    session = __login_purdue_cas(session, username=user_name, password=password)
+    session = __login_brightspace(session)
+    return session
+    #setup_automation(discord_username, dbu)
+
+
+
+
 
 # Returns a requests.session that is logged in to Purdue cas authentication.
 #
@@ -87,4 +115,67 @@ def __login_brightspace(session):
     return session
 
 
+# Generates a duo authenticate password
+
+def get_password(dbu, user_name):
+    s_c = dbu.get_hotp_secret_counter(user_name)
+    if s_c:
+        secret = s_c[0][0]
+        counter = s_c[0][1]
+        
+    p = pyotp.HOTP(base64.b32encode(secret.encode()))
+    curr_passcode = p.at(counter)
+    dbu.increase_hotp_counter(user_name)
+    return curr_passcode
+
+
+def setup_automation(dbu, discord_username, bs_username, bs_pin):
+    HOTP_HEADER = {"User-Agent": "okhttp/3.11.0"}
+
+    def res_sanity_check(res):
+        res_json = res.json()
+        if "response" not in res_json:
+            return "Unkown error: No response contained.", False
+
+        if res_json["stat"] == 'FAIL' and res_json["code"] == 40403:
+            return "Invalid activation code. Get a new one.", False
+        
+        return "Success", True
+            
+
+    url = input("enter url")
+
+
+    code = url.split('/')[-1]
+    params = {
+        "app_id": "com.duosecurity.duomobile.app.DMApplication",
+        "app_version": "2.3.3",
+        "app_build_number": "323206",
+        "full_disk_encryption": False,
+        "manufacturer": "Google",
+        "model": "Pixel",
+        "platform": "Android",
+        "jailbroken": False,
+        "version": "6.0",
+        "language": "EN",
+        "customer_protocol": 1,
+    }
+
+    activation_url = "https://api-1b9bef70.duosecurity.com/push/v2/activation/{}".format(code)
+    res = requests.post(activation_url, headers=HOTP_HEADER, params=params)
+
+    #print(activation_url)
+    #print(res.json())
+    sc = res_sanity_check(res)
+
+    if not sc[1]:
+        print(sc[0])
+        return
+
+    res_data = res.json()["response"]
+    hotp_secret = res_data["hotp_secret"]
+    hotp_counter = 0
+    
+    dbu.update_hotp_secret_counter(discord_username, hotp_secret, hotp_counter)
+    dbu.update_bs_username_pin(discord_username, bs_username, bs_pin)
 

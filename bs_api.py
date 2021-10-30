@@ -18,7 +18,7 @@ class BSAPI():
         }
 
 
-    def set_session_by_object(self, session):
+    def set_session_by_session(self, session):
         if not session:
             raise ValueError("Session provided is Null.")
 
