@@ -135,5 +135,50 @@ def login_user():
     })
 
 
+@webapp.route("/updateProfile", methods=['POST'])
+def update_profile():
+    # get user input from website
+    print(request.get_json())
+    username = request.json['username']
+    major = request.json['major']
+    storage_location = request.json['storageLocation']
+    notification_frequency = request.json['notificationFrequency']
+
+    # check if user submits a blank page
+    if major == '-1' and storage_location == '-1' and notification_frequency == '-1':
+        return jsonify({
+            "status": 400,
+            "message": "Nothing changed."
+        })
+
+    # check if username exists and update USER table
+    db_user = Users.query.filter_by(username=username).first()
+    if db_user is None:
+        return jsonify({
+            "status": 400,
+            "message": "Username couldn't find account!"
+        })
+
+    # update user info
+    if major != '-1':
+        db_user.major = major
+
+    db.session.commit()
+
+    # update PREFERENCES table
+    user_preferences = Preferences.query.filter_by(username=username).first()
+    if storage_location != '-1':
+        user_preferences.storage_location = storage_location
+    if notification_frequency != '-1':
+        user_preferences.notification_frequency = notification_frequency
+
+    db.session.commit()
+
+    return jsonify({
+        "status": 200,
+        "message": "Profile Information Successfully Updated!"
+    })
+
+
 if __name__ == "__main__":
     webapp.run(debug=True)
