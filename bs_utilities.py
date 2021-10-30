@@ -1,4 +1,4 @@
-import json
+
 from bs_api import BSAPI
 
 import datetime
@@ -20,8 +20,8 @@ class BSUtilities():
 
     # Same as set_session in BSAPI
 
-    def set_session(self, session):
-        self._bsapi.set_session(session)
+    def set_session_by_session(self, session):
+        self._bsapi.set_session_by_session(session)
 
     def set_session(self, username, password):
         self._bsapi.set_session(username, password)
