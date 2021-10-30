@@ -11,6 +11,7 @@ from bs_api import BSAPI
 from bs_utilities import BSUtilities
 import threading
 from database.db_utilities import DBUtilities
+from bot_responses import BotResponses
 
 
 '''
@@ -25,6 +26,7 @@ channelID = 663863991218733058 #mine!
 BS_UTILS = BSUtilities()
 BS_API = BSAPI()
 DB_UTILS = DBUtilities()
+BOT_RESPONSES = BotResponses()
 
 SCHEDULED_HOURS = []
 
@@ -33,7 +35,9 @@ SCHEDULED_HOURS = []
 async def on_ready():
     BS_UTILS.set_session(USERNAME, PIN)
     DB_UTILS.connect_by_config("database/db_config.py")
+    DB_UTILS.use_database("BSBOT")
 
+    BOT_RESPONSES.set_DB_param(DB_UTILS)
     print("We have logged in as: " + str(client.user))
   
 @commands.command()
@@ -88,10 +92,15 @@ async def on_message(message):
     global SCHEDULED_HOURS 
     # this message will be every single message that enters the server
     # currently saving this info so its easier for us to debug
+    BOT_RESPONSES.set_message_param(message)
+    BOT_RESPONSES.set_username_param(str(message.author).split('#')[0])
+    BOT_RESPONSES.set_channel_param(str(message.channel.name))
+    BOT_RESPONSES.print_server_messages()
+
     username = str(message.author).split('#')[0]
     user_message = str(message.content)
     channel = str(message.channel.name)
-    print(f'{username}: {user_message} ({channel}) ({message.channel.id})')
+    #print(f'{username}: {user_message} ({channel}) ({message.channel.id})')
 
     # just so that bot does not respond back to itself
     if message.author == client.user:
@@ -107,8 +116,11 @@ async def on_message(message):
     if user_message.lower() == 'hello':
         # put your custom message here for the bot to output
         # we would incorporate our chat module here and then craft an appropriate response
-        await message.channel.send(f'Hello {username}!')
+        # await message.channel.send(f'Hello {username}!')
+        # return
+        await BOT_RESPONSES.test_hello()
         return
+
     elif user_message.lower() == 'bye':
         await message.channel.send(f'Bye {username}!')
         return
@@ -116,11 +128,13 @@ async def on_message(message):
     elif user_message.lower() == 'current storage location':
         # todo: access database and get the actual value
 
-        storage_path = DB_UTILS._mysql.general_command("SELECT STORAGE_PATH from USERS WHERE FIRST_NAME = 'Raveena';")
-        if storage_path[0][0] is None:
-            await message.channel.send('No storage path specified. Type update storage to save something')
-        else:
-            await message.channel.send(f'Current location: {storage_path[0][0]}')
+        # storage_path = DB_UTILS._mysql.general_command("SELECT STORAGE_PATH from USERS WHERE FIRST_NAME = 'Raveena';")
+        # if storage_path[0][0] is None:
+        #     await message.channel.send('No storage path specified. Type update storage to save something')
+        # else:
+        #     await message.channel.send(f'Current location: {storage_path[0][0]}')
+        # return
+        await BOT_RESPONSES.current_storage("khuang")
         return
 
     # update the current storage path (used starts with so they can type update storage destination or path)
