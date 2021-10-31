@@ -13,7 +13,6 @@ import threading
 from database.db_utilities import DBUtilities
 from bot_responses import BotResponses
 
-
 '''
 To add the bot to your own server and test it out, copy this URL into your browser
 https://discord.com/api/oauth2/authorize?client_id=894695859567083520&permissions=534992387152&scope=bot
@@ -21,8 +20,8 @@ https://discord.com/api/oauth2/authorize?client_id=894695859567083520&permission
 
 # This will be our discord client. From here we will get our input
 client = discord.Client()
-channelID = 663863991218733058 #mine!
-  # TODO save this in the database - right now this is my (Raveena's) channel
+channelID = 663863991218733058  # mine!
+# TODO save this in the database - right now this is my (Raveena's) channel
 BS_UTILS = BSUtilities()
 BS_API = BSAPI()
 DB_UTILS = DBUtilities()
@@ -30,20 +29,23 @@ BOT_RESPONSES = BotResponses()
 
 SCHEDULED_HOURS = []
 
+
 # Having the bot log in and be online
 @client.event
 async def on_ready():
-    #BS_UTILS.set_session(USERNAME, PIN)
+    # BS_UTILS.set_session(USERNAME, PIN)
     DB_UTILS.connect_by_config("database/db_config.py")
     DB_UTILS.use_database("BSBOT")
 
     BOT_RESPONSES.set_DB_param(DB_UTILS)
     print("We have logged in as: " + str(client.user))
-  
+
+
 @commands.command()
 async def quit(ctx):
     await ctx.send("Shutting down the bot")
-    return await client.logout() # this just shuts down the bot.
+    return await client.logout()  # this just shuts down the bot.
+
 
 # looping every day
 # change parameter to minutes=1 and see it happen every minute
@@ -51,17 +53,17 @@ async def quit(ctx):
 async def notification_loop():
     if not SCHEDULED_HOURS:
         return
-        
-    #print("called_once_a_day:")
+
+    # print("called_once_a_day:")
     async def send_notifications():
-        #print(datetime.datetime.now().hour)
+        # print(datetime.datetime.now().hour)
         message_channel = client.get_channel(channelID)
         dates = BS_UTILS.get_dict_of_discussion_dates()
-        #dates = DATES
+        # dates = DATES
         string = BS_UTILS.find_upcoming_disc_dates(1, dates)
         string += BS_UTILS.get_notifications_past_24h()
 
-        #print("str: ", string)
+        # print("str: ", string)
         if len(string) == 0:
             ## only for debugging ##
             string = "No posts today"
@@ -84,12 +86,12 @@ async def notification_before():
 
 notification_loop.start()
 
+
 # This is our input stream for our discord bot
 # Every message that comes from the chat server will go through here
 @client.event
 async def on_message(message):
-    
-    global SCHEDULED_HOURS 
+    global SCHEDULED_HOURS
     # this message will be every single message that enters the server
     # currently saving this info so its easier for us to debug
     BOT_RESPONSES.set_message_param(message)
@@ -100,7 +102,7 @@ async def on_message(message):
     username = str(message.author).split('#')[0]
     user_message = str(message.content)
     channel = str(message.channel.name)
-    #print(f'{username}: {user_message} ({channel}) ({message.channel.id})')
+    # print(f'{username}: {user_message} ({channel}) ({message.channel.id})')
 
     # just so that bot does not respond back to itself
     if message.author == client.user:
@@ -202,7 +204,7 @@ async def on_message(message):
 
         else:
             await message.channel.send("Your input isn't valid")
-            
+
 
     # get a letter grade for a class
     elif message.content.startswith("grades:"):
@@ -239,10 +241,10 @@ async def on_message(message):
         await message.channel.send(final_string)
         return
 
-   #get upcoming quizzes across all classes
+    # get upcoming quizzes across all classes
     elif message.content.startswith("get upcoming quizzes"):
         upcoming_quizzes = BS_UTILS.get_upcoming_quizzes()
-        #if there are no upcoming quizzes returned, then we report to the user.
+        # if there are no upcoming quizzes returned, then we report to the user.
         if not upcoming_quizzes:
             await message.channel.send("You have no upcoming quizzes or exams.")
             return
@@ -274,13 +276,14 @@ async def on_message(message):
         else:
             await message.channel.send("The following assignments have been graded:\n")
             for grade in grade_updates:
-                output_str = "Course Id:" + str(grade['course_id']) + "- " + grade['assignment_name'] + " " + grade['grade'] + "\n"
+                output_str = "Course Id:" + str(grade['course_id']) + "- " + grade['assignment_name'] + " " + grade[
+                    'grade'] + "\n"
                 await message.channel.send(output_str)
             return
-       
+
     # changing bot name
     elif message.content.startswith("change bot name"):
-        
+
         # change value used to check if the user keep wants to change the name of the bot
         # initialized to True
 
@@ -327,7 +330,8 @@ async def on_message(message):
     elif message.content.startswith("upcoming discussion"):
         # dictionary of class_name, [list of dates]
         dates = BS_UTILS.get_dict_of_discussion_dates()
-        #dates = DATES #ONLY FOR DEBUG
+
+        # dates = DATES #ONLY FOR DEBUG
         def check(msg):
             return msg.author == message.author
 
@@ -335,7 +339,8 @@ async def on_message(message):
         string = BS_UTILS.find_upcoming_disc_dates(14, dates)
 
         if len(string) == 0:
-            await message.channel.send("No upcoming posts for the next two weeks. Would you like to look further than 2 weeks?")
+            await message.channel.send(
+                "No upcoming posts for the next two weeks. Would you like to look further than 2 weeks?")
             try:
                 response = await client.wait_for('message', check=check, timeout=30)
             except asyncio.TimeoutError:
@@ -356,7 +361,7 @@ async def on_message(message):
         else:
             await message.channel.send(string)
             return
-    
+
     elif message.content.startswith("update schedule"):
         def check(msg):
             return msg.author == message.author
@@ -368,7 +373,6 @@ async def on_message(message):
             await message.channel.send("Timed out.")
             return
 
-        
         try:
             h = int(new_time.content[:2])
             m = int(new_time.content[3:])
@@ -382,9 +386,9 @@ async def on_message(message):
             await message.channel.send("Please re-enter your time as the format given.")
             return
 
+        await message.channel.send(
+            f"Do you want to add this time to your schedule, or you want notifications only for this time?")
 
-        await message.channel.send(f"Do you want to add this time to your schedule, or you want notifications only for this time?")
-        
         try:
             res = await client.wait_for('message', check=check)
         except asyncio.TimeoutError:
@@ -402,10 +406,10 @@ async def on_message(message):
         except asyncio.TimeoutError:
             await message.channel.send("Timed out.")
             return
-        
+
         res = res.content
         if res.startswith("y") or res.startswith("right"):
-            
+
             if add:
                 SCHEDULED_HOURS.append(new_hour)
             else:
@@ -415,7 +419,7 @@ async def on_message(message):
         else:
             await message.channel.send(f"No changes are made to your schedule.")
 
-    
+
     elif message.content.startswith("check notification schedule"):
         if not SCHEDULED_HOURS:
             await message.channel.send("No schedules now!")
@@ -423,10 +427,10 @@ async def on_message(message):
             msg = ""
             for hour in SCHEDULED_HOURS:
                 msg += f"{hour}\n"
-                
+
             await message.channel.send(msg)
 
-        
+
 
     elif message.content.startswith("download: "):
         course = message.content.split(":")[1]
@@ -483,9 +487,9 @@ async def on_message(message):
                 # print(class_names)
                 # print(grades_frac)
 
-                #class_grade_tracker = []
-               # for x in range(0, len(class_names)):
-                 #   class_grade_tracker.append((grades_frac[x], class_names[x]))
+                # class_grade_tracker = []
+                # for x in range(0, len(class_names)):
+                #   class_grade_tracker.append((grades_frac[x], class_names[x]))
 
                 sorted_grade_frac = sorted(grades_frac)
 
@@ -501,7 +505,7 @@ async def on_message(message):
 
                 suggested_course_priority = ""
 
-                for x in range (0, len(course_priority)):
+                for x in range(0, len(course_priority)):
                     suggested_course_priority += course_priority[x]
                     if not x == len(course_priority) - 1:
                         suggested_course_priority += " >> "
@@ -540,7 +544,7 @@ async def on_message(message):
                 tosort[courses[counter]] = 0
             else:
                 yourTotal, classTotal = BS_UTILS.sum_total_points(i)
-                percentage = (yourTotal/classTotal) * 100
+                percentage = (yourTotal / classTotal) * 100
                 grades[courses[counter]] = '{num:.2f}/{den:.2f}'.format(num=yourTotal, den=classTotal)
                 tosort[courses[counter]] = percentage
             counter = counter + 1
@@ -597,27 +601,47 @@ async def on_message(message):
         # TODO get the username from a different way
         sql_command = f"SELECT {db_category} FROM PREFERENCES WHERE USERNAME = 'khuang';"
         current_saved_tc = DB_UTILS._mysql.general_command(sql_command)[0][0]
+        # Check if the channel that is being requested has already been created
+        sql_command = f"SELECT LIST_OF_TCS FROM PREFERENCES WHERE USERNAME = 'khuang';"
+        list_of_tcs = DB_UTILS._mysql.general_command(sql_command)[0][0]
         sql_command = f"UPDATE PREFERENCES SET {db_category} = '{text_channel}' WHERE USERNAME = 'khuang';"
         DB_UTILS._mysql.general_command(sql_command)
+
+        array = list_of_tcs.split(",")
+        found = False
+        for a in array:
+            if a == text_channel:
+                # Then this text channel already exists
+                found = True
+
         print(DB_UTILS.show_table_content("PREFERENCES"))
-        await message.channel.send("You successfully moved " + category + " notifications from "
-                                   + str(current_saved_tc) + " to " + text_channel + ". I will send a message to this "
-                                                                                     "channel to start the thread.")
-        name = 'Text Channels'  # This will go under the default category
-        cat = discord.utils.get(message.guild.categories, name=name)
-        await message.guild.create_text_channel(text_channel, category=cat)
 
-        #channel_id = discord.utils.get(message.guild.channels, name=text_channel)
-        #print(channel_id)
-        channel_id = 0
-        for channel in message.guild.text_channels:
-            print(channel)
-            print(channel.id)
-            channel_id = channel.id
+        if not found:
+            list_of_tcs = list_of_tcs + "," + text_channel
+            sql_command = f"UPDATE PREFERENCES SET LIST_OF_TCS = '{list_of_tcs}' WHERE USERNAME = 'khuang';"
+            DB_UTILS._mysql.general_command(sql_command)
+            name = 'Text Channels'  # This will go under the default category
+            cat = discord.utils.get(message.guild.categories, name=name)
+            await message.guild.create_text_channel(text_channel, category=cat)
 
-        send_message_to_channel = client.get_channel(channel_id)
-        await send_message_to_channel.send("Hello! This thread will hold notifications about " + category)
-        return
+            channel_id = 0
+            for channel in message.guild.text_channels:
+                print(channel)
+                print(channel.id)
+                channel_id = channel.id
+
+            await message.channel.send("You successfully moved " + category + " notifications from "
+                                       + str(current_saved_tc) + " to " + text_channel + ". I will send a message to this "
+                                                            "channel to start the thread.")
+
+            send_message_to_channel = client.get_channel(channel_id)
+            await send_message_to_channel.send("Hello! This thread will hold notifications about " + category)
+            return
+        else:
+            await message.channel.send("You successfully moved " + category + " notifications from "
+                                       + str(current_saved_tc) + " to " + text_channel + ".")
+            return
+
 
 # Now to actually run the bot!
 client.run(config['token'])
