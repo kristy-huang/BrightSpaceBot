@@ -677,3 +677,42 @@ class BSUtilities():
                 return False
         return True
 
+    def get_sorted_grades(self):
+        # list of courses in preferred priority
+        course_priority = []
+
+        # list of missing grade courses that cannot be prioritize with the bot's function
+        missing_grade_courses = []
+
+        # getting user enrolled classes
+        user_classes = self.get_classes_enrolled()
+
+        # arrays needed for sorting courses
+        # class_names will store all course names of the user
+        # grades_frac will store all the fraction grade of the user for those courses
+        class_names = []
+        grades_frac = []
+
+        # revised for loop
+        for name, course_id in user_classes.items():
+            # getting class names and fraction grade from the enrolled class list
+            class_names.append(name)
+            grade_string = self._bsapi.get_grade(course_id)[0]
+            fraction_grade = 0.0
+
+            if not grade_string == '':
+                fraction_grade = float(grade_string[0]) / float(grade_string[1])
+
+            grades_frac.append(fraction_grade)
+
+        sorted_grade_frac = sorted(grades_frac)
+
+        # appending sorted courses to course_priority
+        for x in sorted_grade_frac:
+            if not x == 0:
+                course_priority.append(class_names[grades_frac.index(x)])
+            else:
+                missing_grade_courses.append(class_names[grades_frac.index(x)])
+        # print(course_priority)
+
+        return course_priority, missing_grade_courses
