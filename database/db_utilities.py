@@ -12,7 +12,8 @@ class DBUtilities():
             "TIME": scheduled_time,
             "TIME_INTERVAL": interval_time,
             "CHANNEL_ID": channel_id,
-            "DESCRIPTION": str(description)
+            "DESCRIPTION": str(description),
+            "TYPES": "1111"
         }
 
         self._mysql.insert_into("NOTIFICATION_SCHEDULE", cols)
@@ -23,7 +24,7 @@ class DBUtilities():
 
 
     def get_notifictaion_schedule_with_description(self, user_name):
-        return self._mysql.general_command(f"SELECT DISTINCT TIME,DESCRIPTION FROM NOTIFICATION_SCHEDULE WHERE USERNAME = \"{user_name}\"")
+        return self._mysql.general_command(f"SELECT DISTINCT TIME,DESCRIPTION,TYPES FROM NOTIFICATION_SCHEDULE WHERE USERNAME = \"{user_name}\"")
 
 
     def clear_notification_schedule(self, user_name):
@@ -32,6 +33,11 @@ class DBUtilities():
 
     def delete_notification_schedule(self, user_name, scheduled_time, decription):
         self._mysql.delete("NOTIFICATION_SCHEDULE", f"USERNAME = \"{user_name}\" AND TIME = \"{scheduled_time}\" AND DESCRIPTION = \"{decription}\"")
+
+
+    def update_notification_schedule_types(self, user_name, scheduled_time, decription, new_types):
+        cols = {"TYPES": new_types}
+        self._mysql.update("NOTIFICATION_SCHEDULE", cols, f"USERNAME = \"{user_name}\" AND TIME = \"{scheduled_time}\" AND DESCRIPTION = \"{decription}\"")
 
 
     def add_class_schedule(self, user_name, course_name, scheduled_time, description=""):
@@ -107,4 +113,17 @@ class DBUtilities():
         return self._mysql.general_command(f"SELECT DISTINCT BS_USERNAME,bs_pin FROM CREDENTIALS WHERE USERNAME = \"{user_name}\"")
 
 
+    # Gets all scheduled notification time for all users by a given time. 
+    #
+    # time_string (str): represents the requested time, in the formatof HH:MM (e.g. 09:04)
+    # weekday (int): represents 
+    def get_notifictaion_schedule_by_time(self, time_string, weekday):
+        schedules = self._mysql.general_command("SELECT DISTINCT USERNAME,CHANNEL_ID,TYPES FROM NOTIFICATION_SCHEDULE WHERE TIME = \"{}\" AND (DESCRIPTION = {} OR DESCRIPTION = 7)".format(time_string, weekday))
+        #print(schedules)
+        if schedules:
+            return schedules
+        else:
+            return []
 
+
+    

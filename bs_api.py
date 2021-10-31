@@ -1,4 +1,4 @@
-from Authentication import get_brightspace_session
+from Authentication import get_brightspace_session, get_brightspace_session_auto
 
 import requests
 import os
@@ -17,6 +17,14 @@ class BSAPI():
             "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9"
         }
 
+
+    # Logs in to BS automatically
+    #
+    # dbu (DBUtilities object): a DBUtilities object connected to a database
+    # discord_username (str): discord username
+
+    def set_session_auto(self, dbu, discord_username):
+        self._session = get_brightspace_session_auto(dbu, discord_username)
 
     def set_session_by_session(self, session):
         if not session:

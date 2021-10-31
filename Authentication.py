@@ -28,18 +28,30 @@ def get_brightspace_session(username, password):
     return session
     
 
-def get_brightspace_session_auto(discord_username):
+
+# Accesses the database with the config file located at database_config.
+# Pulls necessary data from the database and logs in the user to BrightSpace.
+#
+# dbu (DBUtilities object): a DBUtilities object connected to a database
+# discord_username (str): discord username
+# 
+# return: requests.session
+
+
+def get_brightspace_session_auto(dbu, discord_username):
     session = requests.session()
 
-    dbu = DBUtilities("./database/db_config.py")
     db_res = dbu.get_bs_username_pin(discord_username)
-    if not db_res:
-        print("Set up first")
+    while not db_res:
+        print("Please setup your account first. ")
+        setup_automation(dbu, discord_username)
+        db_res = dbu.get_bs_username_pin(discord_username)
+
 
     user_name = db_res[0][0]
     pin = db_res[0][1]
 
-    passcode = get_password(dbu, "test1")
+    passcode = __get_password(dbu, discord_username)
     password = "{},{}".format(pin, passcode)
     #print(password)
 
@@ -117,7 +129,7 @@ def __login_brightspace(session):
 
 # Generates a duo authenticate password
 
-def get_password(dbu, user_name):
+def __get_password(dbu, user_name):
     s_c = dbu.get_hotp_secret_counter(user_name)
     if s_c:
         secret = s_c[0][0]
@@ -129,7 +141,7 @@ def get_password(dbu, user_name):
     return curr_passcode
 
 
-def setup_automation(dbu, discord_username, bs_username, bs_pin):
+def setup_automation(dbu, discord_username, bs_username, bs_pin, url):
     HOTP_HEADER = {"User-Agent": "okhttp/3.11.0"}
 
     def res_sanity_check(res):
@@ -143,7 +155,21 @@ def setup_automation(dbu, discord_username, bs_username, bs_pin):
         return "Success", True
             
 
-    url = input("enter url")
+    try:
+        bs_pin = int(bs_pin)
+    except:
+        return "pin format error", False
+
+    '''url = input("enter url")
+    bs_username = input("enter BrightSpace username")
+    bs_pin = input("enter BrightSpace pin (4-digit number)")'''
+
+    '''while True:
+        try:
+            bs_pin = int(bs_pin)
+            break
+        except:
+            bs_pin = input("enter BrightSpace pin (4-digit number)")'''
 
 
     code = url.split('/')[-1]
@@ -170,7 +196,7 @@ def setup_automation(dbu, discord_username, bs_username, bs_pin):
 
     if not sc[1]:
         print(sc[0])
-        return
+        return sc
 
     res_data = res.json()["response"]
     hotp_secret = res_data["hotp_secret"]
@@ -178,4 +204,6 @@ def setup_automation(dbu, discord_username, bs_username, bs_pin):
     
     dbu.update_hotp_secret_counter(discord_username, hotp_secret, hotp_counter)
     dbu.update_bs_username_pin(discord_username, bs_username, bs_pin)
+
+    return "Success", True
 
