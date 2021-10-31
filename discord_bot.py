@@ -11,7 +11,6 @@ from bs_utilities import BSUtilities
 import threading
 from database.db_utilities import DBUtilities
 
-
 '''
 To add the bot to your own server and test it out, copy this URL into your browser
 https://discord.com/api/oauth2/authorize?client_id=894695859567083520&permissions=534723950656&scope=bot
@@ -19,8 +18,8 @@ https://discord.com/api/oauth2/authorize?client_id=894695859567083520&permission
 
 # This will be our discord client. From here we will get our input
 client = discord.Client()
-channelID = 663863991218733058 #mine!
-  # TODO save this in the database - right now this is my (Raveena's) channel
+channelID = 663863991218733058  # mine!
+# TODO save this in the database - right now this is my (Raveena's) channel
 
 db_config = "./database/db_config.py"
 BS_UTILS = BSUtilities()
@@ -28,17 +27,20 @@ DB_UTILS = DBUtilities(db_config)
 
 author_id_to_username_map = {}
 
+
 # Having the bot log in and be online
 @client.event
 async def on_ready():
     BS_UTILS.set_session(USERNAME, PIN)
 
     print("We have logged in as: " + str(client.user))
-  
+
+
 @commands.command()
 async def quit(ctx):
     await ctx.send("Shutting down the bot")
-    return await client.logout() # this just shuts down the bot.
+    return await client.logout()  # this just shuts down the bot.
+
 
 # looping every day
 # change parameter to minutes=1 and see it happen every minute
@@ -46,17 +48,17 @@ async def quit(ctx):
 async def notification_loop():
     if not SCHEDULED_HOURS:
         return
-        
-    #print("called_once_a_day:")
+
+    # print("called_once_a_day:")
     async def send_notifications():
-        #print(datetime.datetime.now().hour)
+        # print(datetime.datetime.now().hour)
         message_channel = client.get_channel(channelID)
         dates = BS_UTILS.get_dict_of_discussion_dates()
-        #dates = DATES
+        # dates = DATES
         string = BS_UTILS.find_upcoming_disc_dates(1, dates)
         string += BS_UTILS.get_notifications_past_24h()
 
-        #print("str: ", string)
+        # print("str: ", string)
         if len(string) == 0:
             ## only for debugging ##
             string = "No posts today"
@@ -79,12 +81,12 @@ async def notification_before():
 
 notification_loop.start()
 
+
 # This is our input stream for our discord bot
 # Every message that comes from the chat server will go through here
 @client.event
 async def on_message(message):
-    
-    global SCHEDULED_HOURS 
+    global SCHEDULED_HOURS
     # this message will be every single message that enters the server
     # currently saving this info so its easier for us to debug
     username = str(message.author).split('#')[0]
@@ -100,7 +102,7 @@ async def on_message(message):
     # guild_members = message.guild.members
     # if message.author not in guild_members:
     #    return
-     
+
     # Lets say that we want the bot to only respond to a specific text channel in a server named 'todo'
     if message.channel.name == 'specifics':
         if user_message.lower() == 'im bored':
@@ -190,7 +192,7 @@ async def on_message(message):
 
         else:
             await message.channel.send("Your input isn't valid")
-            
+
 
     # get a grade for a class
     elif message.content.startswith("grades:"):
@@ -227,21 +229,23 @@ async def on_message(message):
         await message.channel.send(final_string)
         return
 
-    #get feedback on assignment. 
+    # get feedback on assignment.
     elif message.content.startswith("get assignment feedback"):
         await message.channel.send("Please provide the Course name (for ex, NUTR 303) \n")
+
         def author_check(m):
             return m.author == message.author
+
         course_name = await client.wait_for('message', check=author_check)
         await message.channel.send("Please provide the full assignment name (for ex, 'Recitation Assignment 1')\n")
         assignment_name = await client.wait_for('message', check=author_check)
         feedback = BS_UTILS.get_assignment_feedback(course_name, assignment_name)
         return
-       
-    #get upcoming quizzes across all classes
+
+    # get upcoming quizzes across all classes
     elif message.content.startswith("get upcoming quizzes"):
         upcoming_quizzes = BS_UTILS.get_upcoming_quizzes()
-        #if there are no upcoming quizzes returned, then we report to the user.
+        # if there are no upcoming quizzes returned, then we report to the user.
         if not upcoming_quizzes:
             await message.channel.send("You have no upcoming quizzes or exams.")
             return
@@ -273,13 +277,14 @@ async def on_message(message):
         else:
             await message.channel.send("The following assignments have been graded:\n")
             for grade in grade_updates:
-                output_str = "Course Id:" + str(grade['course_id']) + "- " + grade['assignment_name'] + " " + grade['grade'] + "\n"
+                output_str = "Course Id:" + str(grade['course_id']) + "- " + grade['assignment_name'] + " " + grade[
+                    'grade'] + "\n"
                 await message.channel.send(output_str)
             return
-       
+
     # changing bot name
     elif message.content.startswith("change bot name"):
-        
+
         # change value used to check if the user keep wants to change the name of the bot
         # initialized to True
 
@@ -298,7 +303,7 @@ async def on_message(message):
             try:
                 new_name = await client.wait_for('message', check=check)
             except asyncio.TimeoutError:
-                await message.channel.send("Timeout ERROR has occured. Please try the query again.")
+                await message.channel.send("Timeout ERROR has occurred. Please try the query again.")
                 return
 
             # name changed message.
@@ -326,7 +331,8 @@ async def on_message(message):
     elif message.content.startswith("upcoming discussion"):
         # dictionary of class_name, [list of dates]
         dates = BS_UTILS.get_dict_of_discussion_dates()
-        #dates = DATES #ONLY FOR DEBUG
+
+        # dates = DATES #ONLY FOR DEBUG
         def check(msg):
             return msg.author == message.author
 
@@ -334,7 +340,8 @@ async def on_message(message):
         string = BS_UTILS.find_upcoming_disc_dates(14, dates)
 
         if len(string) == 0:
-            await message.channel.send("No upcoming posts for the next two weeks. Would you like to look further than 2 weeks?")
+            await message.channel.send(
+                "No upcoming posts for the next two weeks. Would you like to look further than 2 weeks?")
             try:
                 response = await client.wait_for('message', check=check, timeout=30)
             except asyncio.TimeoutError:
@@ -355,13 +362,12 @@ async def on_message(message):
         else:
             await message.channel.send(string)
             return
-    
+
     elif message.content.startswith("update schedule"):
-        global SCHEDULED_HOURS 
-        
+        global SCHEDULED_HOURS
+
         def check(msg):
             return msg.author == message.author
-
 
         async def recieve_response():
             try:
@@ -375,7 +381,6 @@ async def on_message(message):
             await message.channel.send("What is your username?")
             username = await recieve_response()
             author_id_to_username_map[username.author.id] = username.content
-
 
         async def naive_change():
 
@@ -394,14 +399,14 @@ async def on_message(message):
                     continue
 
                 if h < 0 or h > 23 or m < 0 or m > 59:
-                        await message.channel.send("Please re-enter your time as the format given.")
-                        continue
+                    await message.channel.send("Please re-enter your time as the format given.")
+                    continue
 
                 new_hour = datetime.time(h, m, 0)
                 break
 
-
-            await message.channel.send(f"Do you want to add this time to your schedule, or you want notifications only for this time?")
+            await message.channel.send(
+                f"Do you want to add this time to your schedule, or you want notifications only for this time?")
             res = await recieve_response()
 
             res = res.content
@@ -419,7 +424,7 @@ async def on_message(message):
                 if add:
                     print(author_id_to_username_map)
                     DB_UTILS.add_notifictaion_schedule(author_id_to_username_map[res.author.id], new_time.content)
-                    #SCHEDULED_HOURS.append(new_hour)
+                    # SCHEDULED_HOURS.append(new_hour)
                 else:
                     SCHEDULED_HOURS = [new_hour]
 
@@ -427,10 +432,8 @@ async def on_message(message):
             else:
                 await message.channel.send(f"No changes are made to your schedule.")
 
-
         await naive_change()
-        
-    
+
     elif message.content.startswith("check notification schedule"):
         if not SCHEDULED_HOURS:
             await message.channel.send("No schedules now!")
@@ -438,10 +441,8 @@ async def on_message(message):
             msg = ""
             for hour in SCHEDULED_HOURS:
                 msg += f"{hour}\n"
-                
-            await message.channel.send(msg)
 
-        
+            await message.channel.send(msg)
 
     elif message.content.startswith("download: "):
         course = message.content.split(":")[1]
@@ -456,15 +457,11 @@ async def on_message(message):
             await message.channel.send("Files not downloaded successfully")
             return
 
-
     # returning user course priority by either grade or upcoming events
     elif message.content.startswith("course priority"):
 
         def check(msg):
             return msg.author == message.author
-
-        # list of courses in preferred priority
-        course_priority = []
 
         # ask user for pick grade or by due date
         await message.channel.send("Please pick between grade or due dates for prioritizing your courses.")
@@ -476,56 +473,31 @@ async def on_message(message):
                 # api call for grades
                 await message.channel.send("Setting course priority by grade ...")
 
-                # get user's enrolled classes
-                user_classes = BS_UTILS.get_classes_enrolled()
-                class_names = []
-                class_ids = []
-                grades_tuple = []
-                for name, course_id in user_classes.items():
-                    class_names.append(name)
-                    class_ids.append(course_id)
-                    grades_tuple.append(BS_UTILS._bsapi.get_grade(course_id))
-
-                grades_frac = []
-                for t in grades_tuple:
-                    if not t[0] == '':
-                        nums_str = t[0].split('/')
-                        grade_frac = float(nums_str[0]) / float(nums_str[1])
-                        grades_frac.append(grade_frac)
-                    else:
-                        grades_frac.append(0)
-
-                # print(class_names)
-                # print(grades_frac)
-
-                #class_grade_tracker = []
-               # for x in range(0, len(class_names)):
-                 #   class_grade_tracker.append((grades_frac[x], class_names[x]))
-
-                sorted_grade_frac = sorted(grades_frac)
-
-                # print(sorted_grade_frac)
-
-                for x in sorted_grade_frac:
-                    if not x == 0:
-                        index = grades_frac.index(x)
-                        course_name = class_names[index]
-                        course_priority.append(course_name)
-
-                # print(course_priority)
+                priority = BS_UTILS.get_sorted_grades()[0]
+                missing = BS_UTILS.get_sorted_grades()[1]
 
                 suggested_course_priority = ""
-
-                for x in range (0, len(course_priority)):
-                    suggested_course_priority += course_priority[x]
-                    if not x == len(course_priority) - 1:
+                for x in range(0, len(priority)):
+                    suggested_course_priority += priority[x]
+                    if not x == len(priority) - 1:
                         suggested_course_priority += " >> "
 
+                found_missing_grade_courses = ""
+                for x in range(0, len(missing)):
+                    found_missing_grade_courses += missing[x]
+                    if not x == len(missing) - 1:
+                        found_missing_grade_courses += " , "
+
                 await message.channel.send("The suggested course priority is:\n" + suggested_course_priority)
+                await message.channel.send("There are some courses that miss final grades:\n"
+                                           + found_missing_grade_courses)
 
             elif priority_option.content.startswith("due dates"):
                 # api call for due dates
                 await message.channel.send("Setting course priority by upcoming due dates ...")
+
+
+
                 await message.channel.send("Sorry we are adjusting function at the moment, please try it next time")
             else:
                 await message.channel.send("Invalid response given! Please try the query again.")
@@ -536,6 +508,6 @@ async def on_message(message):
             return
 
         return
-          
+
 # Now to actually run the bot!
 client.run(config['token'])
