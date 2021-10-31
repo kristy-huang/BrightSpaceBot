@@ -2,11 +2,10 @@ import React, {useState} from 'react'
 import {Form, Button} from 'react-bootstrap'
 import {Link} from 'react-router-dom'
 import {useForm} from 'react-hook-form'
-import {useAuth} from '../auth'
+import {useAuth, logout} from '../auth'
 
-function UpdateProfile(props) {
+function LoggedIn() {
     const {register, watch, handleSubmit, reset, formState:{errors}} = useForm();
-
     const submitForm = (data)=>{
         const username = sessionStorage.getItem('username');
         console.log(username)
@@ -40,9 +39,8 @@ function UpdateProfile(props) {
             .catch(err=>console.log(err))
         reset()
     }
-
     return (
-        <div className="container">
+        <>
             <div className="form">
                 <h1>Update Profile</h1>
                 <br></br>
@@ -78,8 +76,29 @@ function UpdateProfile(props) {
                     <Form.Group>
                         <Button as="sub" variant="primary" onClick={handleSubmit(submitForm)}>Update</Button>
                     </Form.Group>
+                    <br></br>
+                    <Form.Group>
+                        <Button as="sub" variant="primary"><Link className="nav-link active" aria-current="page" to="/">Cancel</Link></Button>
+                    </Form.Group>
                 </form>
             </div>
+        </>
+    )
+}
+
+function LoggedOut() {
+    return (
+        <>
+            <p>Please login to see this page</p>
+        </>
+    )
+}
+
+function UpdateProfile(props) {
+    const [loggedIn] = useAuth()
+    return (
+        <div className="container">
+            {loggedIn?<LoggedIn/>:<LoggedOut/>}
         </div>
     )
 }
