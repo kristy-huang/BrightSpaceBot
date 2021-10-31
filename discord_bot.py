@@ -1,4 +1,5 @@
 # Our discord token is saved in another file for security
+from hashlib import new
 from os import execv
 from discord.errors import NotFound
 from discord_config import config, USERNAME, PIN
@@ -7,11 +8,11 @@ from discord.ext import tasks, commands
 import asyncio
 from file_storage import *
 import datetime
-import threading
-
+import time
 from bs_utilities import BSUtilities
 import threading
 from database.db_utilities import DBUtilities
+from Authentication import setup_automation
 
 
 '''
@@ -21,11 +22,11 @@ https://discord.com/api/oauth2/authorize?client_id=894695859567083520&permission
 
 # This will be our discord client. From here we will get our input
 client = discord.Client()
-channelID = 663863991218733058 #mine!
+#channelID = 663863991218733058 #mine!
   # TODO save this in the database - right now this is my (Raveena's) channel
 
 db_config = "./database/db_config.py"
-#BS_UTILS = BSUtilities()
+BS_UTILS = BSUtilities()
 DB_UTILS = DBUtilities(db_config)
 
 author_id_to_username_map = {}
@@ -45,9 +46,7 @@ NOT_FREQ_MAP = {
 # Having the bot log in and be online
 @client.event
 async def on_ready():
-    BS_UTILS.set_session(USERNAME, PIN)
-
-    print("We have logged in as: " + str(client.user))
+    pass
   
 @commands.command()
 async def quit(ctx):
@@ -59,13 +58,21 @@ async def quit(ctx):
 @tasks.loop(minutes=1)
 async def notification_loop():
     #print("called_once_a_day:")
-    async def send_notifications():
-        #print(datetime.datetime.now().hour)
-        message_channel = client.get_channel(channelID)
-        dates = BS_UTILS.get_dict_of_discussion_dates()
-        #dates = DATES
-        string = BS_UTILS.find_upcoming_disc_dates(1, dates)
-        string += BS_UTILS.get_notifications_past_24h()
+    async def send_notifications(channel_id, types):
+        message_channel = client.get_channel(channel_id)
+        print(channel_id, message_channel)
+
+        string = ""
+        if types[0] == "1":
+            dates = BS_UTILS.get_dict_of_discussion_dates()
+            #dates = DATES
+            string += BS_UTILS.find_upcoming_disc_dates(1, dates)
+        if types[1] == "1":
+            string += BS_UTILS.get_notifications_past_24h()
+        if types[2] == "1":
+            string += BS_UTILS.get_events_by_type_past_24h(1) #Reminder
+        if types[3] == "1":
+            string += BS_UTILS.get_events_by_type_past_24h(6) #DueDate
 
         #print("str: ", string)
         if len(string) == 0:
@@ -75,11 +82,22 @@ async def notification_loop():
         await message_channel.send(string)
         return
 
-    for s_hour in SCHEDULED_HOURS:
-        now = datetime.datetime.now()
-        next_notification = datetime.datetime.combine(now.date(), s_hour)
-        if next_notification.hour == now.hour and next_notification.minute == now.minute:
-            await send_notifications()
+    now = datetime.datetime.now()
+    time_string = now.strftime("%H:%M")
+    weekday = now.weekday()
+
+    schedules = DB_UTILS.get_notifictaion_schedule_by_time(time_string, weekday)
+
+    for schedule in schedules:
+        #print(schedule)
+        channel_id = schedule[1]
+        #print("str id", channel_id)
+        channel_id = int(schedule[1])
+        types = schedule[2]
+        if not types:
+            types = "1111"
+        #print("int id", channel_id)
+        await send_notifications(channel_id, types)
 
 
 # TODO: stop notifying immediately after running program.
@@ -89,13 +107,20 @@ async def notification_before():
 
 
 notification_loop.start()
+login_lock = False
 
 # This is our input stream for our discord bot
 # Every message that comes from the chat server will go through here
 @client.event
 async def on_message(message):
+    # just so that bot does not respond back to itself
+    if message.author == client.user:
+        return
+
+
     def check(msg):
         return msg.author == message.author
+
 
     async def recieve_response():
         try:
@@ -105,10 +130,12 @@ async def on_message(message):
             return None
         return res
 
+
     async def request_username():
         await message.channel.send("What is your username?")
         username = await recieve_response()
         author_id_to_username_map[username.author.id] = username.content
+
 
     def get_weekday(msg):
         msg = msg.lower()
@@ -139,7 +166,6 @@ async def on_message(message):
         return time_str
 
 
-
     async def get_time():
         await message.channel.send("What time? (e.g. 09: 12, 10:00, 23:24)")
 
@@ -165,6 +191,41 @@ async def on_message(message):
         return new_time
 
 
+    if message.author.id not in author_id_to_username_map:
+        await request_username()
+
+
+    # TODO: might have problems with this lock when multiple users are using....
+    global login_lock
+    if not BS_UTILS.session_exists() and not login_lock:
+        login_lock = True
+        
+        db_res = DB_UTILS.get_bs_username_pin(author_id_to_username_map[message.author.id])
+        while not db_res:
+            # TODO: explain it better
+            await message.channel.send("No information found in database. Setting up auto BS login. Get a boilerkey url and enter it.")
+            res = await recieve_response()
+            url = res.content
+            await message.channel.send("bs username")
+            res = await recieve_response()
+            bs_username = res.content
+            await message.channel.send("bs 4 digit pin")
+            res = await recieve_response()
+            bs_pin = res.content
+
+            await message.channel.send("Setting up auto login...")
+            status = setup_automation(DB_UTILS, author_id_to_username_map[message.author.id], bs_username, bs_pin, url )
+
+            if not status[1]:
+                await message.channel.send(status[0])
+                continue
+            db_res = DB_UTILS.get_bs_username_pin(author_id_to_username_map[message.author.id])
+
+        await message.channel.send("Logging in to BrightSpace...")
+        BS_UTILS.set_session_auto(DB_UTILS, author_id_to_username_map[message.author.id])
+        
+        login_lock = False
+
     # this message will be every single message that enters the server
     # currently saving this info so its easier for us to debug
     username = str(message.author).split('#')[0]
@@ -172,10 +233,7 @@ async def on_message(message):
     channel = str(message.channel.name)
     print(f'{username}: {user_message} ({channel}) ({message.channel.id})')
 
-    # just so that bot does not respond back to itself
-    if message.author == client.user:
-        return
-
+    
     # Lets say that we want the bot to only respond to a specific text channel in a server named 'todo'
     if message.channel.name == 'specifics':
         if user_message.lower() == 'im bored':
@@ -292,9 +350,9 @@ async def on_message(message):
                     grades[courses[counter]] = letter
             counter = counter + 1
 
-        print(grades)
+        #print(grades)
         grades = dict(sorted(grades.items(), key=lambda item: item[1]))
-        print(grades)
+        #print(grades)
         final_string = "Your grades are: \n"
         for key, value in grades.items():
             final_string = final_string + key.upper() + ": " + value + "\n"
@@ -325,11 +383,8 @@ async def on_message(message):
         bs_utils.set_session(USERNAME, PIN)
 
     elif message.content.startswith("get newly graded assignments"):
-        await message.channel.send("Authorizing...")
-        bs_utils = BSUtilities()
-        bs_utils.set_session(USERNAME, PIN)
         await message.channel.send("Retrieving grades...")
-        grade_updates = bs_utils.get_grade_updates()
+        grade_updates = BS_UTILS.get_grade_updates()
         # if there are no grade updates returned, then we report to the user.
         if len(grade_updates) == 0:
             await message.channel.send("You have no new grade updates.")
@@ -420,6 +475,7 @@ async def on_message(message):
             await message.channel.send(string)
             return
     
+
     elif message.content.startswith("update schedule"):
 
         if message.author.id not in author_id_to_username_map:
@@ -561,9 +617,85 @@ async def on_message(message):
 
             await message.channel.send("Schedule modified.")
 
-        await by_class_schedule()
+        await message.channel.send("Do you want your notification to be sent every day, every week, by a specific amount, or according to your class schedule?")
+
+        res = await recieve_response()
+        if "day" in res.content:
+            await everyday()
+        elif "week" in res.content:
+            await every_week()
+        elif "amount" in res.content:
+            await by_amount()
+        elif "class" in res.content:
+            await by_class_schedule()
+        else:
+            await message.channel.send("I am not sure about what you want to do")
 
         
+    elif message.content.startswith("update type"):
+        current_times = DB_UTILS.get_notifictaion_schedule_with_description(author_id_to_username_map[message.author.id])
+        
+        if not current_times:
+            await message.channel.send("You don't have any scheduled times now.")
+            return
+
+        msg = ""
+        for i, time in enumerate(current_times):
+            msg += f"{i + 1}: {time[0]} {time[1]}\n"
+            
+        await message.channel.send("Which time do you want to change?")
+        await message.channel.send(msg)
+
+        while True:
+            res = await recieve_response()
+
+            try:
+                num = int(res.content)
+            except ValueError:
+                await message.channel.send(f"Please choose a number between 1 ~ {i + 1}")
+                continue
+
+            if num not in range(1, i + 2):
+                await message.channel.send(f"Please choose a number between 1 ~ {i + 1}")
+                continue
+
+            break
+
+        new_types = ['0', '0', '0', '0']
+        await message.channel.send(f"Discussions?")
+        res = await recieve_response()
+        if res.content.startswith("y") or res.content.startswith("right"):
+            new_types[0] = '1'
+
+        await message.channel.send(f"Announcements?")
+        res = await recieve_response()
+        if res.content.startswith("y") or res.content.startswith("right"):
+            new_types[1] = '1'
+
+        await message.channel.send(f"Reminders?")
+        res = await recieve_response()
+        if res.content.startswith("y") or res.content.startswith("right"):
+            new_types[2] = '1'
+
+        await message.channel.send(f"Due dates?")
+        res = await recieve_response()
+        if res.content.startswith("y") or res.content.startswith("right"):
+            new_types[3] = '1'
+
+        new_types = "".join(new_types)
+        num -= 1
+        await message.channel.send(f"Change time: {current_times[num][0]} {current_times[num][1]}'s types?")
+        
+        res = await recieve_response()
+
+        if res.content.startswith("y") or res.content.startswith("right"):
+            DB_UTILS.update_notification_schedule_types(author_id_to_username_map[message.author.id], current_times[num][0], current_times[num][1], new_types)
+            
+            await message.channel.send("Type updated")
+        else:
+            await message.channel.send(f"No changes are made to your schedule.")
+
+
     elif message.content.startswith("delete noti"):     
         if message.author.id not in author_id_to_username_map:
             await request_username()
@@ -620,7 +752,13 @@ async def on_message(message):
             else:
                 await message.channel.send(f"No changes are made to your schedule.")
     
-        await delete_some() 
+        await message.channel.send("Do you want to delete all scheduled times or specific times?")
+
+        res = await recieve_response()
+        if "all" in res.content:
+            await delete_all() 
+        else:
+            await delete_some()
     
     
     elif message.content.startswith("check noti"):

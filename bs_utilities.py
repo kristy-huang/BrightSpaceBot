@@ -18,13 +18,25 @@ class BSUtilities():
         self._debug = debug
 
 
-    # Same as set_session in BSAPI
+    # Logs in to BS automatically
+    #
+    # dbu (DBUtilities object): a DBUtilities object connected to a database
+    # discord_username (str): discord username
+   
+    def set_session_auto(self, dbu, discord_username):
+        self._bsapi.set_session_auto(dbu, discord_username)
 
+    # Same as set_session in BSAPI
     def set_session_by_session(self, session):
         self._bsapi.set_session_by_session(session)
 
     def set_session(self, username, password):
         self._bsapi.set_session(username, password)
+
+
+    def session_exists(self):
+        return self._bsapi._session != None
+
 
     '''
         Replaces the BSAPI() object with a new one.
@@ -400,6 +412,28 @@ class BSUtilities():
 
         return events
 
+
+    # returns a string describing the event
+    def get_events_by_type_past_24h(self, eventType=1):
+        endDateTime = datetime.datetime.utcnow()
+        startDateTime = endDateTime - datetime.timedelta(days=1)
+        endDateTime = endDateTime.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+        startDateTime = startDateTime.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+        
+
+
+        events = self.get_events_by_type(startDateTime, endDateTime, eventType)
+        str_rep = ""
+        for event in events:
+            # TODO: get a mapping from course id to course names from the database
+            str_rep += "Class: {}\n".format(event['course_id'])
+            str_rep += "Notifictaion Type: {}\n".format(event['EventType'])
+            str_rep += "{}\n\n".format(event['Title'])
+            str_rep += "{}\n".format(event['Description'])
+            str_rep += "-----------------------------------\n\n"
+
+        return str_rep
+
     '''
         Returns True if time_str is later than (or at the same time as) the current time
         or the time_str is None (which means infinitly later in the future!)
@@ -460,13 +494,7 @@ class BSUtilities():
         
     '''
     def get_grade_updates(self):
-        db_util = DBUtilities()
-        db_util.connect_by_config('database/db_config.py')
-        db_util.use_database("BSBOT")
-
-        sql = MySQLDatabase()
-        sql.connect_by_config('database/db_config.py')
-        sql.use_database("BSBOT")
+        sql = MySQLDatabase('database/db_config.py')
         # sql.drop_table('GRADED_ASSIGNMENTS')
         sql.create_table('GRADED_ASSIGNMENTS', 'grade_object_id INT PRIMARY KEY, '
                                                'course_id INT,'
