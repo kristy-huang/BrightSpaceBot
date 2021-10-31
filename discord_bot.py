@@ -556,6 +556,52 @@ async def on_message(message):
 
         await message.channel.send(final_string)
         return
-          
+
+    # redirecting notifications
+    elif message.content.startswith("redirect notifications"):
+        await message.channel.send("Here are the notification types you can redirect: Grades, Files, Deadlines.\n"
+                                   "Format the response as <Notification Type>: <Text Channel Name>.\n"
+                                   "EX: Grades - Grades Notifications")
+
+        # check what type of path they want
+        def storage_path(m):
+            return m.author == message.author
+
+        # getting the type of redirecting of notification
+        try:
+            response = await client.wait_for('message', check=storage_path, timeout=30)
+        except asyncio.TimeoutError:
+            await message.channel.send("taking too long...")
+            return
+
+        # split the notification type and desired text channel
+        response_array = response.content.split("-")
+        category = response_array[0]
+        category = category.strip()
+        text_channel = response_array[1]
+        text_channel = text_channel.strip()
+        print(category.lower())
+        # Get the database category
+        db_category = ""
+        if category.lower() == "grades":
+            db_category = "GRADES_TC"
+        elif category.lower() == 'files':
+            db_category = "FILES_TC"
+        elif category.lower() == 'deadlines':
+            db_category = "DEADLINES_TC"
+        else:
+            await message.channel.send("Sorry, the notification type you specified is not valid. Please try the "
+                                       "process again")
+            return
+
+        # TODO get the username from a different way
+        sql_command = f"SELECT {db_category} FROM PREFERENCES WHERE USERNAME = 'khuang';"
+        current_saved_tc = DB_UTILS._mysql.general_command(sql_command)[0][0]
+        sql_command = f"UPDATE PREFERENCES SET {db_category} = '{text_channel}' WHERE USERNAME = 'khuang';"
+        DB_UTILS._mysql.general_command(sql_command)
+        print(DB_UTILS.show_table_content("PREFERENCES"))
+        await message.channel.send("You successfully moved " + category + " notifications from " + str(current_saved_tc) + " to " + text_channel)
+        return
+
 # Now to actually run the bot!
 client.run(config['token'])
