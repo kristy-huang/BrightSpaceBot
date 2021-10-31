@@ -16,7 +16,7 @@ from bot_responses import BotResponses
 
 '''
 To add the bot to your own server and test it out, copy this URL into your browser
-https://discord.com/api/oauth2/authorize?client_id=894695859567083520&permissions=534723950656&scope=bot
+https://discord.com/api/oauth2/authorize?client_id=894695859567083520&permissions=534992387152&scope=bot
  '''
 
 # This will be our discord client. From here we will get our input
@@ -33,7 +33,7 @@ SCHEDULED_HOURS = []
 # Having the bot log in and be online
 @client.event
 async def on_ready():
-    BS_UTILS.set_session(USERNAME, PIN)
+    #BS_UTILS.set_session(USERNAME, PIN)
     DB_UTILS.connect_by_config("database/db_config.py")
     DB_UTILS.use_database("BSBOT")
 
@@ -600,7 +600,23 @@ async def on_message(message):
         sql_command = f"UPDATE PREFERENCES SET {db_category} = '{text_channel}' WHERE USERNAME = 'khuang';"
         DB_UTILS._mysql.general_command(sql_command)
         print(DB_UTILS.show_table_content("PREFERENCES"))
-        await message.channel.send("You successfully moved " + category + " notifications from " + str(current_saved_tc) + " to " + text_channel)
+        await message.channel.send("You successfully moved " + category + " notifications from "
+                                   + str(current_saved_tc) + " to " + text_channel + ". I will send a message to this "
+                                                                                     "channel to start the thread.")
+        name = 'Text Channels'  # This will go under the default category
+        cat = discord.utils.get(message.guild.categories, name=name)
+        await message.guild.create_text_channel(text_channel, category=cat)
+
+        #channel_id = discord.utils.get(message.guild.channels, name=text_channel)
+        #print(channel_id)
+        channel_id = 0
+        for channel in message.guild.text_channels:
+            print(channel)
+            print(channel.id)
+            channel_id = channel.id
+
+        send_message_to_channel = client.get_channel(channel_id)
+        await send_message_to_channel.send("Hello! This thread will hold notifications about " + category)
         return
 
 # Now to actually run the bot!
