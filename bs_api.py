@@ -110,6 +110,17 @@ class BSAPI():
         return self.__process_api_json("get_submissions_for_dropbox_folder", url)
     
     '''
+        Retrieves all users enrolled in the specified org unit. 
+        
+        course_id: ID of the course that the user is enrolled in.
+
+        return: JSON array of ClasslistUser data blocks.
+    '''
+    def get_enrolled_users_for_org_unit(self, course_id):
+        url = self._API_URL_PREFIX + "le/1.41/{course_id}/classlist/".format(course_id=course_id)
+        return self.__process_api_json("get_enrolled_users_for_org_unit", url)
+
+    '''
         Pulls the number of scheduled items with a list of given course_ids and start_date and end_date. 
 
         course_ids: the list of course_ids
