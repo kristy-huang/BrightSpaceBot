@@ -303,6 +303,31 @@ class BSUtilities():
         else: output = "ERROR: Please make sure the course you have specified is spelled correctly and is a course that you are currently enrolled in."
         return output
     
+    '''
+        This function tries to search for an inputted student name in a given class.  
+        
+        returns: True or False. True if the student is listed in the list of users for a class, or False otherwise.
+    '''
+
+    def search_for_student_in_class(self, course_name, student_name):
+
+        #course_name_str = str(course_name.content)
+        student_name_str = str(student_name.content)
+        course_ID = self.find_course_ID(course_name)
+        if course_ID is not None:
+            classlist_user_blocks = self._bsapi.get_enrolled_users_for_org_unit(course_ID)
+            for classlist_user in classlist_user_blocks:
+                #display_name  = classlist_user["DisplayName"]
+                first_name = classlist_user["FirstName"]
+                last_name = classlist_user["LastName"]
+                current_name = first_name + " " + last_name
+                if current_name.lower() == student_name_str.lower():
+                    return True
+        else:
+            output = "ERROR: Please make sure the course you have specified is spelled correctly and is a course that you are currently enrolled in."
+            return output
+        
+        return False
     
     '''
         This is a helper function for get_upcoming_quizzes(). It is used to determine whether a given 
