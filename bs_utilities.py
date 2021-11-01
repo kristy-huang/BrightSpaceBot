@@ -235,11 +235,7 @@ class BSUtilities():
         enrolled_courses = self.get_classes_enrolled()
         for course in enrolled_courses:
             class_name = str(course)
-            #print(class_name)
-            #print(type(class_name))
-            #print("The current courseID from enrolled_courses is ", enrolled_courses[course])
             if class_name.__contains__(course_name_str):
-              #print(course)
               return enrolled_courses[course]    
         
         return None
@@ -269,13 +265,14 @@ class BSUtilities():
     '''
     
     def get_feedback(self, submissions_arr):
-        x = 1
-        for entity_dropbox in submissions_arr:
-            entity = entity_dropbox['Entity']
-            display_name = entity['DisplayName']
-            print(display_name)
-            print (x)
-            x+=1
+        entity_dropbox = submissions_arr[0]
+        feedback_block  = entity_dropbox["Feedback"]
+        if feedback_block is not None:
+            feedback = feedback_block["Feedback"]
+            if feedback is not None:
+                feedback_text = feedback["Text"]
+                return feedback_text
+
         return None
 
     '''
@@ -284,18 +281,27 @@ class BSUtilities():
         returns: String of feedback, or NULL if there is no feedback, or error message if parameters are incorrect. 
     '''
 
-    def get_assignment_feedback(self, course_name, assignment_name):
+   def get_assignment_feedback(self, course_name, assignment_name):
         course_ID = self.find_course_ID(course_name)
         if course_ID is not None:
             dropbox_folders = self._bsapi.get_dropbox_folders_for_org_unit(course_ID)
             folder_ID = self.get_folder_ID_from_dropbox(dropbox_folders, assignment_name)
             if folder_ID is not None:
-                submissions_arr = self._bsapi.get_submissions_for_dropbox_folder(course_ID, folder_ID)
+                submissions_arr = self._bsapi.get_submissions_for_dropbox_folder(course_ID, folder_ID)      #JSON array of EntityDropbox structures
                 if submissions_arr is not None:
                     feedback = self.get_feedback(submissions_arr)
+                    if feedback is not None:
+                        return feedback
+                    else:
+                        output = "BOT REPORT: No feedback has been provided for this assignment."
+                else:
+                    output = "BOT REPORT: Either there are no submissions for this assignment to extract feedback, or I do not have permission to access these submissions."
+            else:
+                output = "ERROR: Please make sure the assignment you have specified is spelled correctly and exists."
+                return output
 
-        
-        return
+        else: output = "ERROR: Please make sure the course you have specified is spelled correctly and is a course that you are currently enrolled in."
+        return output
     
     
     '''
