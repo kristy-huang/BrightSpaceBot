@@ -247,6 +247,31 @@ async def on_message(message):
         
         return
 
+    #enable the user to search for a specific student in a class.
+    elif message.content.startswith("search for student"):
+        await message.channel.send("Please provide the course in which you want to search \n")
+        def author_check(m):
+            return m.author == message.author
+        course_name = await client.wait_for('message', check=author_check)
+        await message.channel.send("Please provide the full name (First Name + Last Name, e.g 'Shaun Thomas') of the student you would like to search for.\n")
+        student_name = await client.wait_for('message', check=author_check)
+
+        course_name_str = str(course_name.content)
+        student_name_str = str(student_name.content)
+
+        output = BS_UTILS.search_for_student_in_class(course_name, student_name)
+
+        #if BS_UTILS.search_for_student_in_class(course_name, student_name):
+        if output:
+            await message.channel.send(student_name_str + " is a student in " + course_name_str)
+        else:
+            await message.channel.send(student_name_str + " is not a student in " + course_name_str)
+        
+
+        #print(course_name)
+        #print(student_name)
+        return
+       
     # get upcoming quizzes across all classes
     elif message.content.startswith("get upcoming quizzes"):
         upcoming_quizzes = BS_UTILS.get_upcoming_quizzes()
