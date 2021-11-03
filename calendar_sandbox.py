@@ -28,11 +28,12 @@ def main():
         start = event['start'].get('dateTime', event['start'].get('date'))
         print(start, event['summary'])
 
+
 def create_event(eventTitle, eventDescrp, startTime, endTime):
     eventBody = {"summary": eventTitle,
                  "description": eventDescrp,
-                 "start": {"dateTime": startTime, "timeZone": 'Asia/Kolkata'},
-                 "end": {"dateTime": endTime, "timeZone": 'Asia/Kolkata'},
+                 "start": {"dateTime": startTime, "timeZone": 'Europe/London'},
+                 "end": {"dateTime": endTime, "timeZone": 'Europe/London'},
                  "colorId": "1"}
     event_result = service.events().insert(calendarId='primary', body=eventBody).execute()
 
@@ -49,11 +50,21 @@ def colors():
     print("---")
     print(colors['event'])
 
-if __name__ == '__main__':
-   d = datetime.now().date()
-   tomorrow = datetime(d.year, d.month, d.day, 10) + timedelta(days=1)
-   start = tomorrow.isoformat()
-   end = (tomorrow + timedelta(hours=1)).isoformat()
 
-   create_event("Testing event", "You have an assignment due bro", start, end)
-   colors()
+if __name__ == '__main__':
+    c = "2021-11-06T03:58:00.000Z"
+    d = datetime.now().date()
+    tomorrow = datetime.fromisoformat(c[:-1])
+    start = tomorrow.isoformat()
+    end = (tomorrow + timedelta(hours=1)).isoformat()
+
+    #create_event("DUE: ", "You have an assignment due bro", start, end)
+    colors()
+    #service.events().delete(calendarId='primary', eventId='0vlnbnun5mru0n8gjr38rkrvm4').execute() # to delete an event
+
+    #event = service.events().get(calendarId='primary', eventId='eventId').execute()
+    events = service.events().list(calendarId='primary', q='DUE: adkfjadl').execute()
+    for event in events['items']:
+        print(event["id"])
+        print(event["summary"])
+

@@ -614,4 +614,20 @@ class BSUtilities():
         return yourTotal, classTotal
 
 
+    def process_upcoming_dates(self, upcoming_list):
+        due = []
+        current_utc = datetime.datetime.utcnow()
+        for assignment in upcoming_list:
+            date = assignment[1]
+            if date is not None:
+                date = datetime.datetime.fromisoformat(date[:-1])
+                diff = date - current_utc
+                if diff.days >= 0:
+                  due.append(assignment)
+        return due
+                # print(diff.days)
+
+
+
+
 
