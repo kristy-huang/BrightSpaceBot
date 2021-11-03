@@ -1,6 +1,10 @@
-
 database/db_config.py
 test.py
 config.py
 discord_config.py
 db_config.py
+client_secret.json
+**/__pycache__
+token files
+**/__pycache__/
+token_calendar_v3.pickle
