@@ -5,3 +5,4 @@ test.py
 discord_config.py
 client_secret.json
 **/__pycache__
+**/__pycache__/
