@@ -19,6 +19,7 @@ pymysql = "*"
 lxml = "*"
 discord = "*"
 pydrive = "*"
+requests = "*"
 
 [dev-packages]
 
