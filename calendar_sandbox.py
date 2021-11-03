@@ -29,13 +29,13 @@ def main():
         print(start, event['summary'])
 
 
-def create_event(eventTitle, eventDescrp, startTime, endTime):
+def create_event(s, eventTitle, eventDescrp, startTime, endTime):
     eventBody = {"summary": eventTitle,
                  "description": eventDescrp,
                  "start": {"dateTime": startTime, "timeZone": 'Europe/London'},
                  "end": {"dateTime": endTime, "timeZone": 'Europe/London'},
                  "colorId": "1"}
-    event_result = service.events().insert(calendarId='primary', body=eventBody).execute()
+    event_result = s.events().insert(calendarId='primary', body=eventBody).execute()
 
     print("created event")
     print("id: ", event_result['id'])
@@ -58,13 +58,15 @@ if __name__ == '__main__':
     start = tomorrow.isoformat()
     end = (tomorrow + timedelta(hours=1)).isoformat()
 
-    #create_event("DUE: ", "You have an assignment due bro", start, end)
+    create_event(service, "DUE ", "You have an assignment due bro", start, end)
     colors()
     #service.events().delete(calendarId='primary', eventId='0vlnbnun5mru0n8gjr38rkrvm4').execute() # to delete an event
 
     #event = service.events().get(calendarId='primary', eventId='eventId').execute()
-    events = service.events().list(calendarId='primary', q='DUE: adkfjadl').execute()
-    for event in events['items']:
-        print(event["id"])
-        print(event["summary"])
+    # events = service.events().list(calendarId='primary', q='DUE: adkfjadl').execute()
+    # for event in events['items']:
+    #     print(event["id"])
+    #     print(event["summary"])
+    #     print("ends at: ", event['end']['dateTime'])
+
 
