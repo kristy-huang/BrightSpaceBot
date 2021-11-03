@@ -5,7 +5,7 @@ from discord.ext import tasks, commands
 import asyncio
 from file_storage import *
 import datetime
-import threading
+import re
 
 from bs_utilities import BSUtilities
 import threading
@@ -547,6 +547,7 @@ async def on_message(message):
         await message.channel.send("Which course link do you need? Type \'All\' or specific course links")
         await message.channel.send("ex) CS 180,CS 240 or All")
         reply_back = ""
+        cannot_find_courses = ""
 
         # check function for client.wait_for
         def check(msg):
@@ -557,15 +558,41 @@ async def on_message(message):
             user_reply = await client.wait_for('message', check=check, timeout=60)
 
             # different user_request options
+            # 'All'
             if user_reply.content.startswith("All"):
                 reply_back += "The followings are the links to course homepages\n"
                 for course_name, course_url in user_course_urls.items():
                     reply_back += "{course_name}: {url}\n".format(course_name=course_name,
                                                                 url=course_url)
-                print(reply_back)
+            else:
+                user_requests = user_reply.content.split(",")
+                for requested_course in user_requests:
+                    for course_name, course_url in user_course_urls.items():
+                        if requested_course in course_name:
+                            reply_back += "{course_name}: {url}\n".format(course_name=course_name,
+                                                                url=course_url)
+                        continue
+                    if requested_course not in reply_back:
+                        cannot_find_courses += "{course_name}\t".format(course_name=requested_course)
+
+            # send the reply back
+            if not reply_back == "":
                 await message.channel.send(reply_back)
-            # else:
-            #     await message.channel.send("We are adjusting this function at the moment")
+                if not cannot_find_courses == "":
+                    await message.channel.send("These are courses that I couldn't find:")
+                    await message.channel.send(cannot_find_courses)
+            else:
+                await message.channel.send("Sorry, we couldn't find the matching courses.")
+                await message.channel.send("Please check if they are valid courses.")
+
+                # home page vary by campus location
+                # West Lafayette: 6824
+                # Fort Wayne: 6822
+                # Northwest: 6823
+                await message.channel.send("Here is the home page default link: https://purdue.brightspace.com/d2l/home")
+                # user_info = BS_UTILS._bsapi.get_user_info()
+                # print(user_info)
+                return
 
         except asyncio.TimeoutError:
             await message.channel.send("Timeout ERROR has occurred. Please try the query again.")
