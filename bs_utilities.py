@@ -281,7 +281,7 @@ class BSUtilities():
         returns: String of feedback, or NULL if there is no feedback, or error message if parameters are incorrect. 
     '''
 
-   def get_assignment_feedback(self, course_name, assignment_name):
+    def get_assignment_feedback(self, course_name, assignment_name):
         course_ID = self.find_course_ID(course_name)
         if course_ID is not None:
             dropbox_folders = self._bsapi.get_dropbox_folders_for_org_unit(course_ID)
@@ -742,8 +742,49 @@ class BSUtilities():
         for x in sorted_grade_frac:
             if not x == 0:
                 course_priority.append(class_names[grades_frac.index(x)])
-            else:
-                missing_grade_courses.append(class_names[grades_frac.index(x)])
+
+        for x in class_names:
+            if not x in course_priority:
+                missing_grade_courses.append(x)
+
         # print(course_priority)
 
         return course_priority, missing_grade_courses
+
+    def get_course_by_duedate(self):
+        # list of courses by earliest due dates
+        course_priority = []
+
+        # getting enrolled classes
+        user_classes = self.get_classes_enrolled()
+
+        # get today's date
+        # today gives you the time accordingly to the timezone
+        # utcnow gives you the time from utc + 0
+        today = datetime.datetime.today()
+        today = today.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        print(today)
+        # year_lastday = today + datetime.timedelta(days=365)
+        # year_lastday = year_lastday.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        # print(year_lastday)
+
+        # get all calendar due dates
+        test = self.get_events_by_type(today, None, 6)
+        print(test)
+        # for x in test:
+        #     print(x)
+
+        return
+
+    def get_course_url(self):
+        # url format: purdue.brightspace.com/d2l/home/{course_id}
+        course_urls = []
+
+        # get user enrolled classes
+        user_classes = self.get_classes_enrolled()
+
+        for course_name, course_id in user_classes.items():
+            course_home_page = "https://purdue.brightspace.com/d2l/home/{course_id}".format(course_id=course_id)
+            course_urls.append({'course name': course_name,
+                                'url': course_home_page})
+        return course_urls

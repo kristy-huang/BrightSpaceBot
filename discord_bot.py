@@ -526,7 +526,7 @@ async def on_message(message):
                 # api call for due dates
                 await message.channel.send("Setting course priority by upcoming due dates ...")
 
-
+                due_dates = BS_UTILS.get_course_by_duedate()
 
                 await message.channel.send("Sorry we are adjusting function at the moment, please try it next time")
             else:
@@ -537,6 +537,36 @@ async def on_message(message):
             await message.channel.send("Timeout ERROR has occurred. Please try the query again.")
             return
 
+        return
+
+    elif message.content.startswith("course link"):
+        # get user course urls in advance
+        user_course_urls = BS_UTILS.get_course_url()
+        print(user_course_urls)
+
+        # bot asks user for specific input
+        await message.channel.send("Which course link do you need? Type \'All\' or specific course links")
+        await message.channel.send("ex) CS 180,CS 240 or All")
+
+        # check function for client.wait_for
+        def check(msg):
+            return msg.author == message.author
+
+        try:
+            # get user reply back
+            user_reply = client.wait_for('message', check=check)
+
+            # split user reply for multiple requests
+            user_requests = user_reply.split(",")
+
+            # different user_request options
+            if user_reply == "All":
+                reply_back = ""
+                # for course_url in user_course_urls:
+                #    reply_back += user_co
+
+        except asyncio.TimeoutError:
+            await message.channel.send("Timeout ERROR has occurred. Please try the query again.")
         return
 
 # Now to actually run the bot!
