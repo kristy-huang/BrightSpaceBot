@@ -5,13 +5,12 @@ from discord.ext import tasks, commands
 import asyncio
 from file_storage import *
 import datetime
-import threading
-
 from bs_api import BSAPI
 from bs_utilities import BSUtilities
-import threading
 from database.db_utilities import DBUtilities
 from bot_responses import BotResponses
+from Google import Create_Service
+from calendar_sandbox import create_event
 
 '''
 To add the bot to your own server and test it out, copy this URL into your browser
@@ -49,7 +48,7 @@ async def quit(ctx):
 
 # looping every day
 # change parameter to minutes=1 and see it happen every minute
-@tasks.loop(minutes=1)
+@tasks.loop(seconds=30)
 async def notification_loop():
     if not SCHEDULED_HOURS:
         return
@@ -76,6 +75,15 @@ async def notification_loop():
         next_notification = datetime.datetime.combine(now.date(), s_hour)
         if next_notification.hour == now.hour and next_notification.minute == now.minute:
             await send_notifications()
+
+    # Syncing the calendar daily (so it can get the correct changes)
+
+    # c = "2021-11-06T03:58:00.000Z"
+    # tomorrow = datetime.datetime.fromisoformat(c[:-1])
+    # start = tomorrow.isoformat()
+    # end = (tomorrow + datetime.timedelta(hours=1)).isoformat()
+    # print("creating event...")
+    # create_event(service, "Testing", "You have an assignment due bro", start, end)
 
 
 # TODO: stop notifying immediately after running program.
