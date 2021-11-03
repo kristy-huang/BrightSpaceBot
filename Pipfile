@@ -19,6 +19,7 @@ pymysql = "*"
 lxml = "*"
 discord = "*"
 pydrive = "*"
+google-auth-oauthlib = "*"
 
 [dev-packages]
 
