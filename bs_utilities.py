@@ -2,6 +2,7 @@ import json
 from bs_api import BSAPI
 
 import datetime
+from datetime import date
 import urllib.parse
 import os
 from pathlib import Path
@@ -751,12 +752,55 @@ class BSUtilities():
 
         return course_priority, missing_grade_courses
 
+    def get_current_semester_courses(self):
+        # new dictionary of courses for current semester
+        current_enrolled_courses = {}
+
+        # user enrolled courses
+        # this might include courses that do not have end dates
+        # for instance, training courses or supplemental instructions
+        user_enrolled_course = self.get_classes_enrolled()
+
+        # current_semester will either be Fall, Sprint, or Summer accordingly to the date
+        current_semester = ""
+
+        # pin point for getting current semester
+        current_date = datetime.datetime.today()
+
+        # get current month, day from current date
+        current_month = current_date.month
+        current_day = current_date.day
+
+        # Fall semester always start at the 4th Monday[19-25] of August
+        # Spring semester always start at January
+        # Summer semester always start at June until first week of August
+        if current_month == 8:
+            if current_day <= 15:
+                current_semester = "Summer"
+            else:
+                current_semester = "Fall"
+        elif 9 <= current_month:
+            current_semester = "Fall"
+        elif 6 <= current_month:
+            current_semester = "Summer"
+        elif 1 <= current_month:
+            current_semester = "Spring"
+
+        current_semester += " "
+        current_semester += current_date.strftime("%Y")
+
+        for name, course_id in user_enrolled_course.items():
+            if current_semester in name:
+                current_enrolled_courses[name] = course_id
+
+        return current_enrolled_courses
+
     def get_course_by_duedate(self):
         # list of courses by earliest due dates
         course_priority = []
 
         # getting enrolled classes
-        user_classes = self.get_classes_enrolled()
+        user_classes = self.get_current_semester_courses()
 
         # get today's date
         # today gives you the time accordingly to the timezone
@@ -777,14 +821,14 @@ class BSUtilities():
         return
 
     def get_course_url(self):
-        # url format: purdue.brightspace.com/d2l/home/{course_id}
-        course_urls = []
+        # url dictonary format: purdue.brightspace.com/d2l/home/{course_id}
+        course_urls = {}
 
         # get user enrolled classes
-        user_classes = self.get_classes_enrolled()
+        user_classes = self.get_current_semester_courses()
 
         for course_name, course_id in user_classes.items():
             course_home_page = "https://purdue.brightspace.com/d2l/home/{course_id}".format(course_id=course_id)
-            course_urls.append({'course name': course_name,
-                                'url': course_home_page})
+            course_urls[course_name] = course_home_page
+
         return course_urls

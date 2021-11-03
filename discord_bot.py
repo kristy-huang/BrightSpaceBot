@@ -542,11 +542,11 @@ async def on_message(message):
     elif message.content.startswith("course link"):
         # get user course urls in advance
         user_course_urls = BS_UTILS.get_course_url()
-        print(user_course_urls)
 
         # bot asks user for specific input
         await message.channel.send("Which course link do you need? Type \'All\' or specific course links")
         await message.channel.send("ex) CS 180,CS 240 or All")
+        reply_back = ""
 
         # check function for client.wait_for
         def check(msg):
@@ -554,16 +554,18 @@ async def on_message(message):
 
         try:
             # get user reply back
-            user_reply = client.wait_for('message', check=check)
-
-            # split user reply for multiple requests
-            user_requests = user_reply.split(",")
+            user_reply = await client.wait_for('message', check=check, timeout=60)
 
             # different user_request options
-            if user_reply == "All":
-                reply_back = ""
-                # for course_url in user_course_urls:
-                #    reply_back += user_co
+            if user_reply.content.startswith("All"):
+                reply_back += "The followings are the links to course homepages\n"
+                for course_name, course_url in user_course_urls.items():
+                    reply_back += "{course_name}: {url}\n".format(course_name=course_name,
+                                                                url=course_url)
+                print(reply_back)
+                await message.channel.send(reply_back)
+            # else:
+            #     await message.channel.send("We are adjusting this function at the moment")
 
         except asyncio.TimeoutError:
             await message.channel.send("Timeout ERROR has occurred. Please try the query again.")
