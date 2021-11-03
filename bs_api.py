@@ -340,3 +340,21 @@ class BSAPI():
 
         return grade_received, total
 
+    def get_upcoming_assignments(self, course_id):
+        url = self._API_URL_PREFIX + "le/1.38/{course_id}/dropbox/folders/".format(course_id=course_id)
+        upcoming = self.__process_api_json("get_upcoming_assignments", url)
+        if upcoming is None:
+            return []
+        due = []
+        for assignment in upcoming:
+            if assignment["DueDate"] is None:
+                l = [assignment["Name"], None]
+            else:
+                l = [assignment["Name"], assignment["DueDate"]]
+            due.append(l)
+        return due
+
+
+
+
+
