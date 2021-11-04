@@ -68,6 +68,19 @@ async def notification_loop():
                 cal.insert_event(event_title, description, start, end)
     print("inserting into calendar is finished...")
 
+    # Syncing the calendar daily (so it can get the correct changes)
+    quizzes = BS_UTILS.get_all_upcoming_quizzes()
+    for quiz in quizzes:
+        cal = Calendar()
+        event_title = f"QUIZ DUE: {quiz['quiz_name']} ({quiz['course_id']})"
+        description = f"{quiz['quiz_name']} for {quiz['course_name']} is due. Don't forget to submit it!"
+        date = datetime.datetime.fromisoformat(quiz['due_date'][:-1])
+        end = date.isoformat()
+        start = (date - datetime.timedelta(hours=1)).isoformat()
+        # inserting event
+        cal.insert_event(event_title, description, start, end)
+    print("inserting into calendar is finished...")
+
     if not SCHEDULED_HOURS:
         return
 
