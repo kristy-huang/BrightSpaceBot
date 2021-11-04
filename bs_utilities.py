@@ -257,7 +257,7 @@ class BSUtilities():
         enrolled_courses = self.get_classes_enrolled()
         for course in enrolled_courses:
             class_name = str(course)
-            if class_name.__contains__(course_name_str):
+            if class_name.__contains__(course_name_str.upper()):
               return enrolled_courses[course]    
         
         return None
