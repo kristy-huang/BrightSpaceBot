@@ -56,7 +56,7 @@ if __name__ == '__main__':
     d = datetime.now().date()
     tomorrow = datetime.fromisoformat(c[:-1])
     start = tomorrow.isoformat()
-    end = (tomorrow + timedelta(hours=1)).isoformat()
+    end = (tomorrow + timedelta(minutes=2)).isoformat()
 
     create_event(service, "DUE ", "You have an assignment due bro", start, end)
     colors()
