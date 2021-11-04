@@ -252,7 +252,7 @@ class BSUtilities():
 
     '''
     
-   def find_course_ID(self, course_name_str):
+    def find_course_ID(self, course_name_str):
         #course_name_str = str(course_name.content)
         enrolled_courses = self.get_classes_enrolled()
         for course in enrolled_courses:
@@ -303,7 +303,7 @@ class BSUtilities():
         returns: String of feedback, or NULL if there is no feedback, or error message if parameters are incorrect. 
     '''
 
-   def get_assignment_feedback(self, course_name_str, assignment_name_str):
+    def get_assignment_feedback(self, course_name_str, assignment_name_str):
         course_ID = self.find_course_ID(course_name_str)
         if course_ID is not None:
             dropbox_folders = self._bsapi.get_dropbox_folders_for_org_unit(course_ID)

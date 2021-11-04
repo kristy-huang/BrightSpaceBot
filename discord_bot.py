@@ -246,6 +246,9 @@ async def on_message(message):
         await message.channel.send("Logging in to BrightSpace...")
         BS_UTILS.set_session_auto(DB_UTILS, author_id_to_username_map[message.author.id])
 
+        if BS_UTILS.check_connection():
+            await message.channel.send("Login successed!")
+
         while not BS_UTILS.check_connection():
             await message.channel.send("Connection failed. Please check your internet connect and cridentials. \n Do you want to reset your BS cridentials, or retry to login?")
             res = await recieve_response()
@@ -569,6 +572,7 @@ async def on_message(message):
             await message.channel.send(string)
             return
 
+
     elif message.content.startswith("update schedule"):
 
         if message.author.id not in author_id_to_username_map:
@@ -817,7 +821,6 @@ async def on_message(message):
             await message.channel.send(f"No changes are made to your schedule.")
 
 
-
     elif message.content.startswith("delete noti"):     
         if message.author.id not in author_id_to_username_map:
             await request_username_password()
@@ -959,8 +962,6 @@ async def on_message(message):
                 
             await message.channel.send(msg)
 
-
-
     elif message.content.startswith("download: "):
         course = message.content.split(":")[1]
         storage_path = DB_UTILS._mysql.general_command("SELECT STORAGE_PATH from USERS WHERE FIRST_NAME = 'Raveena';")
@@ -1015,7 +1016,7 @@ async def on_message(message):
                 await message.channel.send("Setting course priority by upcoming due dates ...")
 
                 due_dates = BS_UTILS.get_course_by_duedate()
-                print(due_dates)
+                #print(due_dates)
 
                 await message.channel.send("Sorry we are adjusting function at the moment, please try it next time")
             else:
