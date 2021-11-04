@@ -510,7 +510,7 @@ async def on_message(message):
                 for x in range(0, len(priority)):
                     suggested_course_priority += priority[x]
                     if not x == len(priority) - 1:
-                        suggested_course_priority += " >> "
+                        suggested_course_priority += " << "
 
                 found_missing_grade_courses = ""
                 for x in range(0, len(missing)):
@@ -518,7 +518,8 @@ async def on_message(message):
                     if not x == len(missing) - 1:
                         found_missing_grade_courses += " , "
 
-                await message.channel.send("The suggested course priority is:\n" + suggested_course_priority)
+                await message.channel.send("The suggested course priority is (highest grade << lowest grade):\n"
+                                           + suggested_course_priority)
                 await message.channel.send("There are some courses that miss final grades:\n"
                                            + found_missing_grade_courses)
 
@@ -527,6 +528,7 @@ async def on_message(message):
                 await message.channel.send("Setting course priority by upcoming due dates ...")
 
                 due_dates = BS_UTILS.get_course_by_duedate()
+                print(due_dates)
 
                 await message.channel.send("Sorry we are adjusting function at the moment, please try it next time")
             else:
@@ -560,7 +562,7 @@ async def on_message(message):
             # different user_request options
             # 'All'
             if user_reply.content.startswith("All"):
-                reply_back += "The followings are the links to course homepages\n"
+                reply_back += "The followings are the links to your course homepages\n"
                 for course_name, course_url in user_course_urls.items():
                     reply_back += "{course_name}: {url}\n".format(course_name=course_name,
                                                                 url=course_url)
@@ -581,6 +583,7 @@ async def on_message(message):
                 if not cannot_find_courses == "":
                     await message.channel.send("These are courses that I couldn't find:")
                     await message.channel.send(cannot_find_courses)
+                    await message.channel.send("Please check if they are valid course(s)")
             else:
                 await message.channel.send("Sorry, we couldn't find the matching courses.")
                 await message.channel.send("Please check if they are valid courses.")
@@ -589,7 +592,8 @@ async def on_message(message):
                 # West Lafayette: 6824
                 # Fort Wayne: 6822
                 # Northwest: 6823
-                await message.channel.send("Here is the home page default link: https://purdue.brightspace.com/d2l/home")
+                await message.channel.send("Here is the home page default link: " +
+                                           "https://purdue.brightspace.com/d2l/home/6824")
                 # user_info = BS_UTILS._bsapi.get_user_info()
                 # print(user_info)
                 return
