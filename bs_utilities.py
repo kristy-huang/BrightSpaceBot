@@ -842,33 +842,30 @@ class BSUtilities():
 
         return current_enrolled_courses
 
-    def get_course_by_duedate(self):
+    def get_course_by_due_date(self):
         # list of courses by earliest due dates
         course_priority = []
 
         # getting enrolled classes
         user_classes = self.get_current_semester_courses()
 
-        # get today's date
-        # today gives you the time accordingly to the timezone
-        # utcnow gives you the time from utc + 0
-        today = datetime.datetime.today()
-        today = today.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
-        print(today)
-        # year_lastday = today + datetime.timedelta(days=365)
-        # year_lastday = year_lastday.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
-        # print(year_lastday)
+        course_events = []
+        for name, id in user_classes.items():
+            course_events = self._bsapi.get_course_all_events(id)
+            end_dates = []
+            event_names = []
+            for event in course_events:
+                event_names.append(event["Title"])
+                end_dates.append(event["EndDateTime"])
+            print(name)
+            print(event_names)
+            print(end_dates)
+            print()
 
-        # get all calendar due dates
-        test = self.get_events_by_type(today, None, 6)
-        print(test)
-        # for x in test:
-        #     print(x)
-
-        return
+        return course_priority
 
     def get_course_url(self):
-        # url dictonary format: purdue.brightspace.com/d2l/home/{course_id}
+        # url dictionary format: purdue.brightspace.com/d2l/home/{course_id}
         course_urls = {}
 
         # get user enrolled classes

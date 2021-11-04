@@ -316,7 +316,7 @@ class BSAPI():
         returns: This action returns a JSON array of EventDataInfo data blocks.
     '''
 
-    def get_course_all_events_(self, course_id):
+    def get_course_all_events(self, course_id):
         url = self._API_URL_PREFIX
         url += "le/1.38/{course_id}/calendar/events/".format(course_id=course_id)
 
