@@ -409,7 +409,7 @@ async def on_message(message):
         return
 
     # get feedback on assignment.
-   elif message.content.startswith("get assignment feedback"):
+    elif message.content.startswith("get assignment feedback"):
         await message.channel.send("Please provide the Course name (for ex, NUTR 303) \n")
         def author_check(m):
             return m.author == message.author
@@ -737,7 +737,6 @@ async def on_message(message):
 
             await message.channel.send("Schedule modified.")
 
-
         async def brand_new():
             await message.channel.send(f"Do you want to add to your current schedule or build a brand new one?")
 
@@ -765,7 +764,6 @@ async def on_message(message):
             await message.channel.send("I am not sure about what you want to do")
             return 
 
-        
     elif message.content.startswith("update type"):
         current_times = DB_UTILS.get_notifictaion_schedule_with_description(author_id_to_username_map[message.author.id])
         
@@ -829,7 +827,6 @@ async def on_message(message):
         else:
             await message.channel.send(f"No changes are made to your schedule.")
 
-
     elif message.content.startswith("delete noti"):     
         if message.author.id not in author_id_to_username_map:
             await request_username_password()
@@ -839,7 +836,6 @@ async def on_message(message):
         if not current_times:
             await message.channel.send("You don't have any scheduled times now.")
             return
-
 
         async def delete_all():
             await message.channel.send("Are you sure to delete all of your scheduled times?")
@@ -893,8 +889,7 @@ async def on_message(message):
             await delete_all() 
         else:
             await delete_some()
-    
-    
+
     elif message.content.startswith("check noti"):
         if message.author.id not in author_id_to_username_map:
             await request_username_password()
@@ -1024,7 +1019,7 @@ async def on_message(message):
                 # api call for due dates
                 await message.channel.send("Setting course priority by upcoming due dates ...")
 
-                due_dates = BS_UTILS.get_course_by_duedate()
+                due_dates = BS_UTILS.get_course_by_due_date()
                 #print(due_dates)
 
                 await message.channel.send("Sorry we are adjusting function at the moment, please try it next time")
