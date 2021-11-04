@@ -14,6 +14,7 @@ from bs_utilities import BSUtilities
 import threading
 from database.db_utilities import DBUtilities
 from Authentication import setup_automation
+from werkzeug.security import generate_password_hash
 
 '''
 To add the bot to your own server and test it out, copy this URL into your browser
@@ -233,8 +234,8 @@ async def on_message(message):
         
         db_res = DB_UTILS.get_bs_username_pin(author_id_to_username_map[message.author.id])
         
-
-        while not db_res:
+        #print(db_res)
+        while not db_res or not db_res[0][0]:
             await message.channel.send("Setting up auto login...")
             await connect_bs_to_discord()
             db_res = DB_UTILS.get_bs_username_pin(author_id_to_username_map[message.author.id])
@@ -409,7 +410,7 @@ async def on_message(message):
         return
 
     # get feedback on assignment.
-   elif message.content.startswith("get assignment feedback"):
+    elif message.content.startswith("get assignment feedback"):
         await message.channel.send("Please provide the Course name (for ex, NUTR 303) \n")
         def author_check(m):
             return m.author == message.author
@@ -584,9 +585,6 @@ async def on_message(message):
 
     elif message.content.startswith("update schedule"):
 
-        if message.author.id not in author_id_to_username_map:
-            await request_username_password()
-   
         async def everyday():
             new_time = None
             while not new_time:
@@ -738,29 +736,56 @@ async def on_message(message):
             await message.channel.send("Schedule modified.")
 
 
-        async def brand_new():
+        async def check_replace(noti_func):
             await message.channel.send(f"Do you want to add to your current schedule or build a brand new one?")
 
             res = await recieve_response()
             if "new" in res.content:
-                DB_UTILS.clear_notification_schedule(author_id_to_username_map[message.author.id])
-                await message.channel.send(f"Old schedules are deleted.")
+                curr_username = author_id_to_username_map[message.author.id]
+                DB_UTILS.clear_notification_schedule(curr_username)
+                
+                # moves all old schedules to a temp username
+                temp_username = curr_username + "_temp!"
+                DB_UTILS.change_username("NOTIFICATION_SCHEDULE", curr_username, temp_username)
+
+                await noti_func()
+
+                old_schedules = DB_UTILS.get_notifictaion_schedule_with_description(temp_username)
+                msg = "Old schedules:\n"
+                for i, time in enumerate(old_schedules):
+                    msg += f"{i + 1}: {time[0]} {time[1]}\n"
+                    
+                new_schedules = DB_UTILS.get_notifictaion_schedule_with_description(curr_username)
+                msg += "\nNew schedules:\n"
+                for i, time in enumerate(new_schedules):
+                    msg += f"{i + 1}: {time[0]} {time[1]}\n"
+
+                msg += "\nDo you want to replace your old schedule with the new one?"
+                await message.channel.send(msg)
+
+                res = await recieve_response()
+                if res.content.startswith("y") or res.content.startswith("right"):
+                    DB_UTILS.clear_notification_schedule(temp_username)
+                else:
+                    DB_UTILS.clear_notification_schedule(curr_username)
+                    DB_UTILS.change_username("NOTIFICATION_SCHEDULE", temp_username, curr_username)
+
+                await message.channel.send("Finished. Please check your schedule with \"check notifications\"")
+            else:
+                await noti_func()
+
 
         await message.channel.send("Do you want your notification to be sent every day, every week, by a specific amount, or according to your class schedule?")
 
         res = await recieve_response()
         if "day" in res.content:
-            await brand_new()
-            await everyday()
+            await check_replace(everyday)
         elif "week" in res.content:
-            await brand_new()
-            await every_week()
+            await check_replace(every_week)
         elif "amount" in res.content:
-            await brand_new()
-            await by_amount()
+            await check_replace(by_amount)
         elif "class" in res.content:
-            await brand_new()
-            await by_class_schedule()
+            await check_replace(by_class_schedule)
         else:
             await message.channel.send("I am not sure about what you want to do")
             return 
@@ -910,10 +935,7 @@ async def on_message(message):
             await message.channel.send(msg)
 
 
-    elif message.content.startswith("update class"):
-        if message.author.id not in author_id_to_username_map:
-            await request_username_password()
-
+    elif message.content.startswith("add class"):
         while True:
             await message.channel.send("What is the class name?")
             res = await recieve_response()

@@ -162,4 +162,10 @@ class DBUtilities():
             return []
 
 
-    
+    def get_discord_user_password(self, username):
+        res = self._mysql.general_command(f"SELECT USERNAME, PASSWORD FROM USERS WHERE USERNAME = \"{username}\"")
+        return res
+
+
+    def change_username(self, table_name, old_username, new_username):
+        res = self._mysql.general_command(f"UPDATE {table_name} SET USERNAME = \"{new_username}\" WHERE USERNAME = \"{old_username}\"")
