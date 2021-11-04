@@ -30,6 +30,7 @@ class BSUtilities():
     def set_session_by_session(self, session):
         self._bsapi.set_session_by_session(session)
 
+
     def set_session(self, username, password):
         self._bsapi.set_session(username, password)
 
@@ -37,6 +38,14 @@ class BSUtilities():
     def session_exists(self):
         return self._bsapi._session != None
 
+
+    def check_connection(self):
+        if not self.session_exists():
+            return False
+
+        a = self._bsapi.get_user_info()
+
+        return True if a else False
 
     '''
         Replaces the BSAPI() object with a new one.

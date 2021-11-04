@@ -155,10 +155,15 @@ def setup_automation(dbu, discord_username, bs_username, bs_pin, url):
         return "Success", True
             
 
+    if not bs_pin.isnumeric() or len(bs_pin) != 4:
+        return "pin format error", False
     try:
         bs_pin = int(bs_pin)
     except:
         return "pin format error", False
+
+    if not bs_username.isalnum():
+        return "username format error", False
 
     '''url = input("enter url")
     bs_username = input("enter BrightSpace username")
