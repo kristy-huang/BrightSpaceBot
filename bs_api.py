@@ -2,6 +2,7 @@ from Authentication import get_brightspace_session
 
 import requests
 import os
+import json
 
 
 class BSAPI():
@@ -343,6 +344,9 @@ class BSAPI():
     def get_upcoming_assignments(self, course_id):
         url = self._API_URL_PREFIX + "le/1.38/{course_id}/dropbox/folders/".format(course_id=course_id)
         upcoming = self.__process_api_json("get_upcoming_assignments", url)
+        #file = open("/Users/raveena/Library/Preferences/PyCharmCE2019.2/scratches/scratch.json")
+        #upcoming = json.load(file)
+        print(upcoming)
         if upcoming is None:
             return []
         due = []
