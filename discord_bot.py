@@ -448,7 +448,7 @@ async def on_message(message):
         if output:
             await message.channel.send(student_name_str + " is a student in " + course_name_str)
         elif output == False:
-            course_id = BS_UTILS.find_course_ID(course_name) 
+            course_id = BS_UTILS.find_course_ID(course_name_str) 
             if course_id is None:
                     await message.channel.send("ERROR: Please make sure the course you have specified is spelled correctly and is a course that you are currently enrolled in.")
             else:
