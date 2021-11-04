@@ -53,17 +53,16 @@ def colors():
 
 if __name__ == '__main__':
     c = "2021-11-06T03:58:00.000Z"
-    d = datetime.now().date()
     tomorrow = datetime.fromisoformat(c[:-1])
-    start = tomorrow.isoformat()
-    end = (tomorrow + timedelta(minutes=2)).isoformat()
+    end = tomorrow.isoformat()
+    start = (tomorrow - timedelta(hours=2)).isoformat()
 
-    create_event(service, "DUE ", "You have an assignment due bro", start, end)
-    colors()
+    #create_event(service, "DUE ", "You have an assignment due bro", start, end)
+    #colors()
     #service.events().delete(calendarId='primary', eventId='0vlnbnun5mru0n8gjr38rkrvm4').execute() # to delete an event
 
     #event = service.events().get(calendarId='primary', eventId='eventId').execute()
-    # events = service.events().list(calendarId='primary', q='DUE: adkfjadl').execute()
+    #events = service.events().list(calendarId='primary', q='').execute()
     # for event in events['items']:
     #     print(event["id"])
     #     print(event["summary"])
