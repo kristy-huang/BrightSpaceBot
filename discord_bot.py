@@ -148,7 +148,7 @@ async def on_message(message):
         return res
 
 
-    async def request_username():
+    async def request_username_password():
         await message.channel.send("What is your username?")
         username = await recieve_response()
         author_id_to_username_map[username.author.id] = username.content
@@ -208,10 +208,6 @@ async def on_message(message):
         return new_time
 
 
-    if message.author.id not in author_id_to_username_map:
-        await request_username()
-
-
     async def connect_bs_to_discord():
         await message.channel.send("boilerkey url...")
 
@@ -225,6 +221,10 @@ async def on_message(message):
         bs_pin = res.content
         status = setup_automation(DB_UTILS, author_id_to_username_map[message.author.id], bs_username, bs_pin, url )
    
+    if message.author.id not in author_id_to_username_map:
+        await request_username_password()
+
+
     # TODO: might have problems with this lock when multiple users are using....
     global login_lock
     if not (BS_UTILS.session_exists() and BS_UTILS.check_connection())and not login_lock:
