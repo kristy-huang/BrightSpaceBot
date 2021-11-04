@@ -635,11 +635,11 @@ class BSUtilities():
         returns: list of QuizReadDate blocks.
     '''
 
-    def get_upcoming_all_quizzes(self):
+    def get_all_upcoming_quizzes(self):
         enrolled_courses = self.get_classes_enrolled()
         print(enrolled_courses)
         upcoming_quizzes = []
-        for course_id in enrolled_courses.values():
+        for course_name, course_id in enrolled_courses.items():
             result = self._bsapi.get_quizzes(course_id)  # returns a list of QuizReadData blocks - dictionaries
             quizzes = result['Objects']
             for quiz in quizzes:  # for each block in the list,
@@ -658,9 +658,12 @@ class BSUtilities():
                     if diff >= -14:
                         data = {
                             "course_id": course_id,
-                            "quiz_name": quiz['Name']
+                            "course_name": course_name,
+                            "quiz_name": quiz['Name'],
+                            "due_date": quiz['DueDate']
                         }
                         # print(data)
+                        # print(datetime.datetime.fromisoformat(quiz['DueDate'][:-1]))
                         upcoming_quizzes.append(data)
         return upcoming_quizzes
 
