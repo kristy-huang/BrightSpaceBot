@@ -52,10 +52,11 @@ def colors():
 
 
 if __name__ == '__main__':
-    c = "2021-11-06T03:58:00.000Z"
+    #c = "2021-11-06T03:59:00.000Z"
+    c = "2021-11-09T04:59:59.000Z"
     tomorrow = datetime.fromisoformat(c[:-1])
     end = tomorrow.isoformat()
-    start = (tomorrow - timedelta(hours=2)).isoformat()
+    start = (tomorrow - timedelta(hours=1)).isoformat()
 
     create_event(service, "DUE ", "You have an assignment due bro", start, end)
     #colors()

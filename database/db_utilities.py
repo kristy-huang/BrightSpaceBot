@@ -136,6 +136,6 @@ if __name__ == '__main__':
     s.use_database("BSBOT")
     print(s.show_table_content("PREFERENCES"))
     DB_USERNAME = "currymaster"
-    sql_command = f"SELECT DEADLINES_TC FROM PREFERENCES WHERE USERNAME = '{DB_USERNAME}';"
+    sql_command = f"SELECT STORAGE_LOCATION FROM PREFERENCES WHERE USERNAME = '{DB_USERNAME}';"
     sql_result = s._mysql.general_command(sql_command)[0][0]
     print(sql_result)
