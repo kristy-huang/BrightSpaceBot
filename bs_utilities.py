@@ -627,7 +627,43 @@ class BSUtilities():
         return due
                 # print(diff.days)
 
+    '''
+        This functions pulls up all of a student's upcoming quizzes across all their
 
+        enrolled classes. 
 
+        returns: list of QuizReadDate blocks.
+    '''
 
+    def get_all_upcoming_quizzes(self):
+        enrolled_courses = self.get_classes_enrolled()
+        print(enrolled_courses)
+        upcoming_quizzes = []
+        for course_name, course_id in enrolled_courses.items():
+            result = self._bsapi.get_quizzes(course_id)  # returns a list of QuizReadData blocks - dictionaries
+            quizzes = result['Objects']
+            for quiz in quizzes:  # for each block in the list,
+                # get today's date
+
+                current_date = datetime.datetime.utcnow()
+
+                if quiz['DueDate'] is not None:
+                    quiz_due_date = datetime.datetime.strptime(quiz['DueDate'], "%Y-%m-%dT%H:%M:%S.%fZ")
+
+                    # find diff between quiz.due date and today
+                    diff = (quiz_due_date - current_date).days
+                    # print(diff)
+                    # for upcoming quizzes due today or later in the future: diff >= 0
+                    # TODO: fix this!!!
+                    if diff >= -14:
+                        data = {
+                            "course_id": course_id,
+                            "course_name": course_name,
+                            "quiz_name": quiz['Name'],
+                            "due_date": quiz['DueDate']
+                        }
+                        # print(data)
+                        # print(datetime.datetime.fromisoformat(quiz['DueDate'][:-1]))
+                        upcoming_quizzes.append(data)
+        return upcoming_quizzes
 
