@@ -130,4 +130,12 @@ class DBUtilities():
         if auto_id_name:
             self.reset_auto_increment(table_name, auto_id_name)
 
-            
+if __name__ == '__main__':
+    s = DBUtilities()
+    s.connect_by_config("db_config.py")
+    s.use_database("BSBOT")
+    print(s.show_table_content("PREFERENCES"))
+    DB_USERNAME = "currymaster"
+    sql_command = f"SELECT DEADLINES_TC FROM PREFERENCES WHERE USERNAME = '{DB_USERNAME}';"
+    sql_result = s._mysql.general_command(sql_command)[0][0]
+    print(sql_result)

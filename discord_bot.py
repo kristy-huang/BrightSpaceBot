@@ -26,7 +26,7 @@ DB_UTILS = DBUtilities()
 BOT_RESPONSES = BotResponses()
 
 SCHEDULED_HOURS = []
-
+DB_USERNAME = 'currymaster'
 
 # Having the bot log in and be online
 @client.event
@@ -47,38 +47,38 @@ async def quit(ctx):
 
 # looping every day
 # change parameter to minutes=1 and see it happen every minute
-@tasks.loop(hours=1)
+@tasks.loop(minutes=1)
 async def notification_loop():
     # Syncing the calendar daily (so it can get the correct changes)
-    classes = BS_UTILS.get_classes_enrolled()
-    #classes = {"EAPS": "336112"}
-    for courseName, courseID in classes.items():
-        assignment_list = BS_UTILS._bsapi.get_upcoming_assignments(courseID)
-        due = BS_UTILS.process_upcoming_dates(assignment_list)
-        if len(due) != 0:
-            # actually dates that are upcoming
-            cal = Calendar()
-            # loop through all the upcoming assignments
-            for assignment in due:
-                # Check if the event exists first by searching by name
-                event_title = f"ASSIGNMENT DUE: {assignment[0]} ({courseID})"
-                description = f"{assignment[0]} for {courseName} is due. Don't forget to submit it!"
-                search_result, end_time = cal.get_event_from_name(event_title)
-                date = datetime.datetime.fromisoformat(assignment[1][:-1])
-                end = date.isoformat()
-                start = (date - datetime.timedelta(hours=1)).isoformat()
-                print("End date from search: " + str(end_time))
-                if search_result != -1:
-                    # it has already been added to the calendar
-                    # see if the end times are different
-                    if end_time != end:
-                        # the due date has been updated, so delete the old event
-                        cal.delete_event(search_result)
-                        cal.insert_event(event_title, description, start, end)
-                else:
-                    # has not been added to calendar, so add normally
-                    # inserting event
-                    cal.insert_event(event_title, description, start, end)
+    # classes = BS_UTILS.get_classes_enrolled()
+    # #classes = {"EAPS": "336112"}
+    # for courseName, courseID in classes.items():
+    #     assignment_list = BS_UTILS._bsapi.get_upcoming_assignments(courseID)
+    #     due = BS_UTILS.process_upcoming_dates(assignment_list)
+    #     if len(due) != 0:
+    #         # actually dates that are upcoming
+    #         cal = Calendar()
+    #         # loop through all the upcoming assignments
+    #         for assignment in due:
+    #             # Check if the event exists first by searching by name
+    #             event_title = f"ASSIGNMENT DUE: {assignment[0]} ({courseID})"
+    #             description = f"{assignment[0]} for {courseName} is due. Don't forget to submit it!"
+    #             search_result, end_time = cal.get_event_from_name(event_title)
+    #             date = datetime.datetime.fromisoformat(assignment[1][:-1])
+    #             end = date.isoformat()
+    #             start = (date - datetime.timedelta(hours=1)).isoformat()
+    #             print("End date from search: " + str(end_time))
+    #             if search_result != -1:
+    #                 # it has already been added to the calendar
+    #                 # see if the end times are different
+    #                 if end_time != end:
+    #                     # the due date has been updated, so delete the old event
+    #                     cal.delete_event(search_result)
+    #                     cal.insert_event(event_title, description, start, end)
+    #             else:
+    #                 # has not been added to calendar, so add normally
+    #                 # inserting event
+    #                 cal.insert_event(event_title, description, start, end)
 
 
     print("inserting into calendar is finished...")
@@ -96,31 +96,56 @@ async def notification_loop():
     #     cal.insert_event(event_title, description, start, end)
     # print("inserting into calendar is finished...")
 
-    if not SCHEDULED_HOURS:
-        return
+    # if not SCHEDULED_HOURS:
+    #     return
 
     # print("called_once_a_day:")
-    async def send_notifications():
-        # print(datetime.datetime.now().hour)
-        message_channel = client.get_channel(channelID)
-        dates = BS_UTILS.get_dict_of_discussion_dates()
-        # dates = DATES
-        string = BS_UTILS.find_upcoming_disc_dates(1, dates)
-        string += BS_UTILS.get_notifications_past_24h()
+    #async def send_notifications():
+    # print(datetime.datetime.now().hour)
+    message_channel = client.get_channel(channelID)
+    dates = BS_UTILS.get_dict_of_discussion_dates()
+    # dates = DATES
+    string = BS_UTILS.find_upcoming_disc_dates(1, dates)
+    string += BS_UTILS.get_notifications_past_24h()
 
-        # print("str: ", string)
+    # Check if the user has a designated text channel for deadline notifications to be sent
+    # print("str: ", string)
+
+    # Check if the database has a value for the deadlines text channel
+
+    channel_id = 0
+    print("hello...")
+    sql_command = f"SELECT DEADLINES_TC FROM PREFERENCES WHERE USERNAME = '{DB_USERNAME}';"
+    sql_result = DB_UTILS._mysql.general_command(sql_command)[0][0]
+    if sql_result is not None:
+        for c in client.get_all_channels():
+            sql_result = sql_result.replace(" ", "-")
+            if c.name == sql_result:
+                channel_id = c.id
+                break
+
+        if len(string) == 0:
+            ## only for debugging ##
+            string = "No posts today"
+        # send the upcoming discussion due dates
+        if channel_id != 0:
+            send_message_to_channel = client.get_channel(channel_id)
+            await send_message_to_channel.send(string)
+        else:
+            await message_channel.send(string)
+    else:
         if len(string) == 0:
             ## only for debugging ##
             string = "No posts today"
         # send the upcoming discussion due dates
         await message_channel.send(string)
-        return
+    return
 
-    for s_hour in SCHEDULED_HOURS:
-        now = datetime.datetime.now()
-        next_notification = datetime.datetime.combine(now.date(), s_hour)
-        if next_notification.hour == now.hour and next_notification.minute == now.minute:
-            await send_notifications()
+    # for s_hour in SCHEDULED_HOURS:
+    #     now = datetime.datetime.now()
+    #     next_notification = datetime.datetime.combine(now.date(), s_hour)
+    #     if next_notification.hour == now.hour and next_notification.minute == now.minute:
+    #         await send_notifications()
 
 
 
@@ -185,12 +210,12 @@ async def on_message(message):
         # else:
         #     await message.channel.send(f'Current location: {storage_path[0][0]}')
         # return
-        await BOT_RESPONSES.current_storage("khuang")
+        await BOT_RESPONSES.current_storage(DB_USERNAME)
         return
 
     # update the current storage path (used starts with so they can type update storage destination or path)
     elif message.content.startswith('update storage'):
-        await message.channel.send("Google Drive or Local?")
+        await message.channel.send("Google Drive or Local Machine?")
 
         # check what type of path they want
         def storage_path(m):
@@ -215,12 +240,11 @@ async def on_message(message):
                     await message.channel.send("Not a valid path. Try the cycle again.")
                 else:
                     # todo add saving mechanism to cloud database
-                    DB_UTILS.use_database("BSBOT")
-                    sql_type = "UPDATE USERS SET Storage_method = '{path_type}' WHERE first_name = '{f_name}';" \
-                        .format(path_type="GDRIVE", f_name=username.split(" ")[0])
+                    sql_type = "UPDATE PREFERENCES SET STORAGE_LOCATION = '{path_type}' WHERE USERNAME = '{f_name}';" \
+                        .format(path_type="Google Drive", f_name=DB_USERNAME)
                     DB_UTILS._mysql.general_command(sql_type)
-                    sql_path = "UPDATE USERS SET Storage_path = '{path}' WHERE first_name = '{f_name}';" \
-                        .format(path=new_storage.content, f_name=username.split(" ")[0])
+                    sql_path = "UPDATE PREFERENCES SET STORAGE_PATH = '{path}' WHERE USERNAME = '{f_name}';" \
+                        .format(path=new_storage.content, f_name=DB_USERNAME)
                     DB_UTILS._mysql.general_command(sql_path)
 
                     await message.channel.send("New path saved")
@@ -239,12 +263,11 @@ async def on_message(message):
                     await message.channel.send("Not a valid path. Try the cycle again.")
                 else:
                     # todo add saving mechanism to cloud database
-                    DB_UTILS.use_database("BSBOT")
-                    sql_type = "UPDATE USERS SET Storage_method = '{path_type}' WHERE first_name = '{f_name}';" \
-                        .format(path_type="LOCAL", f_name=username.split(" ")[0])
+                    sql_type = "UPDATE PREFERENCES SET STORAGE_LOCATION = '{path_type}' WHERE USERNAME = '{f_name}';" \
+                        .format(path_type="Local Machine", f_name=DB_USERNAME)
                     DB_UTILS._mysql.general_command(sql_type)
-                    sql_path = "UPDATE USERS SET Storage_path = '{path}' WHERE first_name = '{f_name}';" \
-                        .format(path=new_storage.content, f_name=username.split(" ")[0])
+                    sql_path = "UPDATE PREFERENCES SET STORAGE_PATH = '{path}' WHERE USERNAME = '{f_name}';" \
+                        .format(path=new_storage.content, f_name=DB_USERNAME)
                     DB_UTILS._mysql.general_command(sql_path)
                     await message.channel.send("New path saved")
                 return
@@ -483,15 +506,58 @@ async def on_message(message):
 
     elif message.content.startswith("download: "):
         course = message.content.split(":")[1]
-        storage_path = DB_UTILS._mysql.general_command("SELECT STORAGE_PATH from USERS WHERE FIRST_NAME = 'Raveena';")
+        sql_command = f"SELECT STORAGE_PATH from PREFERENCES WHERE USERNAME = '{DB_USERNAME}';"
+        storage_path = DB_UTILS._mysql.general_command(sql_command)
+        sql_command = f"SELECT STORAGE_METHOD from PREFERENCES WHERE USERNAME = '{DB_USERNAME}';"
         storage_type = DB_UTILS._mysql.general_command("SELECT STORAGE_METHOD from USERS WHERE FIRST_NAME = 'Raveena';")
         course_id = BS_UTILS.find_course_id(course)
         if storage_path[0][0] is not None:
             BS_UTILS.download_files(course_id, storage_path[0][0], storage_type[0][0])
-            await message.channel.send("Files downloaded successfully!")
+            # Check if they specified a place to have file related notifications
+            sql_command = f"SELECT FILES_TC IN PREFERENCES WHERE USERNAME = '{DB_USERNAME}';"
+            result = DB_UTILS._mysql.general_command(sql_command)
+            print(result)
+            # if so, redirect message to that channel
+            if result is not None:
+                # get the channel ID
+                channel_id = 0
+                for channel in message.guild.text_channels:
+                    result = result.replace(" ", "-")
+                    if channel.name == result:
+                        channel_id = channel.id
+                        break
+                if channel_id != 0:
+                    send_message_to_channel = client.get_channel(channel_id)
+                    await send_message_to_channel.send("Files downloaded successfully!")
+                else:
+                    # Some mistake came and could not find channel ID, so just go to default chat
+                    await message.channel.send("Files downloaded successfully!")
+            else:
+                # else go to normal channel
+                await message.channel.send("Files downloaded successfully!")
             return
         else:
-            await message.channel.send("Files not downloaded successfully")
+            sql_command = f"SELECT FILES_TC IN PREFERENCES WHERE USERNAME = '{DB_USERNAME}';"
+            result = DB_UTILS._mysql.general_command(sql_command)
+            print(result)
+            # if so, redirect message to that channel
+            if result is not None:
+                # get the channel ID
+                channel_id = 0
+                for channel in message.guild.text_channels:
+                    result = result.replace(" ", "-")
+                    if channel.name == result:
+                        channel_id = channel.id
+                        break
+                if channel_id != 0:
+                    send_message_to_channel = client.get_channel(channel_id)
+                    await send_message_to_channel.send("Files not downloaded successfully.")
+                else:
+                    # Some mistake came and could not find channel ID, so just go to default chat
+                    await message.channel.send("Files not downloaded successfully.")
+            else:
+                # else go to normal channel
+                await message.channel.send("Files not downloaded successfully.")
             return
 
 
@@ -648,12 +714,17 @@ async def on_message(message):
             return
 
         # TODO get the username from a different way
-        sql_command = f"SELECT {db_category} FROM PREFERENCES WHERE USERNAME = 'khuang';"
+        sql_command = f"SELECT {db_category} FROM PREFERENCES WHERE USERNAME = '{DB_USERNAME}';"
         current_saved_tc = DB_UTILS._mysql.general_command(sql_command)[0][0]
         # Check if the channel that is being requested has already been created
-        sql_command = f"SELECT LIST_OF_TCS FROM PREFERENCES WHERE USERNAME = 'khuang';"
+        sql_command = f"SELECT LIST_OF_TCS FROM PREFERENCES WHERE USERNAME = '{DB_USERNAME}';"
         list_of_tcs = DB_UTILS._mysql.general_command(sql_command)[0][0]
-        sql_command = f"UPDATE PREFERENCES SET {db_category} = '{text_channel}' WHERE USERNAME = 'khuang';"
+        if list_of_tcs is None:
+            sql_command = f"UPDATE PREFERENCES SET LIST_OF_TCS = 'general' WHERE USERNAME = '{DB_USERNAME}';"
+            DB_UTILS._mysql.general_command(sql_command)
+            sql_command = f"SELECT LIST_OF_TCS FROM PREFERENCES WHERE USERNAME = '{DB_USERNAME}';"
+            list_of_tcs = DB_UTILS._mysql.general_command(sql_command)[0][0]
+        sql_command = f"UPDATE PREFERENCES SET {db_category} = '{text_channel}' WHERE USERNAME = '{DB_USERNAME}';"
         DB_UTILS._mysql.general_command(sql_command)
 
         array = list_of_tcs.split(",")
@@ -667,7 +738,7 @@ async def on_message(message):
 
         if not found:
             list_of_tcs = list_of_tcs + "," + text_channel
-            sql_command = f"UPDATE PREFERENCES SET LIST_OF_TCS = '{list_of_tcs}' WHERE USERNAME = 'khuang';"
+            sql_command = f"UPDATE PREFERENCES SET LIST_OF_TCS = '{list_of_tcs}' WHERE USERNAME = '{DB_USERNAME}';"
             DB_UTILS._mysql.general_command(sql_command)
             name = 'Text Channels'  # This will go under the default category
             cat = discord.utils.get(message.guild.categories, name=name)
