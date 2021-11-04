@@ -9,11 +9,11 @@ import asyncio
 from file_storage import *
 import datetime
 import time
+
 from bs_utilities import BSUtilities
 import threading
 from database.db_utilities import DBUtilities
 from Authentication import setup_automation
-
 
 '''
 To add the bot to your own server and test it out, copy this URL into your browser
@@ -22,8 +22,6 @@ https://discord.com/api/oauth2/authorize?client_id=894695859567083520&permission
 
 # This will be our discord client. From here we will get our input
 client = discord.Client()
-#channelID = 663863991218733058 #mine!
-  # TODO save this in the database - right now this is my (Raveena's) channel
 
 db_config = "./database/db_config.py"
 BS_UTILS = BSUtilities()
@@ -43,15 +41,17 @@ NOT_FREQ_MAP = {
 
 
 
+
 # Having the bot log in and be online
 @client.event
 async def on_ready():
     pass
-  
+
 @commands.command()
 async def quit(ctx):
     await ctx.send("Shutting down the bot")
-    return await client.logout() # this just shuts down the bot.
+    return await client.logout()  # this just shuts down the bot.
+
 
 # looping every day
 # change parameter to minutes=1 and see it happen every minute
@@ -84,7 +84,7 @@ async def notification_loop():
             if curr_course_id in string:
                 string = string.replace(curr_course_id, course)
 
-        #print("str: ", string)
+        # print("str: ", string)
         if len(string) == 0:
             ## only for debugging ##
             string = "No posts today"
@@ -118,6 +118,7 @@ async def notification_before():
 
 notification_loop.start()
 login_lock = False
+
 
 # This is our input stream for our discord bot
 # Every message that comes from the chat server will go through here
@@ -272,6 +273,11 @@ async def on_message(message):
         BS_UTILS.set_session_auto(DB_UTILS, author_id_to_username_map[message.author.id])
     
 
+    # test gate to prevent multiple responses from the bot to the user
+    # guild_members = message.guild.members
+    # if message.author not in guild_members:
+    #    return
+
     # Lets say that we want the bot to only respond to a specific text channel in a server named 'todo'
     if message.channel.name == 'specifics':
         if user_message.lower() == 'im bored':
@@ -362,7 +368,7 @@ async def on_message(message):
 
         else:
             await message.channel.send("Your input isn't valid")
-            
+
 
     # get a grade for a class
     elif message.content.startswith("grades:"):
@@ -399,10 +405,53 @@ async def on_message(message):
         await message.channel.send(final_string)
         return
 
-    #get upcoming quizzes across all classes
+    # get feedback on assignment.
+    elif message.content.startswith("get assignment feedback"):
+        await message.channel.send("Please provide the Course name (for ex, NUTR 303) \n")
+        def author_check(m):
+            return m.author == message.author
+        course_name = await client.wait_for('message', check=author_check)
+        await message.channel.send("Please provide the full assignment name (for ex, 'Recitation Assignment 1')\n")
+        assignment_name = await client.wait_for('message', check=author_check)
+        feedback = BS_UTILS.get_assignment_feedback(course_name, assignment_name)
+        
+        if feedback.__contains__("ERROR") or feedback.__contains__("BOT REPORT"):
+            await message.channel.send(feedback)
+        else:
+            await message.channel.send("Feedback from Grader: \n")
+            await message.channel.send(feedback)
+        
+        return
+
+    #enable the user to search for a specific student in a class.
+    elif message.content.startswith("search for student"):
+        await message.channel.send("Please provide the course in which you want to search \n")
+        def author_check(m):
+            return m.author == message.author
+        course_name = await client.wait_for('message', check=author_check)
+        await message.channel.send("Please provide the full name (First Name + Last Name, e.g 'Shaun Thomas') of the student you would like to search for.\n")
+        student_name = await client.wait_for('message', check=author_check)
+
+        course_name_str = str(course_name.content)
+        student_name_str = str(student_name.content)
+
+        output = BS_UTILS.search_for_student_in_class(course_name, student_name)
+
+        #if BS_UTILS.search_for_student_in_class(course_name, student_name):
+        if output:
+            await message.channel.send(student_name_str + " is a student in " + course_name_str)
+        else:
+            await message.channel.send(student_name_str + " is not a student in " + course_name_str)
+        
+
+        #print(course_name)
+        #print(student_name)
+        return
+       
+    # get upcoming quizzes across all classes
     elif message.content.startswith("get upcoming quizzes"):
         upcoming_quizzes = BS_UTILS.get_upcoming_quizzes()
-        #if there are no upcoming quizzes returned, then we report to the user.
+        # if there are no upcoming quizzes returned, then we report to the user.
         if not upcoming_quizzes:
             await message.channel.send("You have no upcoming quizzes or exams.")
             return
@@ -433,13 +482,14 @@ async def on_message(message):
         else:
             await message.channel.send("The following assignments have been graded:\n")
             for grade in grade_updates:
-                output_str = "Course Id:" + str(grade['course_id']) + "- " + grade['assignment_name'] + " " + grade['grade'] + "\n"
+                output_str = "Course Id:" + str(grade['course_id']) + "- " + grade['assignment_name'] + " " + grade[
+                    'grade'] + "\n"
                 await message.channel.send(output_str)
             return
-       
+
     # changing bot name
     elif message.content.startswith("change bot name"):
-        
+
         # change value used to check if the user keep wants to change the name of the bot
         # initialized to True
 
@@ -458,7 +508,7 @@ async def on_message(message):
             try:
                 new_name = await client.wait_for('message', check=check)
             except asyncio.TimeoutError:
-                await message.channel.send("Timeout ERROR has occured. Please try the query again.")
+                await message.channel.send("Timeout ERROR has occurred. Please try the query again.")
                 return
 
             # name changed message.
@@ -487,7 +537,8 @@ async def on_message(message):
     elif message.content.startswith("upcoming discussion"):
         # dictionary of class_name, [list of dates]
         dates = BS_UTILS.get_dict_of_discussion_dates()
-        #dates = DATES #ONLY FOR DEBUG
+
+        # dates = DATES #ONLY FOR DEBUG
         def check(msg):
             return msg.author == message.author
 
@@ -495,7 +546,8 @@ async def on_message(message):
         string = BS_UTILS.find_upcoming_disc_dates(14, dates)
 
         if len(string) == 0:
-            await message.channel.send("No upcoming posts for the next two weeks. Would you like to look further than 2 weeks?")
+            await message.channel.send(
+                "No upcoming posts for the next two weeks. Would you like to look further than 2 weeks?")
             try:
                 response = await client.wait_for('message', check=check, timeout=30)
             except asyncio.TimeoutError:
@@ -516,17 +568,17 @@ async def on_message(message):
         else:
             await message.channel.send(string)
             return
-    
 
     elif message.content.startswith("update schedule"):
 
         if message.author.id not in author_id_to_username_map:
-            await request_username()
+            await request_username_password()
    
         async def everyday():
             new_time = None
             while not new_time:
                 new_time = await get_time()
+
 
 
             await message.channel.send(f"{new_time.content}, right?")
@@ -541,7 +593,6 @@ async def on_message(message):
 
 
         async def every_week():
-
             await message.channel.send("Which week day?")
             while True:
                 res = await recieve_response()
@@ -595,10 +646,6 @@ async def on_message(message):
                     await message.channel.send("Please enter a number")
                     continue
                 break
-
-
-
-
 
             
             s_times = DB_UTILS.get_notifictaion_schedule_with_description(author_id_to_username_map[message.author.id])
@@ -680,6 +727,7 @@ async def on_message(message):
 
         async def brand_new():
             await message.channel.send(f"Do you want to add to your current schedule or build a brand new one?")
+
             res = await recieve_response()
             if "new" in res.content:
                 DB_UTILS.clear_notification_schedule(author_id_to_username_map[message.author.id])
@@ -769,9 +817,10 @@ async def on_message(message):
             await message.channel.send(f"No changes are made to your schedule.")
 
 
+
     elif message.content.startswith("delete noti"):     
         if message.author.id not in author_id_to_username_map:
-            await request_username()
+            await request_username_password()
 
         current_times = DB_UTILS.get_notifictaion_schedule_with_description(author_id_to_username_map[message.author.id])
         
@@ -836,7 +885,7 @@ async def on_message(message):
     
     elif message.content.startswith("check noti"):
         if message.author.id not in author_id_to_username_map:
-            await request_username()
+            await request_username_password()
 
         s_times = DB_UTILS.get_notifictaion_schedule_with_description(author_id_to_username_map[message.author.id])
         if not s_times:
@@ -851,7 +900,7 @@ async def on_message(message):
 
     elif message.content.startswith("update class"):
         if message.author.id not in author_id_to_username_map:
-            await request_username()
+            await request_username_password()
 
         while True:
             await message.channel.send("What is the class name?")
@@ -897,7 +946,7 @@ async def on_message(message):
 
     elif message.content.startswith("check class"):
         if message.author.id not in author_id_to_username_map:
-            await request_username()
+            await request_username_password()
 
         c_times = DB_UTILS.get_class_schedule_with_description(author_id_to_username_map[message.author.id])
 
@@ -909,6 +958,7 @@ async def on_message(message):
                 msg += f"{hour[0]} {hour[1]} {NOT_FREQ_MAP[int(hour[2])].lower()}\n"
                 
             await message.channel.send(msg)
+
 
 
     elif message.content.startswith("download: "):
@@ -924,15 +974,11 @@ async def on_message(message):
             await message.channel.send("Files not downloaded successfully")
             return
 
-
     # returning user course priority by either grade or upcoming events
     elif message.content.startswith("course priority"):
 
         def check(msg):
             return msg.author == message.author
-
-        # list of courses in preferred priority
-        course_priority = []
 
         # ask user for pick grade or by due date
         await message.channel.send("Please pick between grade or due dates for prioritizing your courses.")
@@ -944,56 +990,33 @@ async def on_message(message):
                 # api call for grades
                 await message.channel.send("Setting course priority by grade ...")
 
-                # get user's enrolled classes
-                user_classes = BS_UTILS.get_classes_enrolled()
-                class_names = []
-                class_ids = []
-                grades_tuple = []
-                for name, course_id in user_classes.items():
-                    class_names.append(name)
-                    class_ids.append(course_id)
-                    grades_tuple.append(BS_UTILS._bsapi.get_grade(course_id))
-
-                grades_frac = []
-                for t in grades_tuple:
-                    if not t[0] == '':
-                        nums_str = t[0].split('/')
-                        grade_frac = float(nums_str[0]) / float(nums_str[1])
-                        grades_frac.append(grade_frac)
-                    else:
-                        grades_frac.append(0)
-
-                # print(class_names)
-                # print(grades_frac)
-
-                #class_grade_tracker = []
-               # for x in range(0, len(class_names)):
-                 #   class_grade_tracker.append((grades_frac[x], class_names[x]))
-
-                sorted_grade_frac = sorted(grades_frac)
-
-                # print(sorted_grade_frac)
-
-                for x in sorted_grade_frac:
-                    if not x == 0:
-                        index = grades_frac.index(x)
-                        course_name = class_names[index]
-                        course_priority.append(course_name)
-
-                # print(course_priority)
+                priority = BS_UTILS.get_sorted_grades()[0]
+                missing = BS_UTILS.get_sorted_grades()[1]
 
                 suggested_course_priority = ""
+                for x in range(0, len(priority)):
+                    suggested_course_priority += priority[x]
+                    if not x == len(priority) - 1:
+                        suggested_course_priority += " << "
 
-                for x in range (0, len(course_priority)):
-                    suggested_course_priority += course_priority[x]
-                    if not x == len(course_priority) - 1:
-                        suggested_course_priority += " >> "
+                found_missing_grade_courses = ""
+                for x in range(0, len(missing)):
+                    found_missing_grade_courses += missing[x]
+                    if not x == len(missing) - 1:
+                        found_missing_grade_courses += " , "
 
-                await message.channel.send("The suggested course priority is:\n" + suggested_course_priority)
+                await message.channel.send("The suggested course priority is (highest grade << lowest grade):\n"
+                                           + suggested_course_priority)
+                await message.channel.send("There are some courses that miss final grades:\n"
+                                           + found_missing_grade_courses)
 
             elif priority_option.content.startswith("due dates"):
                 # api call for due dates
                 await message.channel.send("Setting course priority by upcoming due dates ...")
+
+                due_dates = BS_UTILS.get_course_by_duedate()
+                print(due_dates)
+
                 await message.channel.send("Sorry we are adjusting function at the moment, please try it next time")
             else:
                 await message.channel.send("Invalid response given! Please try the query again.")
@@ -1005,6 +1028,66 @@ async def on_message(message):
 
         return
 
-          
+    elif message.content.startswith("course link"):
+        # get user course urls in advance
+        user_course_urls = BS_UTILS.get_course_url()
+
+        # bot asks user for specific input
+        await message.channel.send("Which course link do you need? Type \'All\' or specific course links")
+        await message.channel.send("ex) CS 180,CS 240 or All")
+        reply_back = ""
+        cannot_find_courses = ""
+
+        # check function for client.wait_for
+        def check(msg):
+            return msg.author == message.author
+
+        try:
+            # get user reply back
+            user_reply = await client.wait_for('message', check=check, timeout=60)
+
+            # different user_request options
+            # 'All'
+            if user_reply.content.startswith("All"):
+                reply_back += "The followings are the links to your course homepages\n"
+                for course_name, course_url in user_course_urls.items():
+                    reply_back += "{course_name}: {url}\n".format(course_name=course_name,
+                                                                url=course_url)
+            else:
+                user_requests = user_reply.content.split(",")
+                for requested_course in user_requests:
+                    for course_name, course_url in user_course_urls.items():
+                        if requested_course in course_name:
+                            reply_back += "{course_name}: {url}\n".format(course_name=course_name,
+                                                                url=course_url)
+                        continue
+                    if requested_course not in reply_back:
+                        cannot_find_courses += "{course_name}\t".format(course_name=requested_course)
+
+            # send the reply back
+            if not reply_back == "":
+                await message.channel.send(reply_back)
+                if not cannot_find_courses == "":
+                    await message.channel.send("These are courses that I couldn't find:")
+                    await message.channel.send(cannot_find_courses)
+                    await message.channel.send("Please check if they are valid course(s)")
+            else:
+                await message.channel.send("Sorry, we couldn't find the matching courses.")
+                await message.channel.send("Please check if they are valid courses.")
+
+                # home page vary by campus location
+                # West Lafayette: 6824
+                # Fort Wayne: 6822
+                # Northwest: 6823
+                await message.channel.send("Here is the home page default link: " +
+                                           "https://purdue.brightspace.com/d2l/home/6824")
+                # user_info = BS_UTILS._bsapi.get_user_info()
+                # print(user_info)
+                return
+
+        except asyncio.TimeoutError:
+            await message.channel.send("Timeout ERROR has occurred. Please try the query again.")
+        return
+
 # Now to actually run the bot!
 client.run(config['token'])

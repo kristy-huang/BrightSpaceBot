@@ -2,6 +2,7 @@
 from bs_api import BSAPI
 
 import datetime
+from datetime import date
 import urllib.parse
 import os
 from pathlib import Path
@@ -240,6 +241,111 @@ class BSUtilities():
                     # saving datetime objects
                     dates.append(end)
         return dates
+    
+    
+    '''
+        This is a subfunction for get_assignment_feedback. It finds the courseID/orgUnitID 
+
+        for an inputted course_name. We need this ID for future API calls. 
+
+        returns: int course_ID, or None if the inputted course_name is not a valid course that the user is enrolled in. 
+
+    '''
+    
+   def find_course_ID(self, course_name_str):
+        #course_name_str = str(course_name.content)
+        enrolled_courses = self.get_classes_enrolled()
+        for course in enrolled_courses:
+            class_name = str(course)
+            if class_name.__contains__(course_name_str):
+              return enrolled_courses[course]    
+        
+        return None
+    
+    '''
+        This is a subfunction that finds the folderID of the specific dropbox folder we need to access the feedback on an assignment
+        
+        dropbox_folders: JSON array of DropboxFolder blocks.
+
+        Returns: int folder_ID, or None if the inputted assignment_name is not a valid assignment in this course. 
+    '''
+    def get_folder_ID_from_dropbox(self, dropbox_folders, assignment_name):
+        assignment_name_str = str(assignment_name.content)
+
+        for folder in dropbox_folders:
+            folder_name = folder['Name']
+            folder_name_str = str(folder_name)
+            if folder_name_str.__contains__(assignment_name_str):
+                folder_ID = folder['Id']
+                return folder_ID
+            
+        return None
+    
+    
+    '''
+        This is a helper function for get_assignment_feedback(). 
+    '''
+    
+    def get_feedback(self, submissions_arr):
+        entity_dropbox = submissions_arr[0]
+        feedback_block  = entity_dropbox["Feedback"]
+        if feedback_block is not None:
+            feedback = feedback_block["Feedback"]
+            if feedback is not None:
+                feedback_text = feedback["Text"]
+                return feedback_text
+
+        return None
+
+    '''
+        This is a function that grabs feedback (if it exists) for an assignment in a course. 
+
+        returns: String of feedback, or NULL if there is no feedback, or error message if parameters are incorrect. 
+    '''
+
+   def get_assignment_feedback(self, course_name_str, assignment_name_str):
+        course_ID = self.find_course_ID(course_name_str)
+        if course_ID is not None:
+            dropbox_folders = self._bsapi.get_dropbox_folders_for_org_unit(course_ID)
+            folder_ID = self.get_folder_ID_from_dropbox(dropbox_folders, assignment_name_str)
+            if folder_ID is not None:
+                submissions_arr = self._bsapi.get_submissions_for_dropbox_folder(course_ID, folder_ID)      #JSON array of EntityDropbox structures
+                if submissions_arr is not None:
+                    feedback = self.get_feedback(submissions_arr)
+                    if feedback is not None:
+                        return feedback
+                    else:
+                        output = "BOT REPORT: No feedback has been provided for this assignment."
+                else:
+                    output = "BOT REPORT: I do not have permission to access these submissions."
+            else:
+                output = "ERROR: Please make sure the assignment you have specified is spelled correctly and exists."
+                return output
+
+        else: output = "ERROR: Please make sure the course you have specified is spelled correctly and is a course that you are currently enrolled in."
+        return output
+    
+    '''
+        This function tries to search for an inputted student name in a given class.  
+        
+        returns: True or False. True if the student is listed in the list of users for a class, or False otherwise.
+    '''
+
+    def search_for_student_in_class(self, course_name_str, student_name_str):
+
+        #course_name_str = str(course_name.content)
+        #student_name_str = str(student_name.content)
+        course_ID = self.find_course_ID(course_name_str)
+        if course_ID is not None:
+            classlist_user_blocks = self._bsapi.get_enrolled_users_for_org_unit(course_ID)
+            for classlist_user in classlist_user_blocks:
+                first_name = classlist_user["FirstName"]
+                last_name = classlist_user["LastName"]
+                current_name = first_name + " " + last_name
+                if current_name.lower() == student_name_str.lower():
+                    return True
+        
+        return False
     
     '''
         This is a helper function for get_upcoming_quizzes(). It is used to determine whether a given 
@@ -650,3 +756,126 @@ class BSUtilities():
                 return False
         return True
 
+    def get_sorted_grades(self):
+        # list of courses in preferred priority
+        course_priority = []
+
+        # list of missing grade courses that cannot be prioritize with the bot's function
+        missing_grade_courses = []
+
+        # getting user enrolled classes
+        user_classes = self.get_current_semester_courses()
+
+        # arrays needed for sorting courses
+        # class_names will store all course names of the user
+        # grades_frac will store all the fraction grade of the user for those courses
+        class_names = []
+        grades_frac = []
+
+        # revised for loop
+        for name, course_id in user_classes.items():
+            # getting class names and fraction grade from the enrolled class list
+            class_names.append(name)
+            grade_string = self._bsapi.get_grade(course_id)[0]
+            fraction_grade = 0.0
+
+            if not grade_string == '':
+                fraction_grade = float(grade_string[0]) / float(grade_string[1])
+
+            grades_frac.append(fraction_grade)
+
+        sorted_grade_frac = sorted(grades_frac)
+
+        # appending sorted courses to course_priority
+        for x in sorted_grade_frac:
+            if not x == 0:
+                course_priority.append(class_names[grades_frac.index(x)])
+
+        for x in class_names:
+            if not x in course_priority:
+                missing_grade_courses.append(x)
+
+        # print(course_priority)
+
+        return course_priority, missing_grade_courses
+
+    def get_current_semester_courses(self):
+        # new dictionary of courses for current semester
+        current_enrolled_courses = {}
+
+        # user enrolled courses
+        # this might include courses that do not have end dates
+        # for instance, training courses or supplemental instructions
+        user_enrolled_course = self.get_classes_enrolled()
+
+        # current_semester will either be Fall, Sprint, or Summer accordingly to the date
+        current_semester = ""
+
+        # pin point for getting current semester
+        current_date = datetime.datetime.today()
+
+        # get current month, day from current date
+        current_month = current_date.month
+        current_day = current_date.day
+
+        # Fall semester always start at the 4th Monday[19-25] of August
+        # Spring semester always start at January
+        # Summer semester always start at June until first week of August
+        if current_month == 8:
+            if current_day <= 15:
+                current_semester = "Summer"
+            else:
+                current_semester = "Fall"
+        elif 9 <= current_month:
+            current_semester = "Fall"
+        elif 6 <= current_month:
+            current_semester = "Summer"
+        elif 1 <= current_month:
+            current_semester = "Spring"
+
+        current_semester += " "
+        current_semester += current_date.strftime("%Y")
+
+        for name, course_id in user_enrolled_course.items():
+            if current_semester in name:
+                current_enrolled_courses[name] = course_id
+
+        return current_enrolled_courses
+
+    def get_course_by_duedate(self):
+        # list of courses by earliest due dates
+        course_priority = []
+
+        # getting enrolled classes
+        user_classes = self.get_current_semester_courses()
+
+        # get today's date
+        # today gives you the time accordingly to the timezone
+        # utcnow gives you the time from utc + 0
+        today = datetime.datetime.today()
+        today = today.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        print(today)
+        # year_lastday = today + datetime.timedelta(days=365)
+        # year_lastday = year_lastday.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        # print(year_lastday)
+
+        # get all calendar due dates
+        test = self.get_events_by_type(today, None, 6)
+        print(test)
+        # for x in test:
+        #     print(x)
+
+        return
+
+    def get_course_url(self):
+        # url dictonary format: purdue.brightspace.com/d2l/home/{course_id}
+        course_urls = {}
+
+        # get user enrolled classes
+        user_classes = self.get_current_semester_courses()
+
+        for course_name, course_id in user_classes.items():
+            course_home_page = "https://purdue.brightspace.com/d2l/home/{course_id}".format(course_id=course_id)
+            course_urls[course_name] = course_home_page
+
+        return course_urls
