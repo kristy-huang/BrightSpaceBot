@@ -1,3 +1,10 @@
 config.py
+database/db_config.py
+client_secret.json
+test.py
 discord_config.py
-db_config.py
+client_secret.json
+**/__pycache__
+**/__pycache__/
+runApiCalls.py
+tests/test_config.py
