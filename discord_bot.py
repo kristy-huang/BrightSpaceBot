@@ -51,6 +51,7 @@ async def quit(ctx):
 async def notification_loop():
     # Syncing the calendar daily (so it can get the correct changes)
     classes = BS_UTILS.get_classes_enrolled()
+    #classes = {"EAPS": "336112"}
     for courseName, courseID in classes.items():
         assignment_list = BS_UTILS._bsapi.get_upcoming_assignments(courseID)
         due = BS_UTILS.process_upcoming_dates(assignment_list)
