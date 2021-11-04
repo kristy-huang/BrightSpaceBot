@@ -82,7 +82,7 @@ async def notification_loop():
 
     print("inserting into calendar is finished...")
 
-    # Syncing the calendar daily (so it can get the correct changes)
+    # Syncing quizzes to the calendar daily (so it can get the correct changes)
     quizzes = BS_UTILS.get_all_upcoming_quizzes()
     for quiz in quizzes:
         cal = Calendar()
@@ -91,8 +91,18 @@ async def notification_loop():
         date = datetime.datetime.fromisoformat(quiz['due_date'][:-1])
         end = date.isoformat()
         start = (date - datetime.timedelta(hours=1)).isoformat()
-        # inserting event
-        cal.insert_event(event_title, description, start, end)
+        event_id, end_time = cal.get_event_from_name(event_title)
+        # event has already been created in google calendar
+        if event_id == -1:
+            # insert new event to calendar
+            cal.insert_event(event_title, description, start, end)
+        # event has not been created
+        else:
+            # if end time has changed, update the event
+            if end_time != end:
+                cal.delete_event(event_id)
+                cal.insert_event(event_title, description, start, end)
+
     print("inserting into calendar is finished...")
 
     if not SCHEDULED_HOURS:
