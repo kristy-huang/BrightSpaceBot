@@ -74,6 +74,16 @@ async def notification_loop():
         if types[3] == "1":
             string += BS_UTILS.get_events_by_type_past_24h(6) #DueDate
 
+
+        # replace course id's with course names:
+
+        courses = BS_UTILS.get_classes_enrolled()
+        for course in courses.keys():
+            curr_course_id = courses[course]
+            curr_course_id = str(curr_course_id)
+            if curr_course_id in string:
+                string = string.replace(curr_course_id, course)
+
         #print("str: ", string)
         if len(string) == 0:
             ## only for debugging ##
@@ -203,7 +213,7 @@ async def on_message(message):
         db_res = DB_UTILS.get_bs_username_pin(author_id_to_username_map[message.author.id])
         while not db_res:
             # TODO: explain it better
-            await message.channel.send("No information found in database. Setting up auto BS login. Get a boilerkey url and enter it.")
+            await message.channel.send("No user information found in database. Setting up auto BS login. Get a boilerkey url and enter it.")
             res = await recieve_response()
             url = res.content
             await message.channel.send("bs username")
@@ -259,6 +269,7 @@ async def on_message(message):
         else:
             await message.channel.send(f'Current location: {storage_path[0][0]}')
         return
+
 
     # update the current storage path (used starts with so they can type update storage destination or path)
     elif message.content.startswith('update storage'):
@@ -442,6 +453,7 @@ async def on_message(message):
                 await message.channel.send("Timeout ERROR has occurred. Please try the query again.")
                 return
 
+
     elif message.content.startswith("upcoming discussion"):
         # dictionary of class_name, [list of dates]
         dates = BS_UTILS.get_dict_of_discussion_dates()
@@ -533,32 +545,50 @@ async def on_message(message):
 
 
         async def by_amount():
-            s_times = DB_UTILS.get_notifictaion_schedule_with_description(author_id_to_username_map[message.author.id])
+            def calculate_notis_each_week(schedules):
+                notifications = 0
+                for schedule in schedules:
+                    weekday = schedule[1]
+                    if weekday == '7':
+                        notifications += 7
+                    else:
+                        notifications += 1
+                return notifications
             
-            await message.channel.send("How many schedules do you want?")
+            await message.channel.send("How many notifications do you want every week?")
             res = await recieve_response()
 
-            try:
-                freq = int(res.content)
-            except ValueError:
-                await message.channel.send("Please enter a number")
+            while True:
+                try:
+                    freq = int(res.content)
+                except ValueError:
+                    await message.channel.send("Please enter a number")
+                    continue
+                break
 
-            curr_len = len(s_times)
-            if curr_len < freq:
-                await message.channel.send(f"There are currently {len(s_times)} schedules. Do you want to add more?")
+
+
+
+
+            
+            s_times = DB_UTILS.get_notifictaion_schedule_with_description(author_id_to_username_map[message.author.id])
+            curr_len = calculate_notis_each_week(s_times)
+
+            while curr_len < freq:
+                await message.channel.send(f"There are currently {curr_len} schedules. ")
+                await add_week_or_everyday()
+                
+                s_times = DB_UTILS.get_notifictaion_schedule_with_description(author_id_to_username_map[message.author.id])
+                curr_len = calculate_notis_each_week(s_times)
+                await message.channel.send(f"Do you want to add more?")
                 
                 res = await recieve_response()
                 if res.content.startswith("y") or res.content.startswith("right"):
-                    while curr_len < freq:
-                        await add_week_or_everyday()
-                        curr_len += 1
-                        await message.channel.send(f"Do you want to add more?")
-                        res = await recieve_response()
-                        if res.content.startswith("y") or res.content.startswith("right"):
-                            continue
-                        break
+                    continue
+                await message.channel.send(f"Understood. Have a nice day.")
+                break
             else:
-                await message.channel.send(f"There are currently more than {freq} scheduled times.")
+                await message.channel.send(f"There are currently more than {freq} scheduled times. No new schedules will be added.")
                 
 
         async def by_class_schedule():
@@ -602,9 +632,9 @@ async def on_message(message):
                 break
 
             scheduled_classes = DB_UTILS.get_class_schedule_with_description(author_id_to_username_map[message.author.id])
-            print(scheduled_classes)
+            #print(scheduled_classes)
             for c in scheduled_classes:
-                print(c[0])
+                #print(c[0])
                 if c[0] != class_name:
                     continue
 
@@ -617,19 +647,32 @@ async def on_message(message):
 
             await message.channel.send("Schedule modified.")
 
+
+        async def brand_new():
+            await message.channel.send(f"Do you want to add to your current schedule or build a brand new one?")
+            res = await recieve_response()
+            if "new" in res.content:
+                DB_UTILS.clear_notification_schedule(author_id_to_username_map[message.author.id])
+                await message.channel.send(f"Old schedules are deleted.")
+
         await message.channel.send("Do you want your notification to be sent every day, every week, by a specific amount, or according to your class schedule?")
 
         res = await recieve_response()
         if "day" in res.content:
+            await brand_new()
             await everyday()
         elif "week" in res.content:
+            await brand_new()
             await every_week()
         elif "amount" in res.content:
+            await brand_new()
             await by_amount()
         elif "class" in res.content:
+            await brand_new()
             await by_class_schedule()
         else:
             await message.channel.send("I am not sure about what you want to do")
+            return 
 
         
     elif message.content.startswith("update type"):
@@ -931,6 +974,7 @@ async def on_message(message):
             return
 
         return
+
           
 # Now to actually run the bot!
 client.run(config['token'])

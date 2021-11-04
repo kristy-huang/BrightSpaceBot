@@ -202,8 +202,8 @@ def setup_automation(dbu, discord_username, bs_username, bs_pin, url):
     hotp_secret = res_data["hotp_secret"]
     hotp_counter = 0
     
-    dbu.update_hotp_secret_counter(discord_username, hotp_secret, hotp_counter)
-    dbu.update_bs_username_pin(discord_username, bs_username, bs_pin)
+    dbu.add_hotp_secret_counter(discord_username, hotp_secret, hotp_counter)
+    dbu.add_bs_username_pin(discord_username, bs_username, bs_pin)
 
     return "Success", True
 

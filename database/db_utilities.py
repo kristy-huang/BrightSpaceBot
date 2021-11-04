@@ -24,7 +24,7 @@ class DBUtilities():
 
 
     def get_notifictaion_schedule_with_description(self, user_name):
-        return self._mysql.general_command(f"SELECT DISTINCT TIME,DESCRIPTION,TYPES FROM NOTIFICATION_SCHEDULE WHERE USERNAME = \"{user_name}\"")
+        return self._mysql.general_command(f"SELECT DISTINCT TIME,DESCRIPTION,TYPES FROM NOTIFICATION_SCHEDULE WHERE USERNAME = \"{user_name}\" ORDER BY DESCRIPTION ASC")
 
 
     def clear_notification_schedule(self, user_name):
@@ -84,13 +84,32 @@ class DBUtilities():
             self.reset_auto_increment(table_name, auto_id_name)
 
 
-    def update_hotp_secret_counter(self, username, hotp_secret, counter):
+
+    def add_hotp_secret_counter(self, user_name, hotp_secret, counter):
+        if self._mysql.general_command(f"SELECT * FROM CREDENTIALS WHERE USERNAME = \"{user_name}\""):
+            self.update_hotp_secret_counter(user_name, hotp_secret, counter)
+        else:
+            self.insert_hotp_secret_counter(user_name, hotp_secret, counter)
+
+
+    def insert_hotp_secret_counter(self, user_name, hotp_secret, counter):
+        cols = {
+            "USERNAME": user_name,
+            "hotp_secret": hotp_secret,
+            "hotp_counter": counter
+        }
+        
+        self._mysql.insert_into("CREDENTIALS", cols)
+
+
+    def update_hotp_secret_counter(self, user_name, hotp_secret, counter):
         cols = {
             "hotp_secret": hotp_secret,
             "hotp_counter": counter
         }
         
-        self._mysql.update("CREDENTIALS", cols, "username = \"{}\"".format(username))
+        self._mysql.update("CREDENTIALS", cols, "username = \"{}\"".format(user_name))
+
 
     def get_hotp_secret_counter(self, user_name):
         return self._mysql.general_command(f"SELECT DISTINCT hotp_secret,hotp_counter FROM CREDENTIALS WHERE USERNAME = \"{user_name}\"")
@@ -107,6 +126,23 @@ class DBUtilities():
         }
         
         self._mysql.update("CREDENTIALS", cols, "username = \"{}\"".format(user_name))
+
+
+    def add_bs_username_pin(self, user_name, bs_username, bs_pin):
+        if self._mysql.general_command(f"SELECT * FROM CREDENTIALS WHERE USERNAME = \"{user_name}\""):
+            self.update_bs_username_pin(user_name, bs_username, bs_pin)
+        else:
+            self.insert_bs_username_pin(user_name, bs_username, bs_pin)
+
+
+    def insert_bs_username_pin(self, user_name, bs_username, bs_pin):
+        cols = {
+            "USERNAME": user_name,
+            "BS_USERNAME": bs_username,
+            "bs_pin": bs_pin
+        }
+        
+        self._mysql.insert_into("CREDENTIALS", cols)
 
 
     def get_bs_username_pin(self, user_name):
