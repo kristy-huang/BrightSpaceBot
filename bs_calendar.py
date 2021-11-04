@@ -35,8 +35,8 @@ class Calendar:
         events = self.service.events().list(calendarId='primary', q=eventTitle).execute()
         print(events['items'])
         if len(events['items']) > 1 or len(events['items']) == 0:
-            return -1  # could not find event (there are multiples so we couldn't update properly)
-        return events['items'][0]["id"]
+            return -1, -1  # could not find event (there are multiples so we couldn't update properly)
+        return events['items'][0]["id"], events['items'][0]['end']['dateTime']
 
     # To delete an event from the calendar
     def delete_event(self, eventID):
