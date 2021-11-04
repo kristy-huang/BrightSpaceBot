@@ -57,7 +57,7 @@ if __name__ == '__main__':
     end = tomorrow.isoformat()
     start = (tomorrow - timedelta(hours=2)).isoformat()
 
-    #create_event(service, "DUE ", "You have an assignment due bro", start, end)
+    create_event(service, "DUE ", "You have an assignment due bro", start, end)
     #colors()
     #service.events().delete(calendarId='primary', eventId='0vlnbnun5mru0n8gjr38rkrvm4').execute() # to delete an event
 

@@ -59,13 +59,27 @@ async def notification_loop():
             cal = Calendar()
             # loop through all the upcoming assignments
             for assignment in due:
-                event_title = f"DUE: {assignment[0]} ({courseID})"
+                # Check if the event exists first by searching by name
+                event_title = f"ASSIGNMENT DUE: {assignment[0]} ({courseID})"
                 description = f"{assignment[0]} for {courseName} is due. Don't forget to submit it!"
+                search_result, end_time = cal.get_event_from_name(event_title)
                 date = datetime.datetime.fromisoformat(assignment[1][:-1])
                 end = date.isoformat()
                 start = (date - datetime.timedelta(hours=1)).isoformat()
-                # inserting event
-                cal.insert_event(event_title, description, start, end)
+                print("End date from search: " + str(end_time))
+                if search_result != -1:
+                    # it has already been added to the calendar
+                    # see if the end times are different
+                    if end_time != end:
+                        # the due date has been updated, so delete the old event
+                        cal.delete_event(search_result)
+                        cal.insert_event(event_title, description, start, end)
+                else:
+                    # has not been added to calendar, so add normally
+                    # inserting event
+                    cal.insert_event(event_title, description, start, end)
+
+
     print("inserting into calendar is finished...")
 
     if not SCHEDULED_HOURS:
