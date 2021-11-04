@@ -89,6 +89,45 @@ class BSAPI():
         url = self._API_URL_PREFIX + "le/1.45/{course_id}/quizzes/{quiz_id}/attempts/".format(course_id=course_id, quiz_id=quiz_id)
         return self.__process_api_json("get_quiz_attempts", url)
   
+
+    '''
+        Retrieves all dropbox folders for an org unit. Each dropbox folder provides a place for
+        org unit entities (users or groups of users) to submit work for assessment. Each dropbox folder
+        represents a single opportunity for assessment(submission of a single paper for grading, quiz for testing, etc.)
+
+        course_id: the orgUnitID, the ID of the course that the user is enrolled in.
+
+        return: JSON array of DropboxFolder blocks.
+    '''
+    
+    def get_dropbox_folders_for_org_unit(self, course_id):
+        url = self._API_URL_PREFIX + "le/1.41/{course_id}/dropbox/folders/".format(course_id=course_id)
+        return self.__process_api_json("get_dropbox_folders_for_org_unit", url) 
+    
+    '''
+        Retrieves all submissions for a specific dropbox folder. 
+        
+        course_id: ID of the course that the user is enrolled in.
+        folder_id: Folder ID for a specific dropbox folder
+
+        return: JSON array of EntityDropbox structures that fully enumerates all
+        submissions currently provided to the dropbox folders by all the entities.
+    '''
+    def get_submissions_for_dropbox_folder(self, course_id, folder_id):
+        url = self._API_URL_PREFIX + "le/1.41/{course_id}/dropbox/folders/{folder_id}/submissions/?activeOnly=true".format(course_id=course_id,folder_id=folder_id)
+        return self.__process_api_json("get_submissions_for_dropbox_folder", url)
+    
+    '''
+        Retrieves all users enrolled in the specified org unit. 
+        
+        course_id: ID of the course that the user is enrolled in.
+
+        return: JSON array of ClasslistUser data blocks.
+    '''
+    def get_enrolled_users_for_org_unit(self, course_id):
+        url = self._API_URL_PREFIX + "le/1.41/{course_id}/classlist/".format(course_id=course_id)
+        return self.__process_api_json("get_enrolled_users_for_org_unit", url)
+
     '''
         Pulls the number of scheduled items with a list of given course_ids and start_date and end_date. 
 
@@ -268,6 +307,20 @@ class BSAPI():
         url += "startDateTime={sDate}&endDateTime={eDate}".format(sDate=startDateTime, eDate=endDateTime)
 
         return self.__process_api_json("get_calender_events", url)
+
+    '''
+        Retrieve all the calendar events for the calling user. within the provided course id
+        
+        course_id (str/int): a string of numbers representing the course
+        
+        returns: This action returns a JSON array of EventDataInfo data blocks.
+    '''
+
+    def get_course_all_events_(self, course_id):
+        url = self._API_URL_PREFIX
+        url += "le/1.38/{course_id}/calendar/events/".format(course_id=course_id)
+
+        return self.__process_api_json("get_course_all_events", url)
 
     '''
         Processing an api call that returns a json.
