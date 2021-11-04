@@ -231,8 +231,8 @@ class BSUtilities():
 
     '''
     
-    def find_course_ID(self, course_name):
-        course_name_str = str(course_name.content)
+   def find_course_ID(self, course_name_str):
+        #course_name_str = str(course_name.content)
         enrolled_courses = self.get_classes_enrolled()
         for course in enrolled_courses:
             class_name = str(course)
@@ -282,11 +282,11 @@ class BSUtilities():
         returns: String of feedback, or NULL if there is no feedback, or error message if parameters are incorrect. 
     '''
 
-    def get_assignment_feedback(self, course_name, assignment_name):
-        course_ID = self.find_course_ID(course_name)
+   def get_assignment_feedback(self, course_name_str, assignment_name_str):
+        course_ID = self.find_course_ID(course_name_str)
         if course_ID is not None:
             dropbox_folders = self._bsapi.get_dropbox_folders_for_org_unit(course_ID)
-            folder_ID = self.get_folder_ID_from_dropbox(dropbox_folders, assignment_name)
+            folder_ID = self.get_folder_ID_from_dropbox(dropbox_folders, assignment_name_str)
             if folder_ID is not None:
                 submissions_arr = self._bsapi.get_submissions_for_dropbox_folder(course_ID, folder_ID)      #JSON array of EntityDropbox structures
                 if submissions_arr is not None:
@@ -296,7 +296,7 @@ class BSUtilities():
                     else:
                         output = "BOT REPORT: No feedback has been provided for this assignment."
                 else:
-                    output = "BOT REPORT: Either there are no submissions for this assignment to extract feedback, or I do not have permission to access these submissions."
+                    output = "BOT REPORT: I do not have permission to access these submissions."
             else:
                 output = "ERROR: Please make sure the assignment you have specified is spelled correctly and exists."
                 return output
@@ -310,23 +310,19 @@ class BSUtilities():
         returns: True or False. True if the student is listed in the list of users for a class, or False otherwise.
     '''
 
-    def search_for_student_in_class(self, course_name, student_name):
+    def search_for_student_in_class(self, course_name_str, student_name_str):
 
         #course_name_str = str(course_name.content)
-        student_name_str = str(student_name.content)
-        course_ID = self.find_course_ID(course_name)
+        #student_name_str = str(student_name.content)
+        course_ID = self.find_course_ID(course_name_str)
         if course_ID is not None:
             classlist_user_blocks = self._bsapi.get_enrolled_users_for_org_unit(course_ID)
             for classlist_user in classlist_user_blocks:
-                #display_name  = classlist_user["DisplayName"]
                 first_name = classlist_user["FirstName"]
                 last_name = classlist_user["LastName"]
                 current_name = first_name + " " + last_name
                 if current_name.lower() == student_name_str.lower():
                     return True
-        else:
-            output = "ERROR: Please make sure the course you have specified is spelled correctly and is a course that you are currently enrolled in."
-            return output
         
         return False
     
