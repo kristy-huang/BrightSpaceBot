@@ -407,6 +407,7 @@ class BSUtilities():
                 startDate = datetime.datetime.strptime(cal_event['StartDateTime'], "%Y-%m-%dT%H:%M:%S.%fZ")
                 events.append({'course_id': cal_event['OrgUnitId'],
                                'Title': cal_event['Title'],
+                               'EventType': eventType,
                                'Description': cal_event['Description'],
                                'StartDate': startDate})
 
@@ -421,18 +422,18 @@ class BSUtilities():
         startDateTime = startDateTime.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
         
 
-
         events = self.get_events_by_type(startDateTime, endDateTime, eventType)
         str_rep = ""
+        #print("events:", events)
         for event in events:
             # TODO: get a mapping from course id to course names from the database
             str_rep += "Class: {}\n".format(event['course_id'])
-            str_rep += "Notifictaion Type: {}\n".format(event['EventType'])
             str_rep += "{}\n\n".format(event['Title'])
             str_rep += "{}\n".format(event['Description'])
             str_rep += "-----------------------------------\n\n"
 
         return str_rep
+
 
     '''
         Returns True if time_str is later than (or at the same time as) the current time
@@ -486,12 +487,12 @@ class BSUtilities():
         else:
             return 'F'
 
+
     '''
         Retrieves any assignments that were recently graded
         
         returns an array with the grade and assignment details of recently graded assignments
         or if no assignments were recently graded, return empty array
-        
     '''
     def get_grade_updates(self):
         sql = MySQLDatabase('database/db_config.py')
