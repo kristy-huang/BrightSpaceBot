@@ -9,8 +9,7 @@ from bs_api import BSAPI
 from bs_utilities import BSUtilities
 from database.db_utilities import DBUtilities
 from bot_responses import BotResponses
-from Google import Create_Service
-from calendar_sandbox import create_event
+from bs_calendar import Calendar
 
 '''
 To add the bot to your own server and test it out, copy this URL into your browser
@@ -32,7 +31,7 @@ SCHEDULED_HOURS = []
 # Having the bot log in and be online
 @client.event
 async def on_ready():
-    # BS_UTILS.set_session(USERNAME, PIN)
+    BS_UTILS.set_session(USERNAME, PIN)
     DB_UTILS.connect_by_config("database/db_config.py")
     DB_UTILS.use_database("BSBOT")
 
@@ -48,8 +47,27 @@ async def quit(ctx):
 
 # looping every day
 # change parameter to minutes=1 and see it happen every minute
-@tasks.loop(seconds=30)
+@tasks.loop(hours=1)
 async def notification_loop():
+    # Syncing the calendar daily (so it can get the correct changes)
+    classes = BS_UTILS.get_classes_enrolled()
+    for courseName, courseID in classes.items():
+        assignment_list = BS_UTILS._bsapi.get_upcoming_assignments(courseID)
+        due = BS_UTILS.process_upcoming_dates(assignment_list)
+        if len(due) != 0:
+            # actually dates that are upcoming
+            cal = Calendar()
+            # loop through all the upcoming assignments
+            for assignment in due:
+                event_title = f"DUE: {assignment[0]} ({courseID})"
+                description = f"{assignment[0]} for {courseName} is due. Don't forget to submit it!"
+                date = datetime.datetime.fromisoformat(assignment[1][:-1])
+                end = date.isoformat()
+                start = (date - datetime.timedelta(hours=1)).isoformat()
+                # inserting event
+                cal.insert_event(event_title, description, start, end)
+    print("inserting into calendar is finished...")
+
     if not SCHEDULED_HOURS:
         return
 
@@ -76,14 +94,9 @@ async def notification_loop():
         if next_notification.hour == now.hour and next_notification.minute == now.minute:
             await send_notifications()
 
-    # Syncing the calendar daily (so it can get the correct changes)
 
-    # c = "2021-11-06T03:58:00.000Z"
-    # tomorrow = datetime.datetime.fromisoformat(c[:-1])
-    # start = tomorrow.isoformat()
-    # end = (tomorrow + datetime.timedelta(hours=1)).isoformat()
-    # print("creating event...")
-    # create_event(service, "Testing", "You have an assignment due bro", start, end)
+
+
 
 
 # TODO: stop notifying immediately after running program.
