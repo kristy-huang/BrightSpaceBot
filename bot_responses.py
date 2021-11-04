@@ -52,7 +52,7 @@ class BotResponses:
     """
 
     def current_storage(self, username):
-        sql = f'SELECT STORAGE_LOCATION from PREFERENCES WHERE USERNAME = \'{username}\';'
+        sql = f'SELECT STORAGE_PATH from PREFERENCES WHERE USERNAME = \'{username}\';'
         storage_path = self.DB_UTILS._mysql.general_command(sql)
         if storage_path[0][0] is None:
             return self.message.channel.send('No storage path specified. Type update storage to save something')
