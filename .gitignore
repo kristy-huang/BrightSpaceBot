@@ -8,3 +8,6 @@ client_secret.json
 token files
 **/__pycache__/
 token_calendar_v3.pickle
+tests/test_config.py
+tests/calendar_test_data.json
+runApiCalls.py
