@@ -230,14 +230,19 @@ async def on_message(message):
         return
 
     # get feedback on assignment.
-    elif message.content.startswith("get assignment feedback"):
+   elif message.content.startswith("get assignment feedback"):
         await message.channel.send("Please provide the Course name (for ex, NUTR 303) \n")
         def author_check(m):
             return m.author == message.author
         course_name = await client.wait_for('message', check=author_check)
         await message.channel.send("Please provide the full assignment name (for ex, 'Recitation Assignment 1')\n")
         assignment_name = await client.wait_for('message', check=author_check)
-        feedback = BS_UTILS.get_assignment_feedback(course_name, assignment_name)
+
+        course_name_str = str(course_name.content)           #converting it here for unit tests
+        assignment_name_str = str(assignment_name.content)   #converting it here for unit tests
+
+        #feedback = BS_UTILS.get_assignment_feedback(course_name, assignment_name)
+        feedback = BS_UTILS.get_assignment_feedback(course_name_str, assignment_name_str)
         
         if feedback.__contains__("ERROR") or feedback.__contains__("BOT REPORT"):
             await message.channel.send(feedback)
@@ -259,14 +264,18 @@ async def on_message(message):
         course_name_str = str(course_name.content)
         student_name_str = str(student_name.content)
 
-        output = BS_UTILS.search_for_student_in_class(course_name, student_name)
+        output = BS_UTILS.search_for_student_in_class(course_name_str, student_name_str)
 
-        #if BS_UTILS.search_for_student_in_class(course_name, student_name):
         if output:
             await message.channel.send(student_name_str + " is a student in " + course_name_str)
-        else:
-            await message.channel.send(student_name_str + " is not a student in " + course_name_str)
+        elif output == False:
+            course_id = BS_UTILS.find_course_ID(course_name) 
+            if course_id is None:
+                    await message.channel.send("ERROR: Please make sure the course you have specified is spelled correctly and is a course that you are currently enrolled in.")
+            else:
+                await message.channel.send(student_name_str + " is not a student in " + course_name_str)
         
+        return
 
         #print(course_name)
         #print(student_name)
