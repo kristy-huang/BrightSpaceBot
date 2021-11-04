@@ -53,7 +53,7 @@ class BSAPI():
     '''
 
     def get_user_info(self):
-        url = self._API_URL_PREFIX + "lp/1.21/users/"
+        url = self._API_URL_PREFIX + "lp/1.21/users/whoami"
         return self.__process_api_json("get_user_info", url)
 
     '''

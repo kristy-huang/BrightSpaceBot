@@ -127,6 +127,13 @@ async def on_message(message):
     if message.author == client.user:
         return
 
+    # this message will be every single message that enters the server
+    # currently saving this info so its easier for us to debug
+    username = str(message.author).split('#')[0]
+    user_message = str(message.content)
+    channel = str(message.channel.name)
+    
+    print(f'{username}: {user_message} ({channel}) ({message.channel.id})')
 
     def check(msg):
         return msg.author == message.author
@@ -205,45 +212,66 @@ async def on_message(message):
         await request_username()
 
 
+    async def connect_bs_to_discord():
+        await message.channel.send("boilerkey url...")
+
+        res = await recieve_response()
+        url = res.content
+        await message.channel.send("bs username")
+        res = await recieve_response()
+        bs_username = res.content
+        await message.channel.send("bs 4 digit pin")
+        res = await recieve_response()
+        bs_pin = res.content
+        status = setup_automation(DB_UTILS, author_id_to_username_map[message.author.id], bs_username, bs_pin, url )
+   
     # TODO: might have problems with this lock when multiple users are using....
     global login_lock
-    if not BS_UTILS.session_exists() and not login_lock:
+    if not (BS_UTILS.session_exists() and BS_UTILS.check_connection())and not login_lock:
         login_lock = True
         
         db_res = DB_UTILS.get_bs_username_pin(author_id_to_username_map[message.author.id])
+        
+
         while not db_res:
-            # TODO: explain it better
-            await message.channel.send("No user information found in database. Setting up auto BS login. Get a boilerkey url and enter it.")
-            res = await recieve_response()
-            url = res.content
-            await message.channel.send("bs username")
-            res = await recieve_response()
-            bs_username = res.content
-            await message.channel.send("bs 4 digit pin")
-            res = await recieve_response()
-            bs_pin = res.content
-
             await message.channel.send("Setting up auto login...")
-            status = setup_automation(DB_UTILS, author_id_to_username_map[message.author.id], bs_username, bs_pin, url )
-
-            if not status[1]:
-                await message.channel.send(status[0])
-                continue
+            await connect_bs_to_discord()
             db_res = DB_UTILS.get_bs_username_pin(author_id_to_username_map[message.author.id])
+            if not db_res:
+                await message.channel.send("BrightSpace setup failed. please check your cridentials!")
+                login_lock = False
+                return
 
         await message.channel.send("Logging in to BrightSpace...")
         BS_UTILS.set_session_auto(DB_UTILS, author_id_to_username_map[message.author.id])
+
+        while not BS_UTILS.check_connection():
+            await message.channel.send("Connection failed. Please check your internet connect and cridentials. \n Do you want to reset your BS cridentials, or retry to login?")
+            res = await recieve_response()
+            if "retry" in res.content:
+                await message.channel.send("Logging in to BrightSpace...")
+                BS_UTILS.set_session_auto(DB_UTILS, author_id_to_username_map[message.author.id])
+            elif "reset" in res.content:
+                await message.channel.send("Setting up auto login...")
+                await connect_bs_to_discord()
+                await message.channel.send("Logging in to BrightSpace...")
+                BS_UTILS.set_session_auto(DB_UTILS, author_id_to_username_map[message.author.id])
+            else:
+                await message.channel.send("See you next time...")
+                login_lock = False
+                return
         
         login_lock = False
 
-    # this message will be every single message that enters the server
-    # currently saving this info so its easier for us to debug
-    username = str(message.author).split('#')[0]
-    user_message = str(message.content)
-    channel = str(message.channel.name)
-    print(f'{username}: {user_message} ({channel}) ({message.channel.id})')
-
     
+    elif not BS_UTILS.check_connection() and login_lock:
+        return
+    
+    if not BS_UTILS.check_connection():
+        await message.channel.send("Connection to BS lost. Attempting to reconnect to BS...")
+        BS_UTILS.set_session_auto(DB_UTILS, author_id_to_username_map[message.author.id])
+    
+
     # Lets say that we want the bot to only respond to a specific text channel in a server named 'todo'
     if message.channel.name == 'specifics':
         if user_message.lower() == 'im bored':
@@ -389,9 +417,11 @@ async def on_message(message):
                 await message.channel.send(output_str)
             return
 
+
     elif message.content.startswith("get busiest weeks"):
         bs_utils = BSUtilities()
         bs_utils.set_session(USERNAME, PIN)
+
 
     elif message.content.startswith("get newly graded assignments"):
         await message.channel.send("Retrieving grades...")
