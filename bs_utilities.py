@@ -50,7 +50,8 @@ class BSUtilities():
         filename = filename[filename.rindex("\"") + 1:]
         filename = urllib.parse.unquote(filename)
         print(filename)
-        if type == 'LOCAL':
+        if type.startswith('Local'):
+            print("hello inside local")
             destination += "/" if destination[-1] != '/' else ""
             if not os.path.exists(destination):
                 os.makedirs(destination)
@@ -104,7 +105,7 @@ class BSUtilities():
     def download_files(self, course_id, destination, t):
         modules = self._bsapi.get_topics(course_id)["Modules"]
         drive = None
-        if t != "LOCAL":
+        if t != "Local Machine":
             drive = self.init_google_auths()
 
         if self._debug:

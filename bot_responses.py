@@ -59,6 +59,23 @@ class BotResponses:
         else:
             return self.message.channel.send(f'Current location: {storage_path[0][0]}')
 
+    def check_if_tc_exists(self, request_tc, username):
+        sql_command = f"SELECT LIST_OF_TCS FROM PREFERENCES WHERE USERNAME = '{username}';"
+        list_of_tcs = self.DB_UTILS._mysql.general_command(sql_command)[0][0]
+        if list_of_tcs is None:
+            sql_command = f"UPDATE PREFERENCES SET LIST_OF_TCS = 'general' WHERE USERNAME = '{username}';"
+            self.DB_UTILS._mysql.general_command(sql_command) # execute command
+            sql_command = f"SELECT LIST_OF_TCS FROM PREFERENCES WHERE USERNAME = '{username}';"
+            list_of_tcs = self.DB_UTILS._mysql.general_command(sql_command)[0][0]
+
+        array = list_of_tcs.split(",")
+        # True = exists, False = doesn't exist
+        for a in array:
+            if a == request_tc:
+                # Then this text channel already exists
+                return True
+        return False
+
 
 # Debugging ...
 if __name__ == '__main__':
