@@ -717,7 +717,7 @@ class BSUtilities():
         missing_grade_courses = []
 
         # getting user enrolled classes
-        user_classes = self.get_classes_enrolled()
+        user_classes = self.get_current_semester_courses()
 
         # arrays needed for sorting courses
         # class_names will store all course names of the user

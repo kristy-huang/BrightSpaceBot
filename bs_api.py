@@ -301,6 +301,20 @@ class BSAPI():
         return self.__process_api_json("get_calender_events", url)
 
     '''
+        Retrieve all the calendar events for the calling user. within the provided course id
+        
+        course_id (str/int): a string of numbers representing the course
+        
+        returns: This action returns a JSON array of EventDataInfo data blocks.
+    '''
+
+    def get_course_all_events_(self, course_id):
+        url = self._API_URL_PREFIX
+        url += "le/1.38/{course_id}/calendar/events/".format(course_id=course_id)
+
+        return self.__process_api_json("get_course_all_events", url)
+
+    '''
         Processing an api call that returns a json.
         
         call_name: The name of the functionality that is being processed. 
