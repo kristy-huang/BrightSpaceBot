@@ -896,6 +896,7 @@ class BSUtilities():
 
         return course_urls
 
+    # start_time and end_time will be used as date objects
     def get_upcoming_events(self, start_time, end_time):
         # list of dictionary of events
         event_list = []
@@ -905,24 +906,24 @@ class BSUtilities():
             # general time case
             start_time = datetime.datetime.utcnow()
             end_time = start_time + datetime.timedelta(days=122)  # roughly 4 months
-        else:
-            # string conversion for dates
-            start_time = start_time.strptime(start_time, "%Y-%m-%dT%H:%M:%S.%fZ")
-            end_time = end_time.strptime(end_time, "%Y-%m-%dT%H:%M:%S.%fZ")
 
         # get user enrolled classes
         user_classes = self.get_current_semester_courses()
+
+        utc_offset = datetime.datetime.utcnow() - datetime.datetime.today()
 
         # find and add matching events within the given time interval
         for course_name, course_id in user_classes.items():
             course_events = self._bsapi.get_course_all_events(course_id)
             for event in course_events:
-                if start_time <= event['EndDateTime'] <= end_time:
+                event_end_time = datetime.datetime.strptime(event["EndDateTime"], "%Y-%m-%dT%H:%M:%S.%fZ")
+                event_end_time = event_end_time - utc_offset
+                if start_time <= event_end_time <= end_time:
                     event_list.append({'Course Name': course_name,
                                        'Course Id': course_id,
                                        'Event Name': event["Title"],
                                        'Description': event["Description"],
-                                       'Due Date': event["EndDateTime"]})
+                                       'Due Date': event_end_time.strftime("%m/%d/%y %H:%M")})
 
         # sorting before return
         event_list = sorted(event_list, key=lambda k: k['Due Date'])
