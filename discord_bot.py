@@ -985,8 +985,8 @@ async def on_message(message):
         suggested_course_priority = ""
         found_missing_info_courses = ""
 
-        def check(msg):
-            return msg.author == message.author
+        def check(m):
+            return m.author == message.author
 
         # ask user for pick grade or by due date
         await message.channel.send("Please pick between grade or due dates for prioritizing your courses.")
@@ -1058,8 +1058,8 @@ async def on_message(message):
         cannot_find_courses = ""
 
         # check function for client.wait_for
-        def check(msg):
-            return msg.author == message.author
+        def check(m):
+            return m.author == message.author
 
         try:
             # get user reply back
@@ -1101,6 +1101,68 @@ async def on_message(message):
                                            "https://purdue.brightspace.com/d2l/home/6824")
                 return
 
+        except asyncio.TimeoutError:
+            await message.channel.send("Timeout ERROR has occurred. Please try the query again.")
+        return
+
+    elif message.content.startswith("get upcoming assignments"):
+        # get today's date
+        today = datetime.datetime.utcnow()
+
+        # user start and end time set to today for default
+        user_start_time = today
+        user_end_time = today
+
+        # user requested event list
+        event_list = []
+
+        await message.channel.send("Which time period of assignments/exams do you need? Please type one of the options:")
+        await message.channel.send("\'Tomorrow\' or \'Next week\' or \'Next month\' or \'mm/dd/yy - mm/dd/yy\'")
+
+        # check function for client.wait_for
+        def check(m):
+            return m.author == message.author
+
+        try:
+            # get user response back
+            user_reply = await client.wait_for('message', check=check, timeout=120)
+
+            # different user options
+            if user_reply.content.lower() == "tomorrow":
+                user_end_time = today + datetime.timedelta(days=1)
+            elif user_reply.content.lower() == "next week":
+                user_end_time = today + datetime.timedelta(days=7)
+            elif user_reply.content.lower() == "next month":
+                user_end_time = today + datetime.timedelta(days=31)
+            # elif user_reply.content.lower() == "semester":
+            #    user_end_time = today + datetime.timedelta(days=122)
+            else:
+                user_requested_time = user_reply.content.split(" - ")
+                try:
+                    user_start_time = datetime.datetime.strptime(user_requested_time[0], "%m/%d/%y")
+                    user_end_time = datetime.datetime.strptime(user_requested_time[1], "%m/%d/%y")
+
+                    if user_end_time < user_start_time:
+                        await message.channel.send("Given time interval is invalid. Please try the query again")
+                        return
+
+                    if user_start_time < today:
+                        user_start_time = today
+                except:
+                    await message.channel.send("Given time format is invalid. Please try the query again")
+                    return
+
+            await message.channel.send("Finding your events ...")
+            event_list = BS_UTILS.get_upcoming_events(user_start_time, user_end_time)
+
+            event_list_to_str = ""
+            for event in event_list:
+                event_list_to_str += "[{due_date}] {name}: {title}".format(due_date=event['Due Date'],
+                                                                           name=event['Course Name'],
+                                                                           title=event['Event Name'])
+                event_list_to_str += "\n"
+
+            await message.channel.send("These are your upcoming assignments/exams:\n" + event_list_to_str)
         except asyncio.TimeoutError:
             await message.channel.send("Timeout ERROR has occurred. Please try the query again.")
         return
