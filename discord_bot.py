@@ -843,8 +843,8 @@ async def on_message(message):
             else:
                 # if end time has changed, update the event
                 if end_time != end:
-                    await message.channel.send(end_time)
-                    await message.channel.send(end)
+                    # await message.channel.send(end_time)
+                    # await message.channel.send(end)
                     cal.delete_event(event_id)
                     cal.insert_event(event_title, description, start, end)
                 else:
