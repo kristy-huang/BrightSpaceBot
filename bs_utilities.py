@@ -843,26 +843,45 @@ class BSUtilities():
         return current_enrolled_courses
 
     def get_course_by_due_date(self):
-        # list of courses by earliest due dates
+        # list of dictionary of courses by earliest due dates
         course_priority = []
+
+        # list of courses that do not have a corresponding event in the given interval
+        event_missing_courses = []
 
         # getting enrolled classes
         user_classes = self.get_current_semester_courses()
 
-        course_events = []
-        for name, id in user_classes.items():
-            course_events = self._bsapi.get_course_all_events(id)
-            end_dates = []
-            event_names = []
-            for event in course_events:
-                event_names.append(event["Title"])
-                end_dates.append(event["EndDateTime"])
-            print(name)
-            print(event_names)
-            print(end_dates)
-            print()
+        # general time case
+        start_time = datetime.datetime.utcnow()
+        end_time = start_time + datetime.timedelta(days=122)  # roughly 4 months
 
-        return course_priority
+        # Finding events
+        for course_name, course_id in user_classes.items():
+            event_title = ""
+            event_end_day = ""
+            course_events = self._bsapi.get_course_all_events(course_id)
+            for event in course_events:
+                event_end_time = datetime.datetime.strptime(event["EndDateTime"], "%Y-%m-%dT%H:%M:%S.%fZ")
+                if event_end_time > start_time:
+                    event_title = event["Title"]
+                    event_end_day = event["EndDateTime"]
+                    break
+                elif event_end_time > end_time:
+                    break
+            if event_title != "":
+                course_priority.append({'Course Name': course_name,
+                                        'Course Id': course_id,
+                                        'Event Name': event_title,
+                                        'Due Date': event_end_day})
+            else:
+                event_missing_courses.append({'Course Name': course_name,
+                                              'Course Id': course_id})
+
+        # sorting part required
+        course_priority = sorted(course_priority, key=lambda k: k['Due Date'])
+
+        return course_priority, event_missing_courses
 
     def get_course_url(self):
         # url dictionary format: purdue.brightspace.com/d2l/home/{course_id}
@@ -876,3 +895,36 @@ class BSUtilities():
             course_urls[course_name] = course_home_page
 
         return course_urls
+
+    def get_upcoming_events(self, start_time, end_time):
+        # list of dictionary of events
+        event_list = []
+
+        # setting time interval
+        if start_time is None and end_time is None:
+            # general time case
+            start_time = datetime.datetime.utcnow()
+            end_time = start_time + datetime.timedelta(days=122)  # roughly 4 months
+        else:
+            # string conversion for dates
+            start_time = start_time.strptime(start_time, "%Y-%m-%dT%H:%M:%S.%fZ")
+            end_time = end_time.strptime(end_time, "%Y-%m-%dT%H:%M:%S.%fZ")
+
+        # get user enrolled classes
+        user_classes = self.get_current_semester_courses()
+
+        # find and add matching events within the given time interval
+        for course_name, course_id in user_classes.items():
+            course_events = self._bsapi.get_course_all_events(course_id)
+            for event in course_events:
+                if start_time <= event['EndDateTime'] <= end_time:
+                    event_list.append({'Course Name': course_name,
+                                       'Course Id': course_id,
+                                       'Event Name': event["Title"],
+                                       'Description': event["Description"],
+                                       'Due Date': event["EndDateTime"]})
+
+        # sorting before return
+        event_list = sorted(event_list, key=lambda k: k['Due Date'])
+
+        return event_list
