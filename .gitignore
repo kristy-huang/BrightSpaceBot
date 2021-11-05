@@ -4,7 +4,10 @@ config.py
 discord_config.py
 db_config.py
 client_secret.json
-**/__pycache__
+__pycache__
 token files
 **/__pycache__/
 token_calendar_v3.pickle
+tests/test_config.py
+tests/calendar_test_data.json
+runApiCalls.py
