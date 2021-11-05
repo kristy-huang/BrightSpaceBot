@@ -234,11 +234,11 @@ async def on_message(message):
         db_res = DB_UTILS.get_bs_username_pin(author_id_to_username_map[message.author.id])
         
 
-        while not db_res:
+        while not db_res or not db_res[0][0]:
             await message.channel.send("Setting up auto login...")
             await connect_bs_to_discord()
             db_res = DB_UTILS.get_bs_username_pin(author_id_to_username_map[message.author.id])
-            if not db_res:
+            if not db_res or not db_res[0][0]:
                 await message.channel.send("BrightSpace setup failed. please check your cridentials!")
                 login_lock = False
                 return
@@ -981,6 +981,9 @@ async def on_message(message):
 
     # returning user course priority by either grade or upcoming events
     elif message.content.startswith("course priority"):
+        # reply backs to the user
+        suggested_course_priority = ""
+        found_missing_info_courses = ""
 
         def check(msg):
             return msg.author == message.author
@@ -998,31 +1001,42 @@ async def on_message(message):
                 priority = BS_UTILS.get_sorted_grades()[0]
                 missing = BS_UTILS.get_sorted_grades()[1]
 
-                suggested_course_priority = ""
                 for x in range(0, len(priority)):
                     suggested_course_priority += priority[x]
                     if not x == len(priority) - 1:
                         suggested_course_priority += " << "
 
-                found_missing_grade_courses = ""
                 for x in range(0, len(missing)):
-                    found_missing_grade_courses += missing[x]
+                    found_missing_info_courses += missing[x]
                     if not x == len(missing) - 1:
-                        found_missing_grade_courses += " , "
+                        found_missing_info_courses += " , "
 
                 await message.channel.send("The suggested course priority is (highest grade << lowest grade):\n"
                                            + suggested_course_priority)
                 await message.channel.send("There are some courses that miss final grades:\n"
-                                           + found_missing_grade_courses)
+                                           + found_missing_info_courses)
 
             elif priority_option.content.startswith("due dates"):
                 # api call for due dates
                 await message.channel.send("Setting course priority by upcoming due dates ...")
 
-                due_dates = BS_UTILS.get_course_by_due_date()
-                #print(due_dates)
+                priority = BS_UTILS.get_course_by_due_date()[0]
+                event_missing = BS_UTILS.get_course_by_due_date()[1]
 
-                await message.channel.send("Sorry we are adjusting function at the moment, please try it next time")
+                for x in range(0, len(priority)):
+                    suggested_course_priority += priority[x]['Course Name']
+                    if not x == len(priority) - 1:
+                        suggested_course_priority += " >> "
+
+                for x in range(0, len(event_missing)):
+                    found_missing_info_courses += event_missing[x]['Course Name']
+                    if not x == len(event_missing) - 1:
+                        found_missing_info_courses += ", "
+
+                await message.channel.send("The suggested course priority is (earliest >> latest):\n" +
+                                           suggested_course_priority)
+                await message.channel.send("There are some courses that have no upcoming due dates:\n" +
+                                           found_missing_info_courses)
             else:
                 await message.channel.send("Invalid response given! Please try the query again.")
                 return
@@ -1039,7 +1053,7 @@ async def on_message(message):
 
         # bot asks user for specific input
         await message.channel.send("Which course link do you need? Type \'All\' or specific course links")
-        await message.channel.send("ex) CS 180,CS 240 or All")
+        await message.channel.send("ex) All or CS 180,CS 240")
         reply_back = ""
         cannot_find_courses = ""
 
@@ -1078,16 +1092,13 @@ async def on_message(message):
                     await message.channel.send("Please check if they are valid course(s)")
             else:
                 await message.channel.send("Sorry, we couldn't find the matching courses.")
-                await message.channel.send("Please check if they are valid courses.")
-
+                await message.channel.send("Please check if they are valid course(s).")
                 # home page vary by campus location
                 # West Lafayette: 6824
                 # Fort Wayne: 6822
                 # Northwest: 6823
                 await message.channel.send("Here is the home page default link: " +
                                            "https://purdue.brightspace.com/d2l/home/6824")
-                # user_info = BS_UTILS._bsapi.get_user_info()
-                # print(user_info)
                 return
 
         except asyncio.TimeoutError:
