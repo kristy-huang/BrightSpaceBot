@@ -929,3 +929,49 @@ class BSUtilities():
         event_list = sorted(event_list, key=lambda k: k['Due Date'])
 
         return event_list
+
+    def get_focus_suggestion(self, user_requested_order):
+        # list of suggestion for classes
+        suggested_classes = []
+        lack_info_classes = []
+
+        # get user enrolled class for this semester
+        user_classes = self.get_current_semester_courses()
+
+        # courses sorted by grade
+        user_sorted_grade = self.get_sorted_grades()[0]
+        user_missing_grade = self.get_sorted_grades()[1]
+
+        # courses sorted by due dates
+        user_sorted_due_dates = self.get_course_by_due_date()[0]
+        user_missing_due_dates = self.get_course_by_due_date()[1]
+
+        # courses sorted by un-submitted assignments
+        # needs implementation
+
+        if user_requested_order == 1:   # grade, deadline
+            # should start from lowest grades
+            # but if there is no grade nor deadline the course should not be recommended
+            for course in user_missing_grade:
+                if course in user_missing_due_dates:
+                    lack_info_classes.append({'Course Name': course,
+                                              'Lack': "Grade & Due Date"})
+                elif course in user_sorted_due_dates:
+                    suggested_classes.append(course)
+
+            for course in reversed(user_sorted_grade):
+                if course in user_sorted_due_dates:
+                    suggested_classes.append(course)
+                elif course in user_missing_due_dates:
+                    lack_info_classes.append({'Course Name': course,
+                                              'Lack': "Due date"})
+
+        elif user_requested_order == 2: # deadline, grade
+            # should start from earliest deadlines
+            # but if there is no grade nor deadline the course should not be recommended
+            suggested_classes = user_sorted_due_dates
+            for course in user_missing_due_dates:
+                lack_info_classes.append({'Course Name': course,
+                                          'Lack': "Due Date"})
+
+        return suggested_classes, lack_info_classes

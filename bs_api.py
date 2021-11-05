@@ -323,6 +323,15 @@ class BSAPI():
         return self.__process_api_json("get_course_all_events", url)
 
     '''
+        Retrieve not submitted grade conditions 
+        
+        return. This action returns a ConditionsData JSON structure representing the conditions on the target
+    '''
+
+    def get_content_conditions(self):
+        return
+
+    '''
         Processing an api call that returns a json.
         
         call_name: The name of the functionality that is being processed. 
