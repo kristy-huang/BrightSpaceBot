@@ -638,7 +638,7 @@ class BSUtilities():
 
     def get_all_upcoming_quizzes(self):
         enrolled_courses = self.get_classes_enrolled()
-        print(enrolled_courses)
+        # print(enrolled_courses)
         upcoming_quizzes = []
         for course_name, course_id in enrolled_courses.items():
             result = self._bsapi.get_quizzes(course_id)  # returns a list of QuizReadData blocks - dictionaries
@@ -649,14 +649,16 @@ class BSUtilities():
                 current_date = datetime.datetime.utcnow()
 
                 if quiz['DueDate'] is not None:
-                    quiz_due_date = datetime.datetime.strptime(quiz['DueDate'], "%Y-%m-%dT%H:%M:%S.%fZ")
+                    quiz_due_date = datetime.datetime.fromisoformat(quiz['DueDate'][:-1])
+                    # print(quiz_due_date)
+                    # quiz_due_date = datetime.datetime.strptime(quiz['DueDate'], "%Y-%m-%dT%H:%M:%S.%fZ")
 
                     # find diff between quiz.due date and today
                     diff = (quiz_due_date - current_date).days
                     # print(diff)
                     # for upcoming quizzes due today or later in the future: diff >= 0
                     # TODO: fix this!!!
-                    if diff >= -14:
+                    if diff >= -7:
                         data = {
                             "course_id": course_id,
                             "course_name": course_name,
