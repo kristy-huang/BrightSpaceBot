@@ -40,12 +40,11 @@ NOT_FREQ_MAP = {
 }
 
 
-
-
 # Having the bot log in and be online
 @client.event
 async def on_ready():
     pass
+
 
 @commands.command()
 async def quit(ctx):
@@ -57,7 +56,7 @@ async def quit(ctx):
 # change parameter to minutes=1 and see it happen every minute
 @tasks.loop(minutes=1)
 async def notification_loop():
-    #print("called_once_a_day:")
+    # print("called_once_a_day:")
     async def send_notifications(channel_id, types):
         message_channel = client.get_channel(channel_id)
         print(channel_id, message_channel)
@@ -65,15 +64,14 @@ async def notification_loop():
         string = ""
         if types[0] == "1":
             dates = BS_UTILS.get_dict_of_discussion_dates()
-            #dates = DATES
+            # dates = DATES
             string += BS_UTILS.find_upcoming_disc_dates(1, dates)
         if types[1] == "1":
             string += BS_UTILS.get_notifications_past_24h()
         if types[2] == "1":
-            string += BS_UTILS.get_events_by_type_past_24h(1) #Reminder
+            string += BS_UTILS.get_events_by_type_past_24h(1)  # Reminder
         if types[3] == "1":
-            string += BS_UTILS.get_events_by_type_past_24h(6) #DueDate
-
+            string += BS_UTILS.get_events_by_type_past_24h(6)  # DueDate
 
         # replace course id's with course names:
 
@@ -99,14 +97,14 @@ async def notification_loop():
     schedules = DB_UTILS.get_notifictaion_schedule_by_time(time_string, weekday)
 
     for schedule in schedules:
-        #print(schedule)
+        # print(schedule)
         channel_id = schedule[1]
-        #print("str id", channel_id)
+        # print("str id", channel_id)
         channel_id = int(schedule[1])
         types = schedule[2]
         if not types:
             types = "1111"
-        #print("int id", channel_id)
+        # print("int id", channel_id)
         await send_notifications(channel_id, types)
 
 
@@ -133,12 +131,11 @@ async def on_message(message):
     username = str(message.author).split('#')[0]
     user_message = str(message.content)
     channel = str(message.channel.name)
-    
+
     print(f'{username}: {user_message} ({channel}) ({message.channel.id})')
 
     def check(msg):
         return msg.author == message.author
-
 
     async def recieve_response():
         try:
@@ -148,12 +145,10 @@ async def on_message(message):
             return None
         return res
 
-
     async def request_username_password():
         await message.channel.send("What is your username?")
         username = await recieve_response()
         author_id_to_username_map[username.author.id] = username.content
-
 
     def get_weekday(msg):
         msg = msg.lower()
@@ -174,7 +169,6 @@ async def on_message(message):
 
         return -1
 
-
     def parse_time(string):
         time = datetime.datetime.strptime(string, "%H:%M")
         return time
@@ -182,7 +176,6 @@ async def on_message(message):
     def time_to_string(time):
         time_str = time.strftime("%H:%M")
         return time_str
-
 
     async def get_time():
         await message.channel.send("What time? (e.g. 09: 12, 10:00, 23:24)")
@@ -203,11 +196,10 @@ async def on_message(message):
             return None
 
         if h < 0 or h > 23 or m < 0 or m > 59:
-                await message.channel.send("Please re-enter your time as the format given.")
-                return None
+            await message.channel.send("Please re-enter your time as the format given.")
+            return None
 
         return new_time
-
 
     async def connect_bs_to_discord():
         await message.channel.send("boilerkey url...")
@@ -220,19 +212,17 @@ async def on_message(message):
         await message.channel.send("bs 4 digit pin")
         res = await recieve_response()
         bs_pin = res.content
-        status = setup_automation(DB_UTILS, author_id_to_username_map[message.author.id], bs_username, bs_pin, url )
-   
+        status = setup_automation(DB_UTILS, author_id_to_username_map[message.author.id], bs_username, bs_pin, url)
+
     if message.author.id not in author_id_to_username_map:
         await request_username_password()
 
-
     # TODO: might have problems with this lock when multiple users are using....
     global login_lock
-    if not (BS_UTILS.session_exists() and BS_UTILS.check_connection())and not login_lock:
+    if not (BS_UTILS.session_exists() and BS_UTILS.check_connection()) and not login_lock:
         login_lock = True
-        
+
         db_res = DB_UTILS.get_bs_username_pin(author_id_to_username_map[message.author.id])
-        
 
         while not db_res or not db_res[0][0]:
             await message.channel.send("Setting up auto login...")
@@ -250,7 +240,8 @@ async def on_message(message):
             await message.channel.send("Login successed!")
 
         while not BS_UTILS.check_connection():
-            await message.channel.send("Connection failed. Please check your internet connect and cridentials. \n Do you want to reset your BS cridentials, or retry to login?")
+            await message.channel.send(
+                "Connection failed. Please check your internet connect and cridentials. \n Do you want to reset your BS cridentials, or retry to login?")
             res = await recieve_response()
             if "retry" in res.content:
                 await message.channel.send("Logging in to BrightSpace...")
@@ -264,17 +255,16 @@ async def on_message(message):
                 await message.channel.send("See you next time...")
                 login_lock = False
                 return
-        
+
         login_lock = False
 
-    
+
     elif not BS_UTILS.check_connection() and login_lock:
         return
-    
+
     if not BS_UTILS.check_connection():
         await message.channel.send("Connection to BS lost. Attempting to reconnect to BS...")
         BS_UTILS.set_session_auto(DB_UTILS, author_id_to_username_map[message.author.id])
-    
 
     # test gate to prevent multiple responses from the bot to the user
     # guild_members = message.guild.members
@@ -398,9 +388,9 @@ async def on_message(message):
                     grades[courses[counter]] = letter
             counter = counter + 1
 
-        #print(grades)
+        # print(grades)
         grades = dict(sorted(grades.items(), key=lambda item: item[1]))
-        #print(grades)
+        # print(grades)
         final_string = "Your grades are: \n"
         for key, value in grades.items():
             final_string = final_string + key.upper() + ": " + value + "\n"
@@ -411,33 +401,38 @@ async def on_message(message):
     # get feedback on assignment.
     elif message.content.startswith("get assignment feedback"):
         await message.channel.send("Please provide the Course name (for ex, NUTR 303) \n")
+
         def author_check(m):
             return m.author == message.author
+
         course_name = await client.wait_for('message', check=author_check)
         await message.channel.send("Please provide the full assignment name (for ex, 'Recitation Assignment 1')\n")
         assignment_name = await client.wait_for('message', check=author_check)
 
-        course_name_str = str(course_name.content)           #converting it here for unit tests
-        assignment_name_str = str(assignment_name.content)   #converting it here for unit tests
+        course_name_str = str(course_name.content)  # converting it here for unit tests
+        assignment_name_str = str(assignment_name.content)  # converting it here for unit tests
 
-        #feedback = BS_UTILS.get_assignment_feedback(course_name, assignment_name)
+        # feedback = BS_UTILS.get_assignment_feedback(course_name, assignment_name)
         feedback = BS_UTILS.get_assignment_feedback(course_name_str, assignment_name_str)
-        
+
         if feedback.__contains__("ERROR") or feedback.__contains__("BOT REPORT"):
             await message.channel.send(feedback)
         else:
             await message.channel.send("Feedback from Grader: \n")
             await message.channel.send(feedback)
-        
+
         return
 
-    #enable the user to search for a specific student in a class.
+    # enable the user to search for a specific student in a class.
     elif message.content.startswith("search for student"):
         await message.channel.send("Please provide the course in which you want to search \n")
+
         def author_check(m):
             return m.author == message.author
+
         course_name = await client.wait_for('message', check=author_check)
-        await message.channel.send("Please provide the full name (First Name + Last Name, e.g 'Shaun Thomas') of the student you would like to search for.\n")
+        await message.channel.send(
+            "Please provide the full name (First Name + Last Name, e.g 'Shaun Thomas') of the student you would like to search for.\n")
         student_name = await client.wait_for('message', check=author_check)
 
         course_name_str = str(course_name.content)
@@ -448,18 +443,19 @@ async def on_message(message):
         if output:
             await message.channel.send(student_name_str + " is a student in " + course_name_str)
         elif output == False:
-            course_id = BS_UTILS.find_course_ID(course_name_str) 
+            course_id = BS_UTILS.find_course_ID(course_name_str)
             if course_id is None:
-                    await message.channel.send("ERROR: Please make sure the course you have specified is spelled correctly and is a course that you are currently enrolled in.")
+                await message.channel.send(
+                    "ERROR: Please make sure the course you have specified is spelled correctly and is a course that you are currently enrolled in.")
             else:
                 await message.channel.send(student_name_str + " is not a student in " + course_name_str)
-        
+
         return
 
-        #print(course_name)
-        #print(student_name)
+        # print(course_name)
+        # print(student_name)
         return
-       
+
     # get upcoming quizzes across all classes
     elif message.content.startswith("get upcoming quizzes"):
         upcoming_quizzes = BS_UTILS.get_upcoming_quizzes()
@@ -586,24 +582,22 @@ async def on_message(message):
 
         if message.author.id not in author_id_to_username_map:
             await request_username_password()
-   
+
         async def everyday():
             new_time = None
             while not new_time:
                 new_time = await get_time()
 
-
-
             await message.channel.send(f"{new_time.content}, right?")
             res = await recieve_response()
 
             if res.content.startswith("y") or res.content.startswith("right"):
-                DB_UTILS.add_notifictaion_schedule(author_id_to_username_map[res.author.id], new_time.content, 1 * 24 * 60, res.channel.id, description=7) # 7 = everyday
-                #SCHEDULED_HOURS.append(new_hour)
+                DB_UTILS.add_notifictaion_schedule(author_id_to_username_map[res.author.id], new_time.content,
+                                                   1 * 24 * 60, res.channel.id, description=7)  # 7 = everyday
+                # SCHEDULED_HOURS.append(new_hour)
                 await message.channel.send(f"Schedule changed.")
             else:
                 await message.channel.send(f"No changes are made to your schedule.")
-
 
         async def every_week():
             await message.channel.send("Which week day?")
@@ -613,21 +607,21 @@ async def on_message(message):
                 if day == -1:
                     await message.channel.send("Please choose from Mon/Tues/Wed/Thurs/Fri/Sat/Sun")
                     continue
-                break     
-            
+                break
+
             new_time = None
             while not new_time:
                 new_time = await get_time()
-                
+
             day_str = NOT_FREQ_MAP[day]
             await message.channel.send(f"{new_time.content} for {day_str.lower()}?")
             res = await recieve_response()
             if res.content.startswith("y") or res.content.startswith("right"):
-                DB_UTILS.add_notifictaion_schedule(author_id_to_username_map[res.author.id], new_time.content, 1 * 24 * 7 * 60, res.channel.id, description=day)
+                DB_UTILS.add_notifictaion_schedule(author_id_to_username_map[res.author.id], new_time.content,
+                                                   1 * 24 * 7 * 60, res.channel.id, description=day)
                 await message.channel.send(f"Schedule changed.")
             else:
-                await message.channel.send(f"No changes are made to your schedule.") 
-
+                await message.channel.send(f"No changes are made to your schedule.")
 
         async def add_week_or_everyday():
             await message.channel.send(f"Do you want to be notified everyday, or by a specific weekday?")
@@ -636,7 +630,6 @@ async def on_message(message):
                 await everyday()
             else:
                 await every_week()
-
 
         async def by_amount():
             def calculate_notis_each_week(schedules):
@@ -648,7 +641,7 @@ async def on_message(message):
                     else:
                         notifications += 1
                 return notifications
-            
+
             await message.channel.send("How many notifications do you want every week?")
             res = await recieve_response()
 
@@ -660,33 +653,33 @@ async def on_message(message):
                     continue
                 break
 
-            
             s_times = DB_UTILS.get_notifictaion_schedule_with_description(author_id_to_username_map[message.author.id])
             curr_len = calculate_notis_each_week(s_times)
 
             while curr_len < freq:
                 await message.channel.send(f"There are currently {curr_len} schedules. ")
                 await add_week_or_everyday()
-                
-                s_times = DB_UTILS.get_notifictaion_schedule_with_description(author_id_to_username_map[message.author.id])
+
+                s_times = DB_UTILS.get_notifictaion_schedule_with_description(
+                    author_id_to_username_map[message.author.id])
                 curr_len = calculate_notis_each_week(s_times)
                 await message.channel.send(f"Do you want to add more?")
-                
+
                 res = await recieve_response()
                 if res.content.startswith("y") or res.content.startswith("right"):
                     continue
                 await message.channel.send(f"Understood. Have a nice day.")
                 break
             else:
-                await message.channel.send(f"There are currently more than {freq} scheduled times. No new schedules will be added.")
-                
+                await message.channel.send(
+                    f"There are currently more than {freq} scheduled times. No new schedules will be added.")
 
         async def by_class_schedule():
             scheduled_classes = DB_UTILS.get_classes_in_schedule(author_id_to_username_map[message.author.id])
             if not scheduled_classes:
                 await message.channel.send("You don't have any scheduled classes.")
                 return
-            
+
             msg = "Which class do you want to recieve notifications before?\n\n"
             msg += "List of classes:\n"
             for i, c in enumerate(scheduled_classes):
@@ -710,7 +703,7 @@ async def on_message(message):
                 break
 
             class_name = scheduled_classes[num - 1]
-            
+
             await message.channel.send("How many minutes before class?")
             while True:
                 res = await recieve_response()
@@ -721,10 +714,11 @@ async def on_message(message):
                     continue
                 break
 
-            scheduled_classes = DB_UTILS.get_class_schedule_with_description(author_id_to_username_map[message.author.id])
-            #print(scheduled_classes)
+            scheduled_classes = DB_UTILS.get_class_schedule_with_description(
+                author_id_to_username_map[message.author.id])
+            # print(scheduled_classes)
             for c in scheduled_classes:
-                #print(c[0])
+                # print(c[0])
                 if c[0] != class_name:
                     continue
 
@@ -733,7 +727,8 @@ async def on_message(message):
                 time = time - datetime.timedelta(minutes=mins)
                 new_time_str = time_to_string(time)
 
-                DB_UTILS.add_notifictaion_schedule(author_id_to_username_map[message.author.id], new_time_str, 1 * 60 * 24 * 7, res.channel.id, c[2] )
+                DB_UTILS.add_notifictaion_schedule(author_id_to_username_map[message.author.id], new_time_str,
+                                                   1 * 60 * 24 * 7, res.channel.id, c[2])
 
             await message.channel.send("Schedule modified.")
 
@@ -745,7 +740,8 @@ async def on_message(message):
                 DB_UTILS.clear_notification_schedule(author_id_to_username_map[message.author.id])
                 await message.channel.send(f"Old schedules are deleted.")
 
-        await message.channel.send("Do you want your notification to be sent every day, every week, by a specific amount, or according to your class schedule?")
+        await message.channel.send(
+            "Do you want your notification to be sent every day, every week, by a specific amount, or according to your class schedule?")
 
         res = await recieve_response()
         if "day" in res.content:
@@ -762,11 +758,12 @@ async def on_message(message):
             await by_class_schedule()
         else:
             await message.channel.send("I am not sure about what you want to do")
-            return 
+            return
 
     elif message.content.startswith("update type"):
-        current_times = DB_UTILS.get_notifictaion_schedule_with_description(author_id_to_username_map[message.author.id])
-        
+        current_times = DB_UTILS.get_notifictaion_schedule_with_description(
+            author_id_to_username_map[message.author.id])
+
         if not current_times:
             await message.channel.send("You don't have any scheduled times now.")
             return
@@ -774,7 +771,7 @@ async def on_message(message):
         msg = ""
         for i, time in enumerate(current_times):
             msg += f"{i + 1}: {time[0]} {time[1]}\n"
-            
+
         await message.channel.send("Which time do you want to change?")
         await message.channel.send(msg)
 
@@ -817,22 +814,24 @@ async def on_message(message):
         new_types = "".join(new_types)
         num -= 1
         await message.channel.send(f"Change time: {current_times[num][0]} {current_times[num][1]}'s types?")
-        
+
         res = await recieve_response()
 
         if res.content.startswith("y") or res.content.startswith("right"):
-            DB_UTILS.update_notification_schedule_types(author_id_to_username_map[message.author.id], current_times[num][0], current_times[num][1], new_types)
-            
+            DB_UTILS.update_notification_schedule_types(author_id_to_username_map[message.author.id],
+                                                        current_times[num][0], current_times[num][1], new_types)
+
             await message.channel.send("Type updated")
         else:
             await message.channel.send(f"No changes are made to your schedule.")
 
-    elif message.content.startswith("delete noti"):     
+    elif message.content.startswith("delete noti"):
         if message.author.id not in author_id_to_username_map:
             await request_username_password()
 
-        current_times = DB_UTILS.get_notifictaion_schedule_with_description(author_id_to_username_map[message.author.id])
-        
+        current_times = DB_UTILS.get_notifictaion_schedule_with_description(
+            author_id_to_username_map[message.author.id])
+
         if not current_times:
             await message.channel.send("You don't have any scheduled times now.")
             return
@@ -846,12 +845,12 @@ async def on_message(message):
                 await message.channel.send("Schedule deleted")
             else:
                 await message.channel.send(f"No changes are made to your schedule.")
-    
+
         async def delete_some():
             msg = ""
             for i, time in enumerate(current_times):
                 msg += f"{i + 1}: {time[0]} {time[1]}\n"
-                
+
             await message.channel.send("Which time do you want to delete?")
             await message.channel.send(msg)
 
@@ -872,21 +871,22 @@ async def on_message(message):
 
             num -= 1
             await message.channel.send(f"Delete time: {current_times[num][0]} {current_times[num][1]}?")
-            
+
             res = await recieve_response()
 
             if res.content.startswith("y") or res.content.startswith("right"):
-                DB_UTILS.delete_notification_schedule(author_id_to_username_map[message.author.id], current_times[num][0], current_times[num][1])
-                
+                DB_UTILS.delete_notification_schedule(author_id_to_username_map[message.author.id],
+                                                      current_times[num][0], current_times[num][1])
+
                 await message.channel.send("Schedule deleted")
             else:
                 await message.channel.send(f"No changes are made to your schedule.")
-    
+
         await message.channel.send("Do you want to delete all scheduled times or specific times?")
 
         res = await recieve_response()
         if "all" in res.content:
-            await delete_all() 
+            await delete_all()
         else:
             await delete_some()
 
@@ -901,7 +901,7 @@ async def on_message(message):
             msg = f"Scheduled times for {author_id_to_username_map[message.author.id]}:\n"
             for hour in s_times:
                 msg += f"{hour[0]} {NOT_FREQ_MAP[int(hour[1])].lower()}\n"
-                
+
             await message.channel.send(msg)
 
 
@@ -927,23 +927,23 @@ async def on_message(message):
                 new_time = None
                 while not new_time:
                     new_time = await get_time()
-                    
+
                 day_str = NOT_FREQ_MAP[day]
                 await message.channel.send(f"{new_time.content} for {day_str.lower()}?")
                 res = await recieve_response()
                 if res.content.startswith("y") or res.content.startswith("right"):
-                    DB_UTILS.add_class_schedule(author_id_to_username_map[res.author.id], class_name, new_time.content, description=day)
+                    DB_UTILS.add_class_schedule(author_id_to_username_map[res.author.id], class_name, new_time.content,
+                                                description=day)
                     await message.channel.send(f"Schedule changed.")
                 else:
                     await message.channel.send(f"No changes are made to your schedule.")
-                
+
                 await message.channel.send(f"Do you want to add another time for this class?")
                 res = await recieve_response()
                 if res.content.startswith("y") or res.content.startswith("right"):
                     continue
                 break
 
-            
             await message.channel.send(f"Do you want to add another class?")
             res = await recieve_response()
             if res.content.startswith("y") or res.content.startswith("right"):
@@ -963,7 +963,7 @@ async def on_message(message):
             msg = f"Scheduled classes for {author_id_to_username_map[message.author.id]}:\n"
             for hour in c_times:
                 msg += f"{hour[0]} {hour[1]} {NOT_FREQ_MAP[int(hour[2])].lower()}\n"
-                
+
             await message.channel.send(msg)
 
     elif message.content.startswith("download: "):
@@ -980,7 +980,7 @@ async def on_message(message):
             return
 
     # returning user course priority by either grade or upcoming events
-    elif message.content.startswith("course priority"):
+    elif message.content.startswith("get course priority"):
         # reply backs to the user
         suggested_course_priority = ""
         found_missing_info_courses = ""
@@ -1047,13 +1047,13 @@ async def on_message(message):
 
         return
 
-    elif message.content.startswith("course link"):
+    elif message.content.startswith("get course link"):
         # get user course urls in advance
         user_course_urls = BS_UTILS.get_course_url()
 
         # bot asks user for specific input
         await message.channel.send("Which course link do you need? Type \'All\' or specific course links")
-        await message.channel.send("ex) All or CS 180,CS 240")
+        await message.channel.send("ex) All or CS 180, CS 240")
         reply_back = ""
         cannot_find_courses = ""
 
@@ -1067,32 +1067,32 @@ async def on_message(message):
 
             # different user_request options
             # 'All'
-            if user_reply.content.startswith("All"):
-                reply_back += "The followings are the links to your course homepages\n"
+            if user_reply.content.lower().startswith("all"):
                 for course_name, course_url in user_course_urls.items():
                     reply_back += "{course_name}: {url}\n".format(course_name=course_name,
-                                                                url=course_url)
+                                                                  url=course_url)
             else:
-                user_requests = user_reply.content.split(",")
+                user_requests = user_reply.content.split(", ")
                 for requested_course in user_requests:
                     for course_name, course_url in user_course_urls.items():
-                        if requested_course in course_name:
+                        if requested_course.upper() in course_name:
                             reply_back += "{course_name}: {url}\n".format(course_name=course_name,
-                                                                url=course_url)
+                                                                          url=course_url)
                         continue
-                    if requested_course not in reply_back:
+                    if requested_course.upper() not in reply_back:
                         cannot_find_courses += "{course_name}\t".format(course_name=requested_course)
 
             # send the reply back
             if not reply_back == "":
+                await message.channel.send("The followings are the links to your course homepages\n")
                 await message.channel.send(reply_back)
                 if not cannot_find_courses == "":
                     await message.channel.send("These are courses that I couldn't find:")
                     await message.channel.send(cannot_find_courses)
-                    await message.channel.send("Please check if they are valid course(s)")
+                    await message.channel.send("Please check if they are your valid course(s)")
             else:
                 await message.channel.send("Sorry, we couldn't find the matching courses.")
-                await message.channel.send("Please check if they are valid course(s).")
+                await message.channel.send("Please check if they are your valid course(s).")
                 # home page vary by campus location
                 # West Lafayette: 6824
                 # Fort Wayne: 6822
@@ -1116,7 +1116,8 @@ async def on_message(message):
         # user requested event list
         event_list = []
 
-        await message.channel.send("Which time period of assignments/exams do you need? Please type one of the options:")
+        await message.channel.send(
+            "Which time period of assignments/exams do you need? Please type one of the options:")
         await message.channel.send("\'Tomorrow\' or \'Next week\' or \'Next month\' or \'mm/dd/yy - mm/dd/yy\'")
 
         # check function for client.wait_for
@@ -1149,7 +1150,7 @@ async def on_message(message):
                     if user_start_time < today:
                         user_start_time = today
                 except:
-                    await message.channel.send("Given time format is invalid. Please try the query again")
+                    await message.channel.send("Given option is invalid. Please try the query again")
                     return
 
             await message.channel.send("Finding your events ...")
@@ -1166,6 +1167,55 @@ async def on_message(message):
         except asyncio.TimeoutError:
             await message.channel.send("Timeout ERROR has occurred. Please try the query again.")
         return
+
+    elif message.content.startswith("suggest course study"):
+        # check function for client.wait_for
+        def check(m):
+            return m.author == message.author
+
+        await message.channel.send("What order would you like for suggestions?\n" +
+                                   "\'grade, deadline\' or \'deadline, grade\'")
+
+        try:
+            user_response = await client.wait_for('message', check=check, timeout=60)
+
+            # default order value
+            order = 0
+
+            # user_requested_order = user_response.content.split(", ")
+            if user_response.content.lower() == "grade, deadline":
+                order = 1
+            elif user_response.content.lower() == "deadline, grade":
+                order = 2
+
+            if order != 0:
+                focus_suggestion = BS_UTILS.get_focus_suggestion(order)[0]
+                lack_info = BS_UTILS.get_focus_suggestion(order)[1]
+
+                reply = ""
+                for x in range(0, len(focus_suggestion)):
+                    reply += "{course_name}".format(course_name=focus_suggestion[x])
+                    if x != len(focus_suggestion) - 1:
+                        reply += " >> "
+
+                lack_reply = ""
+                for x in range(0, len(lack_info)):
+                    lack_reply += "{course_name}[{reason}]".format(course_name=lack_info[x]['Course Name'],
+                                                                   reason=lack_info[x]['Lack'])
+                    if x != len(lack_info) - 1:
+                        lack_reply += ", "
+
+                await message.channel.send("Here is your suggested classes to focus more(focus more << focus less):\n"
+                                           + reply)
+                await message.channel.send("There are some courses that lack info:\n" + lack_reply)
+            else:
+                await message.channel.send("Invalid order was given. Please try the query again")
+                return
+        except asyncio.TimeoutError:
+            await message.channel.send("Timeout ERROR has occurred. Please try the query again")
+
+        return
+
 
 # Now to actually run the bot!
 client.run(config['token'])
