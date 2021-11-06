@@ -940,11 +940,15 @@ class BSUtilities():
 
         # courses sorted by grade
         user_sorted_grade = self.get_sorted_grades()[0]
+        print(user_sorted_grade)
         user_missing_grade = self.get_sorted_grades()[1]
+        print(user_missing_grade)
 
         # courses sorted by due dates
         user_sorted_due_dates = self.get_course_by_due_date()[0]
+        print(user_sorted_due_dates)
         user_missing_due_dates = self.get_course_by_due_date()[1]
+        print(user_missing_due_dates)
 
         # courses sorted by un-submitted assignments
         # needs implementation
@@ -952,26 +956,34 @@ class BSUtilities():
         if user_requested_order == 1:   # grade, deadline
             # should start from lowest grades
             # but if there is no grade nor deadline the course should not be recommended
+            # for course in user_sorted_grade:
+            #    if course in user_sorted_due_dates:
+            #        suggested_classes.append(course)
+
+            suggested_classes = user_sorted_grade
+
             for course in user_missing_grade:
-                if course in user_missing_due_dates:
-                    lack_info_classes.append({'Course Name': course,
-                                              'Lack': "Grade & Due Date"})
-                elif course in user_sorted_due_dates:
+                if course not in suggested_classes and course in user_sorted_due_dates:
                     suggested_classes.append(course)
 
-            for course in reversed(user_sorted_grade):
-                if course in user_sorted_due_dates:
-                    suggested_classes.append(course)
-                elif course in user_missing_due_dates:
-                    lack_info_classes.append({'Course Name': course,
-                                              'Lack': "Due date"})
+            for name, course_id in user_classes.items():
+                if name not in suggested_classes:
+                    lack_info_classes.append({'Course Name': name,
+                                              'Lack': "Grade & Deadline"})
 
         elif user_requested_order == 2: # deadline, grade
             # should start from earliest deadlines
             # but if there is no grade nor deadline the course should not be recommended
-            suggested_classes = user_sorted_due_dates
+            for course in user_sorted_due_dates:
+                suggested_classes.append(course['Course Name'])
+
             for course in user_missing_due_dates:
-                lack_info_classes.append({'Course Name': course,
-                                          'Lack': "Due Date"})
+                if course not in suggested_classes and course in user_sorted_grade:
+                    suggested_classes.append(course)
+
+            for course in user_classes.items():
+                if course not in suggested_classes:
+                    lack_info_classes.append({'Course Name': course,
+                                              'Lack': "Grade & Deadline"})
 
         return suggested_classes, lack_info_classes

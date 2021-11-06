@@ -1188,6 +1188,7 @@ async def on_message(message):
             elif user_response.content.lower() == "deadline, grade":
                 order = 2
 
+            await message.channel.send("Creating suggestions...")
             if order != 0:
                 focus_suggestion = BS_UTILS.get_focus_suggestion(order)[0]
                 lack_info = BS_UTILS.get_focus_suggestion(order)[1]
@@ -1196,7 +1197,7 @@ async def on_message(message):
                 for x in range(0, len(focus_suggestion)):
                     reply += "{course_name}".format(course_name=focus_suggestion[x])
                     if x != len(focus_suggestion) - 1:
-                        reply += " >> "
+                        reply += " << "
 
                 lack_reply = ""
                 for x in range(0, len(lack_info)):
@@ -1205,7 +1206,7 @@ async def on_message(message):
                     if x != len(lack_info) - 1:
                         lack_reply += ", "
 
-                await message.channel.send("Here is your suggested classes to focus more(focus more << focus less):\n"
+                await message.channel.send("Here is your suggested classes to focus more(focus less << focus more):\n"
                                            + reply)
                 await message.channel.send("There are some courses that lack info:\n" + lack_reply)
             else:
