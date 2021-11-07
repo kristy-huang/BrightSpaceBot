@@ -332,9 +332,6 @@ class BSUtilities():
     '''
 
     def search_for_student_in_class(self, course_name_str, student_name_str):
-
-        #course_name_str = str(course_name.content)
-        #student_name_str = str(student_name.content)
         course_ID = self.find_course_ID(course_name_str)
         if course_ID is not None:
             classlist_user_blocks = self._bsapi.get_enrolled_users_for_org_unit(course_ID)
