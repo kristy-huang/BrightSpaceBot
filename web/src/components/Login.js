@@ -11,6 +11,7 @@ function Login(props) {
 
     const loginUser = (data)=>{
         console.log(data)
+        sessionStorage.setItem('username', data.username);
         const requestOptions = {
             method: 'POST',
             headers: {
