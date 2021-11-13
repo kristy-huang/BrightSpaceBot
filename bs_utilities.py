@@ -1,7 +1,8 @@
-import json
+
 from bs_api import BSAPI
 
 import datetime
+from datetime import date
 import urllib.parse
 import os
 from pathlib import Path
@@ -17,13 +18,35 @@ class BSUtilities():
         self._bsapi = BSAPI(debug=debug)
         self._debug = debug
 
-    # Same as set_session in BSAPI
 
-    def set_session(self, session):
-        self._bsapi.set_session(session)
+    # Logs in to BS automatically
+    #
+    # dbu (DBUtilities object): a DBUtilities object connected to a database
+    # discord_username (str): discord username
+   
+    def set_session_auto(self, dbu, discord_username):
+        self._bsapi.set_session_auto(dbu, discord_username)
+
+    # Same as set_session in BSAPI
+    def set_session_by_session(self, session):
+        self._bsapi.set_session_by_session(session)
+
 
     def set_session(self, username, password):
         self._bsapi.set_session(username, password)
+
+
+    def session_exists(self):
+        return self._bsapi._session != None
+
+
+    def check_connection(self):
+        if not self.session_exists():
+            return False
+
+        a = self._bsapi.get_user_info()
+
+        return True if a else False
 
     '''
         Replaces the BSAPI() object with a new one.
@@ -49,7 +72,8 @@ class BSUtilities():
         filename = filename[filename.rindex("\"") + 1:]
         filename = urllib.parse.unquote(filename)
         print(filename)
-        if type == 'LOCAL':
+        if type.startswith('Local'):
+            print("hello inside local")
             destination += "/" if destination[-1] != '/' else ""
             if not os.path.exists(destination):
                 os.makedirs(destination)
@@ -102,7 +126,8 @@ class BSUtilities():
 
     def download_files(self, course_id, destination, t):
         modules = self._bsapi.get_topics(course_id)["Modules"]
-        if t != "LOCAL":
+        drive = None
+        if t != "Local Machine":
             drive = self.init_google_auths()
 
         if self._debug:
@@ -182,8 +207,8 @@ class BSUtilities():
                 if not since or self.__timestamp_later_than(since, startDate) <= 0:
                     announce_dict = {
                         'course_id': classes_list[c],
-                        'Title': announce['Title'],
-                        'Text': announce['Body']['Text'],
+                        'Title': announce['Title'].replace("\r\n", "\n").replace("\xa0", " "),
+                        'Text': announce['Body']['Text'].replace("\r\n", "\n"),
                         'StartDate': startDate
                     }
                     all_announcements.append(announce_dict)
@@ -211,13 +236,130 @@ class BSUtilities():
             for t in topics:
                 # if its null, then we don't need the value
                 if t["EndDate"] is not None:
-                    string_rep = t["EndDate"]
-                    mdy = string_rep.split(" ")[0].split("-")
-                    end = datetime(int(mdy[0]), int(mdy[1]), int(mdy[2]))
+                    # string_rep = t["EndDate"]
+                    # mdy = string_rep.split(" ")[0].split("-")
+                    # end = datetime(int(mdy[0]), int(mdy[1]), int(mdy[2]))
+                    end = t["EndDate"]
                     # saving datetime objects
                     dates.append(end)
         return dates
+    
+    
+    '''
+        This is a subfunction for get_assignment_feedback. It finds the courseID/orgUnitID 
 
+        for an inputted course_name. We need this ID for future API calls. 
+
+        returns: int course_ID, or None if the inputted course_name is not a valid course that the user is enrolled in. 
+
+    '''
+    
+    def find_course_ID(self, course_name_str):
+        #course_name_str = str(course_name.content)
+        enrolled_courses = self.get_classes_enrolled()
+        for course in enrolled_courses:
+            class_name = str(course)
+            if class_name.__contains__(course_name_str.upper()):
+              return enrolled_courses[course]    
+        
+        return None
+    
+    '''
+        This is a subfunction that finds the folderID of the specific dropbox folder we need to access the feedback on an assignment
+        
+        dropbox_folders: JSON array of DropboxFolder blocks.
+
+        Returns: int folder_ID, or None if the inputted assignment_name is not a valid assignment in this course. 
+    '''
+    def get_folder_ID_from_dropbox(self, dropbox_folders, assignment_name):
+        assignment_name_str = str(assignment_name.content)
+
+        for folder in dropbox_folders:
+            folder_name = folder['Name']
+            folder_name_str = str(folder_name)
+            if folder_name_str.__contains__(assignment_name_str):
+                folder_ID = folder['Id']
+                return folder_ID
+            
+        return None
+    
+    
+    '''
+        This is a helper function for get_assignment_feedback(). 
+    '''
+    
+    def get_feedback(self, submissions_arr):
+        entity_dropbox = submissions_arr[0]
+        feedback_block  = entity_dropbox["Feedback"]
+        if feedback_block is not None:
+            feedback = feedback_block["Feedback"]
+            if feedback is not None:
+                feedback_text = feedback["Text"]
+                return feedback_text
+
+        return None
+
+    '''
+        This is a function that grabs feedback (if it exists) for an assignment in a course. 
+
+        returns: String of feedback, or NULL if there is no feedback, or error message if parameters are incorrect. 
+    '''
+
+    def get_assignment_feedback(self, course_name_str, assignment_name_str):
+        course_ID = self.find_course_ID(course_name_str)
+        if course_ID is not None:
+            dropbox_folders = self._bsapi.get_dropbox_folders_for_org_unit(course_ID)
+            folder_ID = self.get_folder_ID_from_dropbox(dropbox_folders, assignment_name_str)
+            if folder_ID is not None:
+                submissions_arr = self._bsapi.get_submissions_for_dropbox_folder(course_ID, folder_ID)      #JSON array of EntityDropbox structures
+                if submissions_arr is not None:
+                    feedback = self.get_feedback(submissions_arr)
+                    if feedback is not None:
+                        return feedback
+                    else:
+                        output = "BOT REPORT: No feedback has been provided for this assignment."
+                else:
+                    output = "BOT REPORT: I do not have permission to access these submissions."
+            else:
+                output = "ERROR: Please make sure the assignment you have specified is spelled correctly and exists."
+                return output
+
+        else: output = "ERROR: Please make sure the course you have specified is spelled correctly and is a course that you are currently enrolled in."
+        return output
+    
+    '''
+        This function tries to search for an inputted student name in a given class.  
+        
+        returns: True or False. True if the student is listed in the list of users for a class, or False otherwise.
+    '''
+
+    def search_for_student_in_class(self, course_name_str, student_name_str):
+        course_ID = self.find_course_ID(course_name_str)
+        if course_ID is not None:
+            classlist_user_blocks = self._bsapi.get_enrolled_users_for_org_unit(course_ID)
+            for classlist_user in classlist_user_blocks:
+                first_name = classlist_user["FirstName"]
+                last_name = classlist_user["LastName"]
+                current_name = first_name + " " + last_name
+                if current_name.lower() == student_name_str.lower():
+                    return True
+        
+        return False
+    
+    '''
+        This is a helper function for get_upcoming_quizzes(). It is used to determine whether a given 
+
+        quiz has been attempted or not. Returns true if it is unattempted, or false it has been been attempted.  
+        
+        returns: True or False.
+    '''
+
+    def isQuizUnattempted(self, course_id, quiz_id):
+        result = self._bsapi.get_quiz_attempts(course_id, quiz_id)  #returns a list of QuizAttemptData blocks. 
+        if result is not None:
+            return False
+
+        return True
     '''
         This functions pulls up a student's upcoming quizzes across all their
 
@@ -225,7 +367,6 @@ class BSUtilities():
         
         returns: list of QuizReadDate blocks.
     '''
-
     def get_upcoming_quizzes(self):
         enrolled_courses = self.get_classes_enrolled()
         upcoming_quizzes = {}
@@ -235,21 +376,20 @@ class BSUtilities():
             for quiz in quizzes:       #for each block in the list,
                 #get today's date
                 current_date = datetime.datetime.utcnow()
+
                 if quiz['DueDate'] is not None:
                     quiz_due_date = datetime.datetime.strptime(quiz['DueDate'], "%Y-%m-%dT%H:%M:%S.%fZ")
+
                 #find diff between quiz.due date and today
                     diff = quiz_due_date - current_date
                 #if diff less than or equal to 7 days = 604800 seconds
                 #for 2 weeks = 1209600 seconds
                     diff_in_seconds = diff.total_seconds()
-                    if diff_in_seconds <= 1209600 and diff_in_seconds > 0:
-                        #this is an upcoming quiz within the next week/2 weeks
-                        #print('found quiz within a week')       #debug statement
-                        course_name = course
-                        upcoming_quizzes[course_name] = quiz
-                        #upcoming_quizzes['name'] = course_name
-                        #quiz_due_date_local_time = self.datetime_from_utc_to_local(quiz['DueDate'])
-                        #quiz['DueDate'] = quiz_due_date_local_time
+                    if diff_in_seconds <= 604800 and diff_in_seconds > 0:
+                        #if the quiz isUnattempted, we can add it to our output array.
+                        if self.isQuizUnattempted(enrolled_courses[course], quiz):
+                            course_name = course
+                            upcoming_quizzes[course_name] = quiz
         return upcoming_quizzes
     
     #sub-function of suggest_focus_time(), maybe need this idk. May delete.
@@ -277,10 +417,10 @@ class BSUtilities():
        Serves user story 9 in Sprint 1. 
 
        Returns:  
-
     '''
 
     def suggest_focus_time(self):
+
         enrolled_courses = self.get_classes_enrolled()
         current_date = datetime.now()
         end_date = current_date + datetime.timedelta(days = 7)
@@ -299,8 +439,6 @@ class BSUtilities():
                     if self.__timestamp_later_than_current(due_date):
                         future_scheduled_items.append(item)
         #we now have all future scheduled_items. 
-            
-
 
         end_term_date = self.find_end_term_date()
         return
@@ -383,10 +521,33 @@ class BSUtilities():
                 startDate = datetime.datetime.strptime(cal_event['StartDateTime'], "%Y-%m-%dT%H:%M:%S.%fZ")
                 events.append({'course_id': cal_event['OrgUnitId'],
                                'Title': cal_event['Title'],
+                               'EventType': eventType,
                                'Description': cal_event['Description'],
                                'StartDate': startDate})
 
         return events
+
+
+    # returns a string describing the event
+    def get_events_by_type_past_24h(self, eventType=1):
+        endDateTime = datetime.datetime.utcnow()
+        startDateTime = endDateTime - datetime.timedelta(days=1)
+        endDateTime = endDateTime.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+        startDateTime = startDateTime.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+        
+
+        events = self.get_events_by_type(startDateTime, endDateTime, eventType)
+        str_rep = ""
+        #print("events:", events)
+        for event in events:
+            # TODO: get a mapping from course id to course names from the database
+            str_rep += "Class: {}\n".format(event['course_id'])
+            str_rep += "{}\n\n".format(event['Title'])
+            str_rep += "{}\n".format(event['Description'])
+            str_rep += "-----------------------------------\n\n"
+
+        return str_rep
+
 
     '''
         Returns True if time_str is later than (or at the same time as) the current time
@@ -440,21 +601,15 @@ class BSUtilities():
         else:
             return 'F'
 
+
     '''
         Retrieves any assignments that were recently graded
         
         returns an array with the grade and assignment details of recently graded assignments
         or if no assignments were recently graded, return empty array
-        
     '''
     def get_grade_updates(self):
-        db_util = DBUtilities()
-        db_util.connect_by_config('database/db_config.py')
-        db_util.use_database("BSBOT")
-
-        sql = MySQLDatabase()
-        sql.connect_by_config('database/db_config.py')
-        sql.use_database("BSBOT")
+        sql = MySQLDatabase('database/db_config.py')
         # sql.drop_table('GRADED_ASSIGNMENTS')
         sql.create_table('GRADED_ASSIGNMENTS', 'grade_object_id INT PRIMARY KEY, '
                                                'course_id INT,'
@@ -527,6 +682,8 @@ class BSUtilities():
 
     def find_course_id(self, class_name):
         dictionary = self.get_classes_enrolled()
+        
+        class_name = class_name.replace(' ', '')
         course_id = -1
         for key, value in dictionary.items():
             if key.lower().find(class_name.lower()) != -1:
@@ -534,6 +691,17 @@ class BSUtilities():
 
 
         return course_id
+
+
+    def find_course_id_and_fullname(self, class_name):
+        dictionary = self.get_classes_enrolled()
+        
+        class_name = class_name.replace(' ', '')
+        course_id = -1
+        for c_full_name, c_id in dictionary.items():
+            if c_full_name.lower().find(class_name.lower()) != -1:
+                return c_full_name, c_id
+        return None
 
     # Since our project is in "testing" phase, you have to manually add test users until you publish the app
     # My personal email is the only test user now, but we can add more
@@ -556,6 +724,24 @@ class BSUtilities():
 
         return folderList
 
+
+    def get_notifications_past_24h(self):
+        utc_one_day_before = datetime.datetime.utcnow() - datetime.timedelta(days = 5)
+        utc_one_day_before = utc_one_day_before.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+        announcements = self.get_announcements(since=utc_one_day_before)
+        #announcements = self.get_announcements()
+
+        notification_header = "Announcements from the past 24 hours: \n\n"
+        notification = ""
+        for announcement in announcements:
+            # TODO: get a mapping from course id to course names from the database
+            notification += "Class: {}\n".format(announcement['course_id'])
+            notification += "{}\n\n".format(announcement['Title'])
+            notification += "{}\n".format(announcement['Text'])
+            notification += "-----------------------------------\n\n"
+        return notification_header + notification if notification else ""
+
+
     # Algorithm to check if path is a valid path
     def validate_path_drive(self, storage_path, drive):
         # checks if inputted path is valid or not for their local machine
@@ -569,3 +755,306 @@ class BSUtilities():
                 return False
         return True
 
+
+    # Algorithm to get overall points received in a class if not displayed at top
+    def sum_total_points(self, courseID):
+        gradeIDs = self._bsapi.get_all_assignments_in_gradebook(courseID)
+        print(gradeIDs)
+        yourTotal = 0
+        classTotal = 0
+        for id in gradeIDs:
+            yourGrade, total = self._bsapi.get_grade_received(courseID, id)
+            print(str(total) + " " + str(yourGrade))
+            yourTotal = yourTotal + yourGrade
+            classTotal = classTotal + total
+
+        return yourTotal, classTotal
+
+
+    def process_upcoming_dates(self, upcoming_list):
+        due = []
+        current_utc = datetime.datetime.utcnow()
+        for assignment in upcoming_list:
+            date = assignment[1]
+            if date is not None:
+                date = datetime.datetime.fromisoformat(date[:-1])
+                diff = date - current_utc
+                if diff.days >= 0:
+                  due.append(assignment)
+        return due
+                # print(diff.days)
+
+    '''
+        This functions pulls up all of a student's upcoming quizzes across all their
+
+        enrolled classes. 
+
+        returns: list of QuizReadDate blocks.
+    '''
+
+    def get_all_upcoming_quizzes(self):
+        enrolled_courses = self.get_classes_enrolled()
+        # print(enrolled_courses)
+        upcoming_quizzes = []
+        for course_name, course_id in enrolled_courses.items():
+            result = self._bsapi.get_quizzes(course_id)  # returns a list of QuizReadData blocks - dictionaries
+            quizzes = result['Objects']
+            for quiz in quizzes:  # for each block in the list,
+                # get today's date
+
+                current_date = datetime.datetime.utcnow()
+
+                if quiz['DueDate'] is not None:
+                    quiz_due_date = datetime.datetime.fromisoformat(quiz['DueDate'][:-1])
+                    # print(quiz_due_date)
+                    # quiz_due_date = datetime.datetime.strptime(quiz['DueDate'], "%Y-%m-%dT%H:%M:%S.%fZ")
+
+                    # find diff between quiz.due date and today
+                    diff = (quiz_due_date - current_date).days
+                    # print(diff)
+                    # for upcoming quizzes due today or later in the future: diff >= 0
+                    # TODO: fix this!!!
+                    if diff >= -7:
+                        data = {
+                            "course_id": course_id,
+                            "course_name": course_name,
+                            "quiz_name": quiz['Name'],
+                            "due_date": quiz['DueDate']
+                        }
+                        # print(data)
+                        # print(datetime.datetime.fromisoformat(quiz['DueDate'][:-1]))
+                        upcoming_quizzes.append(data)
+        return upcoming_quizzes
+
+
+    def get_sorted_grades(self):
+        # list of courses in preferred priority
+        course_priority = []
+
+        # list of missing grade courses that cannot be prioritize with the bot's function
+        missing_grade_courses = []
+
+        # getting user enrolled classes
+        user_classes = self.get_current_semester_courses()
+
+        # arrays needed for sorting courses
+        # class_names will store all course names of the user
+        # grades_frac will store all the fraction grade of the user for those courses
+        class_names = []
+        grades_frac = []
+
+        # revised for loop
+        for name, course_id in user_classes.items():
+            # getting class names and fraction grade from the enrolled class list
+            class_names.append(name)
+            grade_string = self._bsapi.get_grade(course_id)[0]
+            fraction_grade = 0.0
+
+            if not grade_string == '':
+                fraction_grade = float(grade_string[0]) / float(grade_string[1])
+
+            grades_frac.append(fraction_grade)
+
+        sorted_grade_frac = sorted(grades_frac)
+
+        # appending sorted courses to course_priority
+        for x in sorted_grade_frac:
+            if not x == 0:
+                course_priority.append(class_names[grades_frac.index(x)])
+
+        for x in class_names:
+            if not x in course_priority:
+                missing_grade_courses.append(x)
+
+        # print(course_priority)
+
+        return course_priority, missing_grade_courses
+
+    def get_current_semester_courses(self):
+        # new dictionary of courses for current semester
+        current_enrolled_courses = {}
+
+        # user enrolled courses
+        # this might include courses that do not have end dates
+        # for instance, training courses or supplemental instructions
+        user_enrolled_course = self.get_classes_enrolled()
+
+        # current_semester will either be Fall, Sprint, or Summer accordingly to the date
+        current_semester = ""
+
+        # pin point for getting current semester
+        current_date = datetime.datetime.today()
+
+        # get current month, day from current date
+        current_month = current_date.month
+        current_day = current_date.day
+
+        # Fall semester always start at the 4th Monday[19-25] of August
+        # Spring semester always start at January
+        # Summer semester always start at June until first week of August
+        if current_month == 8:
+            if current_day <= 15:
+                current_semester = "Summer"
+            else:
+                current_semester = "Fall"
+        elif 9 <= current_month:
+            current_semester = "Fall"
+        elif 6 <= current_month:
+            current_semester = "Summer"
+        elif 1 <= current_month:
+            current_semester = "Spring"
+
+        current_semester += " "
+        current_semester += current_date.strftime("%Y")
+
+        for name, course_id in user_enrolled_course.items():
+            if current_semester in name:
+                current_enrolled_courses[name] = course_id
+
+        return current_enrolled_courses
+
+    def get_course_by_due_date(self):
+        # list of dictionary of courses by earliest due dates
+        course_priority = []
+
+        # list of courses that do not have a corresponding event in the given interval
+        event_missing_courses = []
+
+        # getting enrolled classes
+        user_classes = self.get_current_semester_courses()
+
+        # general time case
+        start_time = datetime.datetime.utcnow()
+        end_time = start_time + datetime.timedelta(days=122)  # roughly 4 months
+
+        # Finding events
+        for course_name, course_id in user_classes.items():
+            event_title = ""
+            event_end_day = ""
+            course_events = self._bsapi.get_course_all_events(course_id)
+            for event in course_events:
+                event_end_time = datetime.datetime.strptime(event["EndDateTime"], "%Y-%m-%dT%H:%M:%S.%fZ")
+                if event_end_time > start_time:
+                    event_title = event["Title"]
+                    event_end_day = event["EndDateTime"]
+                    break
+                elif event_end_time > end_time:
+                    break
+            if event_title != "":
+                course_priority.append({'Course Name': course_name,
+                                        'Course Id': course_id,
+                                        'Event Name': event_title,
+                                        'Due Date': event_end_day})
+            else:
+                event_missing_courses.append({'Course Name': course_name,
+                                              'Course Id': course_id})
+
+        # sorting part required
+        course_priority = sorted(course_priority, key=lambda k: k['Due Date'])
+
+        return course_priority, event_missing_courses
+
+    def get_course_url(self):
+        # url dictionary format: purdue.brightspace.com/d2l/home/{course_id}
+        course_urls = {}
+
+        # get user enrolled classes
+        user_classes = self.get_current_semester_courses()
+
+        for course_name, course_id in user_classes.items():
+            course_home_page = "https://purdue.brightspace.com/d2l/home/{course_id}".format(course_id=course_id)
+            course_urls[course_name] = course_home_page
+
+        return course_urls
+
+    # start_time and end_time will be used as date objects
+    def get_upcoming_events(self, start_time, end_time):
+        # list of dictionary of events
+        event_list = []
+
+        # setting time interval
+        if start_time is None and end_time is None:
+            # general time case
+            start_time = datetime.datetime.utcnow()
+            end_time = start_time + datetime.timedelta(days=122)  # roughly 4 months
+
+        # get user enrolled classes
+        user_classes = self.get_current_semester_courses()
+
+        utc_offset = datetime.datetime.utcnow() - datetime.datetime.today()
+
+        # find and add matching events within the given time interval
+        for course_name, course_id in user_classes.items():
+            course_events = self._bsapi.get_course_all_events(course_id)
+            for event in course_events:
+                event_end_time = datetime.datetime.strptime(event["EndDateTime"], "%Y-%m-%dT%H:%M:%S.%fZ")
+                event_end_time = event_end_time - utc_offset
+                if start_time <= event_end_time <= end_time:
+                    event_list.append({'Course Name': course_name,
+                                       'Course Id': course_id,
+                                       'Event Name': event["Title"],
+                                       'Description': event["Description"],
+                                       'Due Date': event_end_time.strftime("%m/%d/%y %H:%M")})
+
+        # sorting before return
+        event_list = sorted(event_list, key=lambda k: k['Due Date'])
+
+        return event_list
+
+    def get_focus_suggestion(self, user_requested_order):
+        # list of suggestion for classes
+        suggested_classes = []
+        lack_info_classes = []
+
+        # get user enrolled class for this semester
+        user_classes = self.get_current_semester_courses()
+
+        # courses sorted by grade
+        user_sorted_grade = self.get_sorted_grades()[0]
+        print(user_sorted_grade)
+        user_missing_grade = self.get_sorted_grades()[1]
+        print(user_missing_grade)
+
+        # courses sorted by due dates
+        user_sorted_due_dates = self.get_course_by_due_date()[0]
+        print(user_sorted_due_dates)
+        user_missing_due_dates = self.get_course_by_due_date()[1]
+        print(user_missing_due_dates)
+
+        # courses sorted by un-submitted assignments
+        # needs implementation
+
+        if user_requested_order == 1:   # grade, deadline
+            # should start from lowest grades
+            # but if there is no grade nor deadline the course should not be recommended
+            # for course in user_sorted_grade:
+            #    if course in user_sorted_due_dates:
+            #        suggested_classes.append(course)
+
+            suggested_classes = user_sorted_grade
+
+            for course in user_missing_grade:
+                if course not in suggested_classes and course in user_sorted_due_dates:
+                    suggested_classes.append(course)
+
+            for name, course_id in user_classes.items():
+                if name not in suggested_classes:
+                    lack_info_classes.append({'Course Name': name,
+                                              'Lack': "Grade & Deadline"})
+
+        elif user_requested_order == 2: # deadline, grade
+            # should start from earliest deadlines
+            # but if there is no grade nor deadline the course should not be recommended
+            for course in user_sorted_due_dates:
+                suggested_classes.append(course['Course Name'])
+
+            for course in user_missing_due_dates:
+                if course not in suggested_classes and course in user_sorted_grade:
+                    suggested_classes.append(course)
+
+            for course in user_classes.items():
+                if course not in suggested_classes:
+                    lack_info_classes.append({'Course Name': course,
+                                              'Lack': "Grade & Deadline"})
+
+        return suggested_classes, lack_info_classes

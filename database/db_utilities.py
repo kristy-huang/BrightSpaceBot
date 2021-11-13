@@ -1,101 +1,69 @@
 from database.mysql_database import MySQLDatabase
-import hashlib
 
 
 class DBUtilities():
-    def __init__(self):
-        self._mysql = MySQLDatabase()
+    def __init__(self, db_config):
+        self._mysql = MySQLDatabase(db_config)
 
-    def connect(self, host, username, password):
-        self._mysql.connect(host, username, password)
 
-    def connect_by_config(self, config_filename):
-        self._mysql.connect_by_config(config_filename)
-
-    def use_database(self, database):
-        self._mysql.use_database(database)
-
-    def update_md5(self, table, col_name, new_val):
-        pass
-
-    def show_table_content(self, table, condition=None):
-        sql = "SELECT * FROM {t}".format(t=table)
-        sql += "WHERE {c}".format(condition) if condition else ""
-        res = self._mysql.general_command(sql)
-        res = str(res)
-        res = res.replace("), (", "),\n(")
-        return res
-
-    def get_bs_cridential(self, user_id):
-        sql = "SELECT BS_USERNAME , BS_PASSWORD FROM CREDENTIALS WHERE USER_ID = {}".format(user_id)
-        res = self._mysql.general_command(sql)
-        return res[0] if res else None
-
-    '''
-        Inserts a row into the USER table & CREDENTIALS table.
-        pin and password will be encypted using md5.
-        bs password would not.
-        Works with any number of columns provided - even with 2 empty dictionaries
-        user_cols: 
-        {"USER_ID": null, (Can left to be blank!)
-        "FIRST_NAME": VARCHAR(50),
-        "LAST_NAME": VARCHAR(50),
-        "MAJOR": VARCHAR(50),
-        "CLASSES": TEXT,
-        "PIN": VARCHAR(128) (encrypted),
-        "STORAGE_METHOD": VARCHAR(10),
-        "STORAGE_PATH": TEXT
+    def add_notifictaion_schedule(self, user_name, scheduled_time, interval_time, channel_id, description=""):
+        cols = {
+            "USERNAME": user_name,
+            "TIME": scheduled_time,
+            "TIME_INTERVAL": interval_time,
+            "CHANNEL_ID": channel_id,
+            "DESCRIPTION": str(description),
+            "TYPES": "1111"
         }
-        credential_cols:
-        {
-            "USER_ID": null,
-            "USERNAME": VARCHAR(50),
-            "PASSWORD": VARCHAR(255) (encrypted),
-            "BS_USERNAME": VARCHAR(50),
-            "BS_PASSWORD": VARCHAR(255)
+
+        self._mysql.insert_into("NOTIFICATION_SCHEDULE", cols)
+
+
+    def get_notifictaion_schedule(self, user_name):
+        return self._mysql.general_command(f"SELECT DISTINCT TIME FROM NOTIFICATION_SCHEDULE WHERE USERNAME = \"{user_name}\"")
+
+
+    def get_notifictaion_schedule_with_description(self, user_name):
+        return self._mysql.general_command(f"SELECT DISTINCT TIME,DESCRIPTION,TYPES FROM NOTIFICATION_SCHEDULE WHERE USERNAME = \"{user_name}\" ORDER BY DESCRIPTION ASC")
+
+
+    def clear_notification_schedule(self, user_name):
+        self._mysql.delete("NOTIFICATION_SCHEDULE", f"USERNAME = \"{user_name}\"")
+
+
+    def delete_notification_schedule(self, user_name, scheduled_time, decription):
+        self._mysql.delete("NOTIFICATION_SCHEDULE", f"USERNAME = \"{user_name}\" AND TIME = \"{scheduled_time}\" AND DESCRIPTION = \"{decription}\"")
+
+
+    def update_notification_schedule_types(self, user_name, scheduled_time, decription, new_types):
+        cols = {"TYPES": new_types}
+        self._mysql.update("NOTIFICATION_SCHEDULE", cols, f"USERNAME = \"{user_name}\" AND TIME = \"{scheduled_time}\" AND DESCRIPTION = \"{decription}\"")
+
+
+    def add_class_schedule(self, user_name, course_name, scheduled_time, description=""):
+        cols = {
+            "USERNAME": user_name,
+            "TIME": scheduled_time,
+            "COURSE_NAME": course_name,
+            "DESCRIPTION": str(description)
         }
-        returns: 
-            Success: the user id of the new added user.
-            Fail: -1
-    '''
 
-    def insert_user(self, user_cols, credential_cols):
+        self._mysql.insert_into("CLASS_SCHEDULE", cols)
 
-        if not user_cols:
-            user_cols = {}
-        if not credential_cols:
-            credential_cols = {}
 
-        # check if the same username exists:
-        if "USERNAME" in credential_cols.keys():
-            username = credential_cols["USERNAME"]
-            sql = "SELECT user_id FROM CREDENTIALS WHERE USERNAME = '{}'".format(username)
-            res = self._mysql.general_command(sql)
+    def get_class_schedule_with_description(self, user_name):
+        return self._mysql.general_command(f"SELECT DISTINCT COURSE_NAME,TIME,DESCRIPTION FROM CLASS_SCHEDULE WHERE USERNAME = \"{user_name}\" ORDER BY COURSE_NAME, DESCRIPTION ASC, TIME ASC")
 
-            if res and res[0]:
-                print("Username already exsists.")
-                return -1
 
-        user_cols["USER_ID"] = None
+    def get_classes_in_schedule(self, user_name):
+        res = self._mysql.general_command(f"SELECT DISTINCT COURSE_NAME FROM CLASS_SCHEDULE WHERE USERNAME = \"{user_name}\"")
+     
+        res = list(res)
+        if res:
+            for i in range(len(res)):
+                res[i] = res[i][0]
 
-        if "PIN" in user_cols.keys():
-            user_cols["PIN"] = self.get_encrypted(user_cols["PIN"])
-        if "PASSWORD" in credential_cols.keys():
-            credential_cols["PASSWORD"] = self.get_encrypted(credential_cols["PASSWORD"])
-
-        self._mysql.insert_into("USERS", user_cols)
-        user_id = self._mysql.get_last_inserted_id()
-
-        credential_cols["USER_ID"] = user_id
-
-        self._mysql.insert_into("CREDENTIALS", credential_cols)
-
-        return user_id
-
-    def get_encrypted(self, string):
-        string = string.encode('utf-8')
-        string = hashlib.md5(string).hexdigest()
-        return string
+        return res       
 
     '''
         Resets an auto increment back to 1
@@ -108,26 +76,94 @@ class DBUtilities():
                                                                                                 id=auto_id_name)
         self._mysql.general_command(sql)
 
+
+        
     def clear_table(self, table_name, auto_id_name=None):
         self._mysql.delete(table_name)
         if auto_id_name:
             self.reset_auto_increment(table_name, auto_id_name)
 
+    def add_hotp_secret_counter(self, user_name, hotp_secret, counter):
+        if self._mysql.general_command(f"SELECT * FROM CREDENTIALS WHERE USERNAME = \"{user_name}\""):
+            self.update_hotp_secret_counter(user_name, hotp_secret, counter)
+        else:
+            self.insert_hotp_secret_counter(user_name, hotp_secret, counter)
 
 
+    def insert_hotp_secret_counter(self, user_name, hotp_secret, counter):
+        cols = {
+            "USERNAME": user_name,
+            "hotp_secret": hotp_secret,
+            "hotp_counter": counter
+        }
+        
+        self._mysql.insert_into("CREDENTIALS", cols)
 
-if __name__ == '__main__':
-    sql = DBUtilities()
-    sql.connect_by_config("db_config.py")
-    sql.use_database("BSBOT")
-    print(sql.show_table_content("USERS"))
-    sql._mysql.general_command("UPDATE USERS SET Storage_method = 'LOCAL' WHERE first_name = 'katherine';")
-    print(sql.show_table_content("USERS"))
+
+    def update_hotp_secret_counter(self, user_name, hotp_secret, counter):
+        cols = {
+            "hotp_secret": hotp_secret,
+            "hotp_counter": counter
+        }
+        
+        self._mysql.update("CREDENTIALS", cols, "username = \"{}\"".format(user_name))
 
 
-'''sql = DBUtilities()
-sql.connect_by_config("database/db_config.py")
-sql.use_database("BSBOT")
-sql.clear_table("USERS", "USER_ID")
-sql.insert_user({}, {})
-print(sql.show_table_content("USERS"))'''
+    def get_hotp_secret_counter(self, user_name):
+        return self._mysql.general_command(f"SELECT DISTINCT hotp_secret,hotp_counter FROM CREDENTIALS WHERE USERNAME = \"{user_name}\"")
+
+
+    def increase_hotp_counter(self, user_name):
+        return self._mysql.general_command(f"UPDATE CREDENTIALS SET hotp_counter = hotp_counter + 1 WHERE USERNAME = \"{user_name}\"")
+
+
+    def update_bs_username_pin(self, user_name, bs_username, bs_pin):
+        cols = {
+            "BS_USERNAME": bs_username,
+            "bs_pin": bs_pin
+        }
+        
+        self._mysql.update("CREDENTIALS", cols, "username = \"{}\"".format(user_name))
+
+
+    def add_bs_username_pin(self, user_name, bs_username, bs_pin):
+        if self._mysql.general_command(f"SELECT * FROM CREDENTIALS WHERE USERNAME = \"{user_name}\""):
+            self.update_bs_username_pin(user_name, bs_username, bs_pin)
+        else:
+            self.insert_bs_username_pin(user_name, bs_username, bs_pin)
+
+
+    def insert_bs_username_pin(self, user_name, bs_username, bs_pin):
+        cols = {
+            "USERNAME": user_name,
+            "BS_USERNAME": bs_username,
+            "bs_pin": bs_pin
+        }
+        
+        self._mysql.insert_into("CREDENTIALS", cols)
+
+
+    def get_bs_username_pin(self, user_name):
+        return self._mysql.general_command(f"SELECT DISTINCT BS_USERNAME,bs_pin FROM CREDENTIALS WHERE USERNAME = \"{user_name}\"")
+
+
+    # Gets all scheduled notification time for all users by a given time. 
+    #
+    # time_string (str): represents the requested time, in the formatof HH:MM (e.g. 09:04)
+    # weekday (int): represents 
+    def get_notifictaion_schedule_by_time(self, time_string, weekday):
+        schedules = self._mysql.general_command("SELECT DISTINCT USERNAME,CHANNEL_ID,TYPES FROM NOTIFICATION_SCHEDULE WHERE TIME = \"{}\" AND (DESCRIPTION = {} OR DESCRIPTION = 7)".format(time_string, weekday))
+        #print(schedules)
+        if schedules:
+            return schedules
+        else:
+            return []
+
+
+    def get_discord_user_password(self, username):
+        res = self._mysql.general_command(f"SELECT USERNAME, PASSWORD FROM USERS WHERE USERNAME = \"{username}\"")
+        return res
+
+
+    def change_username(self, table_name, old_username, new_username):
+        res = self._mysql.general_command(f"UPDATE {table_name} SET USERNAME = \"{new_username}\" WHERE USERNAME = \"{old_username}\"")

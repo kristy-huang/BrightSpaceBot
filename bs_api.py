@@ -1,7 +1,8 @@
-from Authentication import get_brightspace_session
+from Authentication import get_brightspace_session, get_brightspace_session_auto
 
 import requests
 import os
+import json
 
 
 class BSAPI():
@@ -17,7 +18,16 @@ class BSAPI():
             "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9"
         }
 
-    def set_session(self, session):
+
+    # Logs in to BS automatically
+    #
+    # dbu (DBUtilities object): a DBUtilities object connected to a database
+    # discord_username (str): discord username
+
+    def set_session_auto(self, dbu, discord_username):
+        self._session = get_brightspace_session_auto(dbu, discord_username)
+
+    def set_session_by_session(self, session):
         if not session:
             raise ValueError("Session provided is Null.")
 
@@ -44,7 +54,7 @@ class BSAPI():
     '''
 
     def get_user_info(self):
-        url = self._API_URL_PREFIX + "lp/1.21/users/"
+        url = self._API_URL_PREFIX + "lp/1.21/users/whoami"
         return self.__process_api_json("get_user_info", url)
 
     '''
@@ -68,6 +78,56 @@ class BSAPI():
         url = self._API_URL_PREFIX + "le/1.38/{course_id}/quizzes/".format(course_id=course_id)
         return self.__process_api_json("get_quizzes", url)
 
+    '''
+        Pulls information about a quiz attempt for a specific quiz, queried by the quiz_id.
+        
+        quiz_id (number) the id of the quiz
+
+        return: ObjectListPage JSON block containing a list of QuizAttemptData blocks.
+    '''
+    
+    def get_quiz_attempts(self, course_id, quiz_id):
+        url = self._API_URL_PREFIX + "le/1.45/{course_id}/quizzes/{quiz_id}/attempts/".format(course_id=course_id, quiz_id=quiz_id)
+        return self.__process_api_json("get_quiz_attempts", url)
+  
+
+    '''
+        Retrieves all dropbox folders for an org unit. Each dropbox folder provides a place for
+        org unit entities (users or groups of users) to submit work for assessment. Each dropbox folder
+        represents a single opportunity for assessment(submission of a single paper for grading, quiz for testing, etc.)
+
+        course_id: the orgUnitID, the ID of the course that the user is enrolled in.
+
+        return: JSON array of DropboxFolder blocks.
+    '''
+    
+    def get_dropbox_folders_for_org_unit(self, course_id):
+        url = self._API_URL_PREFIX + "le/1.41/{course_id}/dropbox/folders/".format(course_id=course_id)
+        return self.__process_api_json("get_dropbox_folders_for_org_unit", url) 
+    
+    '''
+        Retrieves all submissions for a specific dropbox folder. 
+        
+        course_id: ID of the course that the user is enrolled in.
+        folder_id: Folder ID for a specific dropbox folder
+
+        return: JSON array of EntityDropbox structures that fully enumerates all
+        submissions currently provided to the dropbox folders by all the entities.
+    '''
+    def get_submissions_for_dropbox_folder(self, course_id, folder_id):
+        url = self._API_URL_PREFIX + "le/1.41/{course_id}/dropbox/folders/{folder_id}/submissions/?activeOnly=true".format(course_id=course_id,folder_id=folder_id)
+        return self.__process_api_json("get_submissions_for_dropbox_folder", url)
+    
+    '''
+        Retrieves all users enrolled in the specified org unit. 
+        
+        course_id: ID of the course that the user is enrolled in.
+
+        return: JSON array of ClasslistUser data blocks.
+    '''
+    def get_enrolled_users_for_org_unit(self, course_id):
+        url = self._API_URL_PREFIX + "le/1.41/{course_id}/classlist/".format(course_id=course_id)
+        return self.__process_api_json("get_enrolled_users_for_org_unit", url)
 
     '''
         Pulls the number of scheduled items with a list of given course_ids and start_date and end_date. 
@@ -112,15 +172,20 @@ class BSAPI():
         try:
             if grade_object["PointsNumerator"] is not None:
                 numerator = grade_object["PointsNumerator"]
+                num = int(numerator)
             if grade_object["PointsDenominator"] is not None:
                 denominator = grade_object["PointsDenominator"]
+                den = int(denominator)
             fraction_string = "{numerator}/{denominator}".format(numerator=numerator, denominator=denominator)
+
             if grade_object["DisplayedGrade"] is not None:
                 percentage_string = grade_object["DisplayedGrade"]
         except TypeError:
             return "", ""
 
-        return fraction_string, percentage_string
+        percentage = num/den
+        percentage = percentage * 100
+        return fraction_string, percentage
 
     '''
         This retrieves all the assignments in gradebook for a particular course for the current logged in user,
@@ -245,6 +310,29 @@ class BSAPI():
         return self.__process_api_json("get_calender_events", url)
 
     '''
+        Retrieve all the calendar events for the calling user. within the provided course id
+        
+        course_id (str/int): a string of numbers representing the course
+        
+        returns: This action returns a JSON array of EventDataInfo data blocks.
+    '''
+
+    def get_course_all_events(self, course_id):
+        url = self._API_URL_PREFIX
+        url += "le/1.38/{course_id}/calendar/events/".format(course_id=course_id)
+
+        return self.__process_api_json("get_course_all_events", url)
+
+    '''
+        Retrieve not submitted grade conditions 
+        
+        return. This action returns a ConditionsData JSON structure representing the conditions on the target
+    '''
+
+    def get_content_conditions(self):
+        return
+
+    '''
         Processing an api call that returns a json.
         
         call_name: The name of the functionality that is being processed. 
@@ -305,3 +393,42 @@ class BSAPI():
 
     def set_debug_mode(self, debug):
         self._debug = debug
+
+    # Modification of 'get_grade_of_assignment' to return just the overall points received
+    def get_grade_received(self, course_id, grade_object_id):
+        url = self._API_URL_PREFIX + "le/1.38/{course_id}/grades/{grade_object_id}/values/myGradeValue".format(
+            course_id=course_id, grade_object_id=grade_object_id
+        )
+        # returns a dict with assignment info or 'None' if assignment has no grade yet
+        grade_object = self.__process_api_json("get_grade_of_assignment", url)
+        # print(grade_object)
+        if grade_object is None:
+            # meaning no points yet
+            return 0, 0
+
+        total = grade_object["PointsDenominator"]
+        grade_received = grade_object["PointsNumerator"]
+
+        return grade_received, total
+
+    def get_upcoming_assignments(self, course_id):
+        url = self._API_URL_PREFIX + "le/1.38/{course_id}/dropbox/folders/".format(course_id=course_id)
+        upcoming = self.__process_api_json("get_upcoming_assignments", url)
+        #file = open("/Users/raveena/Library/Preferences/PyCharmCE2019.2/scratches/scratch.json")
+        #upcoming = json.load(file)
+        print(upcoming)
+        if upcoming is None:
+            return []
+        due = []
+        for assignment in upcoming:
+            if assignment["DueDate"] is None:
+                l = [assignment["Name"], None]
+            else:
+                l = [assignment["Name"], assignment["DueDate"]]
+            due.append(l)
+        return due
+
+
+
+
+
