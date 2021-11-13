@@ -1,9 +1,9 @@
-database/db_config.py
-test.py
 config.py
-discord_config.py
-db_config.py
+database/db_config.py
 client_secret.json
+test.py
+discord_config.py
+client_secrets.json
 __pycache__
 token files
 **/__pycache__/
@@ -11,3 +11,4 @@ token_calendar_v3.pickle
 tests/test_config.py
 tests/calendar_test_data.json
 runApiCalls.py
+**/__pycache__

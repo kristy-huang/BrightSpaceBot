@@ -2,8 +2,10 @@ import pymysql
 
 
 class MySQLDatabase:
-    def __init__(self):
+    def __init__(self, config_filename):
         self._cursor = None
+        self.connect_by_config(config_filename)
+        self.use_database("BSBOT")
 
 
 
@@ -64,6 +66,7 @@ class MySQLDatabase:
         state = self._cursor.execute(sql)
         if state:
             self._cursor.connection.commit()
+
 
     def drop_database(self, database_name):
         sql = "DROP DATABASE IF EXISTS {database_name}".format(database_name=database_name)
@@ -166,7 +169,7 @@ class MySQLDatabase:
         for col in cols.keys():
             columns += str(col) + ","
             val = cols[col]
-            if not val:
+            if isinstance(val, str) and not val:
                 values += "null,"
             elif isinstance(val, str):
                 values += "\'" + str(cols[col]) + "\',"
@@ -180,7 +183,7 @@ class MySQLDatabase:
         sql = "INSERT INTO {tb_n} ({cols})\nVALUES ({vals})".format(tb_n=table_name,
                                                                     cols=columns,
                                                                     vals=values)
-
+        #print(sql)
         # Returns 1 for success
         state = self._cursor.execute(sql)
         if state:
@@ -202,9 +205,9 @@ class MySQLDatabase:
 
 
     '''
-        Inserts a column into a specific table. Very basic functionality. Does no gate
+        Update in a specific table. Very basic functionality. Does no gate
         keeping.
-        table_name(str): table to insert into
+        table_name(str): table to update
         cols(dict): in the format of:
         {auto_increment column: None, 
         column name 1: value 1,
@@ -219,7 +222,7 @@ class MySQLDatabase:
 
         set_cols = ""
         for col in cols.keys():
-            print(col, str(cols[col]) )
+            #print(col, str(cols[col]) )
 
             set_cols += col + "="
             if isinstance(cols[col], str):
@@ -227,14 +230,14 @@ class MySQLDatabase:
             else:
                 set_cols += str(cols[col]) + ","
 
-            print(set_cols)
+            #print(set_cols)
         set_cols = set_cols[:-1]
 
         sql = "UPDATE {tb_n}\nSET {set_cols}".format(tb_n=table_name,
                                                      set_cols=set_cols)
         sql += "\nWHERE {cond};".format(cond=condition) if condition else ""
 
-        print(sql)
+        #print(sql)
         state = self._cursor.execute(sql)
         if state:
             self._cursor.connection.commit()
