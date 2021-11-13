@@ -531,7 +531,7 @@ class BSUtilities():
     # returns a string describing the event
     def get_events_by_type_past_24h(self, eventType=1):
         endDateTime = datetime.datetime.utcnow()
-        startDateTime = endDateTime - datetime.timedelta(days=1)
+        startDateTime = endDateTime - datetime.timedelta(days=10)
         endDateTime = endDateTime.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
         startDateTime = startDateTime.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
         
@@ -726,7 +726,7 @@ class BSUtilities():
 
 
     def get_notifications_past_24h(self):
-        utc_one_day_before = datetime.datetime.utcnow() - datetime.timedelta(days = 5)
+        utc_one_day_before = datetime.datetime.utcnow() - datetime.timedelta(days = 10)
         utc_one_day_before = utc_one_day_before.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
         announcements = self.get_announcements(since=utc_one_day_before)
         #announcements = self.get_announcements()
