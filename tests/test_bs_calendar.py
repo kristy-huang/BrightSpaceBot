@@ -15,8 +15,8 @@ class TestGetQuizzesCalendar(unittest.TestCase):
         print(result)
         self.assertEqual(result[0]['course_id'], course_id)
         self.assertEqual(result[0]['course_name'], 'Fall 2021 CS 38100-LE2 LEC')
-        self.assertEqual(result[0]['quiz_name'], 'Fall 2021 Quiz 08')
-        self.assertEqual(result[0]['due_date'], '2021-10-27T03:59:00.000Z')
+        self.assertEqual(result[0]['quiz_name'], 'Fall 2021 Quiz 09')
+        self.assertEqual(result[0]['due_date'], '2021-11-03T03:59:00.000Z')
 
     def test_calls_to_calendar(self):
         cal = Calendar()
