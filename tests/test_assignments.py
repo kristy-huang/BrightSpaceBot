@@ -5,9 +5,12 @@ from discord_config import USERNAME, PIN
 def check_eaps_assignments(courseID, bs):
     upcoming = bs._bsapi.get_upcoming_assignments(courseID)
     due = bs.process_upcoming_dates(upcoming)
+    array = [['Project topic proposal', '2021-11-06T03:59:00.000Z']]
+    counter = 0
     for d in due:
-        assert d[0] == "Project topic proposal"
-        assert d[1] == "2021-11-06T03:59:00.000Z"
+        assert array[counter][0] == d[0]
+        assert array[counter][1] == d[1]
+        counter = counter + 1
 
 
 def check_cs307_assignments(courseID, bs):

@@ -214,9 +214,10 @@ class BSUtilities():
             for t in topics:
                 # if its null, then we don't need the value
                 if t["EndDate"] is not None:
-                    string_rep = t["EndDate"]
-                    mdy = string_rep.split(" ")[0].split("-")
-                    end = datetime(int(mdy[0]), int(mdy[1]), int(mdy[2]))
+                    # string_rep = t["EndDate"]
+                    # mdy = string_rep.split(" ")[0].split("-")
+                    # end = datetime(int(mdy[0]), int(mdy[1]), int(mdy[2]))
+                    end = t["EndDate"]
                     # saving datetime objects
                     dates.append(end)
         return dates
