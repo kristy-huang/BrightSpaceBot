@@ -72,7 +72,8 @@ class BSUtilities():
         filename = filename[filename.rindex("\"") + 1:]
         filename = urllib.parse.unquote(filename)
         print(filename)
-        if type == 'LOCAL':
+        if type.startswith('Local'):
+            print("hello inside local")
             destination += "/" if destination[-1] != '/' else ""
             if not os.path.exists(destination):
                 os.makedirs(destination)
@@ -126,7 +127,7 @@ class BSUtilities():
     def download_files(self, course_id, destination, t):
         modules = self._bsapi.get_topics(course_id)["Modules"]
         drive = None
-        if t != "LOCAL":
+        if t != "Local Machine":
             drive = self.init_google_auths()
 
         if self._debug:
@@ -235,9 +236,10 @@ class BSUtilities():
             for t in topics:
                 # if its null, then we don't need the value
                 if t["EndDate"] is not None:
-                    string_rep = t["EndDate"]
-                    mdy = string_rep.split(" ")[0].split("-")
-                    end = datetime(int(mdy[0]), int(mdy[1]), int(mdy[2]))
+                    # string_rep = t["EndDate"]
+                    # mdy = string_rep.split(" ")[0].split("-")
+                    # end = datetime(int(mdy[0]), int(mdy[1]), int(mdy[2]))
+                    end = t["EndDate"]
                     # saving datetime objects
                     dates.append(end)
         return dates
@@ -752,6 +754,78 @@ class BSUtilities():
             else:
                 return False
         return True
+
+
+    # Algorithm to get overall points received in a class if not displayed at top
+    def sum_total_points(self, courseID):
+        gradeIDs = self._bsapi.get_all_assignments_in_gradebook(courseID)
+        print(gradeIDs)
+        yourTotal = 0
+        classTotal = 0
+        for id in gradeIDs:
+            yourGrade, total = self._bsapi.get_grade_received(courseID, id)
+            print(str(total) + " " + str(yourGrade))
+            yourTotal = yourTotal + yourGrade
+            classTotal = classTotal + total
+
+        return yourTotal, classTotal
+
+
+    def process_upcoming_dates(self, upcoming_list):
+        due = []
+        current_utc = datetime.datetime.utcnow()
+        for assignment in upcoming_list:
+            date = assignment[1]
+            if date is not None:
+                date = datetime.datetime.fromisoformat(date[:-1])
+                diff = date - current_utc
+                if diff.days >= 0:
+                  due.append(assignment)
+        return due
+                # print(diff.days)
+
+    '''
+        This functions pulls up all of a student's upcoming quizzes across all their
+
+        enrolled classes. 
+
+        returns: list of QuizReadDate blocks.
+    '''
+
+    def get_all_upcoming_quizzes(self):
+        enrolled_courses = self.get_classes_enrolled()
+        # print(enrolled_courses)
+        upcoming_quizzes = []
+        for course_name, course_id in enrolled_courses.items():
+            result = self._bsapi.get_quizzes(course_id)  # returns a list of QuizReadData blocks - dictionaries
+            quizzes = result['Objects']
+            for quiz in quizzes:  # for each block in the list,
+                # get today's date
+
+                current_date = datetime.datetime.utcnow()
+
+                if quiz['DueDate'] is not None:
+                    quiz_due_date = datetime.datetime.fromisoformat(quiz['DueDate'][:-1])
+                    # print(quiz_due_date)
+                    # quiz_due_date = datetime.datetime.strptime(quiz['DueDate'], "%Y-%m-%dT%H:%M:%S.%fZ")
+
+                    # find diff between quiz.due date and today
+                    diff = (quiz_due_date - current_date).days
+                    # print(diff)
+                    # for upcoming quizzes due today or later in the future: diff >= 0
+                    # TODO: fix this!!!
+                    if diff >= -7:
+                        data = {
+                            "course_id": course_id,
+                            "course_name": course_name,
+                            "quiz_name": quiz['Name'],
+                            "due_date": quiz['DueDate']
+                        }
+                        # print(data)
+                        # print(datetime.datetime.fromisoformat(quiz['DueDate'][:-1]))
+                        upcoming_quizzes.append(data)
+        return upcoming_quizzes
+
 
     def get_sorted_grades(self):
         # list of courses in preferred priority
