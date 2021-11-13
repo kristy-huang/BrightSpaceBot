@@ -83,8 +83,6 @@ class DBUtilities():
         if auto_id_name:
             self.reset_auto_increment(table_name, auto_id_name)
 
-
-
     def add_hotp_secret_counter(self, user_name, hotp_secret, counter):
         if self._mysql.general_command(f"SELECT * FROM CREDENTIALS WHERE USERNAME = \"{user_name}\""):
             self.update_hotp_secret_counter(user_name, hotp_secret, counter)
@@ -160,6 +158,3 @@ class DBUtilities():
             return schedules
         else:
             return []
-
-
-    
