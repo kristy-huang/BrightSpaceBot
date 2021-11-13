@@ -5,13 +5,12 @@ from flask_cors import CORS
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended import JWTManager, create_access_token, create_refresh_token, jwt_required
 import config
-# import models
 
 webapp = Flask(__name__)
 CORS(webapp)
 JWTManager(webapp)
 
-webapp.config['SQLALCHEMY_DATABASE_URI'] = config.database_uri_dev
+webapp.config['SQLALCHEMY_DATABASE_URI'] = config.database_uri_prod
 webapp.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = config.track_modifications
 webapp.config['SECRET_KEY'] = config.secret_key
 
@@ -21,6 +20,7 @@ marshmallow = Marshmallow(webapp)
 
 # db schema for a user
 class Users(db.Model):
+    __tablename__ = 'USERS'
     username = db.Column(db.String(50), primary_key=True)
     first_name = db.Column(db.String(50))
     last_name = db.Column(db.String(50))
@@ -45,6 +45,7 @@ users_schema = UsersSchema(many=True)
 
 
 class Preferences(db.Model):
+    __tablename__ = 'PREFERENCES'
     username = db.Column(db.String(50), primary_key=True)
     storage_location = db.Column(db.String(100))
     notification_frequency = db.Column(db.String(50))
@@ -131,6 +132,51 @@ def login_user():
     return jsonify({
         "status": 400,
         "message": "Error, could not login"
+    })
+
+
+@webapp.route("/updateProfile", methods=['POST'])
+def update_profile():
+    # get user input from website
+    print(request.get_json())
+    username = request.json['username']
+    major = request.json['major']
+    storage_location = request.json['storageLocation']
+    notification_frequency = request.json['notificationFrequency']
+
+    # check if user submits a blank page
+    if major == '-1' and storage_location == '-1' and notification_frequency == '-1':
+        return jsonify({
+            "status": 400,
+            "message": "Nothing changed."
+        })
+
+    # check if username exists and update USER table
+    db_user = Users.query.filter_by(username=username).first()
+    if db_user is None:
+        return jsonify({
+            "status": 400,
+            "message": "Username couldn't find account!"
+        })
+
+    # update user info
+    if major != '-1':
+        db_user.major = major
+
+    db.session.commit()
+
+    # update PREFERENCES table
+    user_preferences = Preferences.query.filter_by(username=username).first()
+    if storage_location != '-1':
+        user_preferences.storage_location = storage_location
+    if notification_frequency != '-1':
+        user_preferences.notification_frequency = notification_frequency
+
+    db.session.commit()
+
+    return jsonify({
+        "status": 200,
+        "message": "Profile Information Successfully Updated!"
     })
 
 
