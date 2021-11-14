@@ -1,9 +1,11 @@
 
 import asyncio
+from bs_utilities import BSUtilities
 
 from thefuzz import fuzz
 from thefuzz import process
 
+from Authentication import setup_automation
 
 # A class to parse user commands, and run matching functionalities.
 #
@@ -11,7 +13,8 @@ from thefuzz import process
 # To show debug information: 
 #   set debug=True when initializing an NLPAction object
 # To add a command / function match:
-#   1. Implement a function in the NLPAction class.
+#   1. Implement a function in the NLPAction class. The interface should be:
+#      await def <function name>(self, message, client)
 #   2. Add the mapping from a command to the function in self.PHRASES in __init__,
 #      in the format of "command": function. Please see __init__ for some examples.
 
@@ -19,20 +22,40 @@ from thefuzz import process
 class NLPAction():
     
     # Paramerters:
-    # BS_UTIL: BSUtilities object. Does not need to be connected to BrightSpace!
-    # DB_UTIL: DBUtilities object. Needs to be connected to a database!
+    # DB_UTIL: DBUtilities object. Needs to be connected to a database.
     # debug: bool. Shows debug messages if set to true. 
 
-    def __init__(self, BS_UTIL, DB_UTIL, debug = False):
+    def __init__(self, DB_UTIL, debug = False):
+
+        # "command" for each functionality.
         self.PHRASES = {
         "hello": self._say_hello,
         "hi": self._say_hello,
         "bye": self._say_good_bye,
-        "change bot name": self._change_bot_name
+        "change bot name": self._change_bot_name,
+        "change your name": self._change_bot_name
         }
 
-        self.BS_UTIL = BS_UTIL
-        self.DB_UTIL = DB_UTIL
+        # 1 = yes, 0 = no
+        self.YES_NO_PHRASES = {
+            "yes": 1, 
+            "true":1,
+            "yup": 1,
+            "yeah": 1,
+            "right": 1,
+            "correct": 1,
+            "no": 0,
+            "false": 0,
+            "nope": 0
+        }
+
+        # maps an user's discord user id to an username. (The username used as a key in db) 
+        self._id_to_username_map = {}
+        # maps an user's discord user id to a bsutility object
+        self._id_to_bsu_map = {}
+
+        self._DB_UTIL = DB_UTIL
+
         self._debug = debug
         
     
@@ -43,11 +66,16 @@ class NLPAction():
     # client: the client object
 
     async def process_command(self, message, client):
-        if  self._author_check(message, client):
+        if self._author_check(message, client):
             if self._debug:
                 print("Message is from the bot it self. Abort. ")
                 print(f"message author: {message.author}. client author: {client.user}")
 
+            return
+
+        await self._request_bot_username_password_if_necessary(message, client)
+        status = await self._setup_auto_if_necessary(message, client)
+        if not status:
             return
 
         # (matched string, confidency (out of 100))
@@ -61,6 +89,8 @@ class NLPAction():
         await self.PHRASES[action_tuple[0]](message, client)
 
 
+    # ----- Helpers -----
+
     # Returns true if the message is same as the "client" -> The bot?
     def _author_check(self, message, client):
         return message.author == client.user
@@ -69,6 +99,15 @@ class NLPAction():
     def _get_username_from_message(self, message):
         return str(message.author).split('#')[0]
 
+
+    # Decides if the user is saying yes or no. Returns true if the user is saying yes,
+    # and no if the user is saying no.
+    #
+    # yes_no_message: a message object. Not a string!
+
+    def _decide_yes_or_no(self, yes_no_message):
+        yes_no_tuple = process.extractOne(yes_no_message.content, self.YES_NO_PHRASES.keys(), scorer=fuzz.token_set_ratio)
+        return self.YES_NO_PHRASES[yes_no_tuple[0]]
 
     # waits for a respond from the user(s)
     # Returns: a response object
@@ -84,6 +123,73 @@ class NLPAction():
             return None
         return res
 
+
+    # ----- Login to discord bot & BrightSpace Functions -----
+
+
+    # Returns True when login succeeds, False when fails. 
+    # Currently only has the case when succeeds. 
+
+    async def _request_bot_username_password(self, message, client):
+        await message.channel.send("Please enter your username for BrightSpace Bot.")
+        username = await self._recieve_response()
+        self._id_to_username_map[username.author.id] = username.content
+
+        return True
+
+
+    async def _request_bot_username_password_if_necessary(self, message, client):
+        if message.author.id not in self._id_to_username_map:
+            await self._request_bs_username_password(message, client)
+
+
+    async def _setup_auto_if_necessary(self, message, client):
+        user_id = message.author.id
+        if user_id in self._id_to_bsu_map:
+            return
+
+        await message.channel.send("please get a boilerkey url and send it to me.")
+        res = await self._recieve_response()
+        url = res.content
+        await message.channel.send("bs username")
+        res = await self._recieve_response()
+        bs_username = res.content
+        await message.channel.send("bs 4 digit pin")
+        res = await self._recieve_response()
+        bs_pin = res.content
+        status = setup_automation(self._DB_UTIL, self._id_to_username_map[message.author.id], bs_username, bs_pin, url )
+
+        db_res = self._DB_UTIL.get_bs_username_pin(self._id_to_username_map[message.author.id])
+        if not db_res or not db_res[0][0]:
+            await message.channel.send("BrightSpace setup failed. please check your cridentials!")
+            return False
+
+        bsu = BSUtilities()
+        bsu.set_session_auto(self._DB_UTIL, self._id_to_username_map[message.author.id])
+        if not bsu.check_connection():
+            await message.channel.send("BrightSpace setup failed. please check your cridentials!")
+            return False
+
+        self._id_to_bsu_map[user_id] = bsu
+        return True
+        
+        
+    async def _login_to_bs_if_necessary(self, message, client):
+        user_id = message.author.id
+        if user_id not in self._id_to_bsu_map:
+            if self._debug:
+                print("Why is the program trying to login to bs before a bsu object is created?")
+
+            return False
+        
+        user_bsu = self._id_to_bsu_map[user_id]
+        try:
+            while not user_bsu.check_connection():
+                user_bsu.set_session_auto(self._DB_UTIL, self._id_to_username_map[user_id])
+        except asyncio.TimeoutError:
+            print(f"Login to bs: timed out. User: {self._id_to_username_map[user_id]}")
+    
+    # ----- functionalities -----
 
 
     async def _say_hello(self, message, client):
@@ -128,15 +234,10 @@ class NLPAction():
 
 
                 # user does not want to change again
-            if change_again.content.startswith('No'):
+            if not self._decide_yes_or_no(change_again):
                 change = False
                 await message.channel.send("Thank you for changing my name!")
-            elif not change_again.content.startswith('Yes'):  # user input invalid response
-                await message.channel.send("Invalid response given! Please try the query again.")
-                return
-
-
-
+            
 
 
     
