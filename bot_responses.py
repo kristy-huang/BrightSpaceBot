@@ -1,6 +1,7 @@
 import discord
 from database.db_utilities import DBUtilities
-from file_sandbox import RenameFile
+from rename_file import RenameFile
+from bs_utilities import BSUtilities
 
 # This will be a helper class to organize all the responses that the bot will need to provide back to discord
 class BotResponses:
@@ -76,16 +77,42 @@ class BotResponses:
                 return True
         return False
 
-    def get_downloaded_files(self):
+    def get_downloaded_files(self, username):
         rename = RenameFile()
+        # get what type of storage they have
+        sql_command = f"SELECT STORAGE_LOCATION FROM PREFERENCES WHERE USERNAME = '{username}';"
+        storage_location = self.DB_UTILS._mysql.general_command(sql_command)[0][0]
+        if storage_location is None:
+            return "No storage type specified in configurations. Please do that first."
+        else:
+            # get their list of files based on their storage location
+            sql_command = f"SELECT STORAGE_PATH FROM PREFERENCES WHERE USERNAME = '{username}';"
+            storage_path = self.DB_UTILS._mysql.general_command(sql_command)[0][0]
+            if storage_location == 'Local Machine':
+                arr = rename.list_files_local(storage_path)
+            else:
+                bs = BSUtilities()
+                drive = bs.init_google_auths()
+                arr = rename.list_files_google(drive, storage_path)
+            response = "List of files downloaded so far: \n"
+            count = 1
+            for a in arr:
+                response = response + str(count) + ". " + a + "\n"
+                count = count + 1
+            response = response + "Please type <Number> -> <New file name> for the new name you want " \
+                                  "to change the files to.\nEX: 1 -> modified.png"
+            return response
+
+
 
 
 
 # Debugging ...
 if __name__ == '__main__':
-    sql = DBUtilities()
-    sql.connect_by_config("database/db_config.py")
-    sql.use_database("BSBOT")
-    print(sql.show_table_content("USERS"))
-    print(sql.show_table_content("PREFERENCES"))
-    print(sql._mysql.general_command("")[0][0])
+    sql = DBUtilities("database/db_config.py")
+    r = BotResponses()
+    r.set_DB_param(sql)
+    rows = sql._mysql.general_command("SELECT * FROM PREFERENCES")
+    for i in rows:
+        print(i)
+    r.get_downloaded_files("currymaster")

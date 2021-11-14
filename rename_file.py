@@ -42,12 +42,23 @@ class RenameFile:
             return True
 
     def list_files_local(self, directory):
+        flist = []
         for root, dirs, files in os.walk(directory):
             for f in files:
-                print(os.path.join(root, f))
+                string = os.path.join(root, f)
+                flist.append(string)
+        return flist
 
-    def list_files_google_id(self, id):
-        return 0
+
+
+    def list_files_google_id(self, directory):
+        fileList = drive.ListFile({'q': "'root' in parents and trashed=false"}).GetList()
+        # Use this to save all the folders in 'MyDrive'
+        folderList = []
+        for file in fileList:
+            if file['mimeType'] == 'application/vnd.google-apps.folder':
+                if file['title'] == directory:
+                    return file['title']
 
     def list_files_google(self, drive, directory):
         string = f"'{directory}' in parents"

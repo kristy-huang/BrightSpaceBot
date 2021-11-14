@@ -28,7 +28,6 @@ client = discord.Client()
 channelID = 663863991218733058  # mine!
 # TODO save this in the database - right now this is my (Raveena's) channel)
 BS_API = BSAPI()
-BOT_RESPONSES = BotResponses()
 
 SCHEDULED_HOURS = []
 DB_USERNAME = 'currymaster'
@@ -36,6 +35,8 @@ DB_USERNAME = 'currymaster'
 db_config = "./database/db_config.py"
 BS_UTILS = BSUtilities()
 DB_UTILS = DBUtilities(db_config)
+BOT_RESPONSES = BotResponses()
+BOT_RESPONSES.set_DB_param(DB_UTILS)
 
 author_id_to_username_map = {}
 NOT_FREQ_MAP = {
@@ -70,60 +71,60 @@ async def notification_loop():
         return
 
     #  Syncing the calendar daily (so it can get the correct changes)
-    classes = BS_UTILS.get_classes_enrolled()
-    # classes = {"EAPS": "336112"}
-    for courseName, courseID in classes.items():
-        assignment_list = BS_UTILS._bsapi.get_upcoming_assignments(courseID)
-        due = BS_UTILS.process_upcoming_dates(assignment_list)
-        if len(due) != 0:
-            # actually dates that are upcoming
-            cal = Calendar()
-            # loop through all the upcoming assignments
-            for assignment in due:
-                # Check if the event exists first by searching by name
-                event_title = f"ASSIGNMENT DUE: {assignment[0]} ({courseID})"
-                description = f"{assignment[0]} for {courseName} is due. Don't forget to submit it!"
-                search_result, end_time = cal.get_event_from_name(event_title)
-                date = datetime.datetime.fromisoformat(assignment[1][:-1])
-                end = date.isoformat()
-                start = (date - datetime.timedelta(hours=1)).isoformat()
-                print("End date from search: " + str(end_time))
-                if search_result != -1:
-                    # it has already been added to the calendar
-                    # see if the end times are different
-                    if end_time != end:
-                        # the due date has been updated, so delete the old event
-                        cal.delete_event(search_result)
-                        cal.insert_event(event_title, description, start, end)
-                else:
-                    # has not been added to calendar, so add normally
-                    # inserting event
-                    cal.insert_event(event_title, description, start, end)
-
-    print("inserting into calendar is finished...")
-
-    # Syncing quizzes to the calendar daily (so it can get the correct changes)
-    quizzes = BS_UTILS.get_all_upcoming_quizzes()
-    for quiz in quizzes:
-        cal = Calendar()
-        event_title = f"QUIZ DUE: {quiz['quiz_name']} ({quiz['course_id']})"
-        description = f"{quiz['quiz_name']} for {quiz['course_name']} is due. Don't forget to submit it!"
-        date = datetime.datetime.fromisoformat(quiz['due_date'][:-1])
-        end = date.isoformat()
-        start = (date - datetime.timedelta(hours=1)).isoformat()
-        event_id, end_time = cal.get_event_from_name(event_title)
-        # event has already been created in google calendar
-        if event_id == -1:
-            # insert new event to calendar
-            cal.insert_event(event_title, description, start, end)
-        # event has not been created
-        else:
-            # if end time has changed, update the event
-            if end_time != end:
-                cal.delete_event(event_id)
-                cal.insert_event(event_title, description, start, end)
-
-    print("inserting into calendar is finished...")
+    # classes = BS_UTILS.get_classes_enrolled()
+    # # classes = {"EAPS": "336112"}
+    # for courseName, courseID in classes.items():
+    #     assignment_list = BS_UTILS._bsapi.get_upcoming_assignments(courseID)
+    #     due = BS_UTILS.process_upcoming_dates(assignment_list)
+    #     if len(due) != 0:
+    #         # actually dates that are upcoming
+    #         cal = Calendar()
+    #         # loop through all the upcoming assignments
+    #         for assignment in due:
+    #             # Check if the event exists first by searching by name
+    #             event_title = f"ASSIGNMENT DUE: {assignment[0]} ({courseID})"
+    #             description = f"{assignment[0]} for {courseName} is due. Don't forget to submit it!"
+    #             search_result, end_time = cal.get_event_from_name(event_title)
+    #             date = datetime.datetime.fromisoformat(assignment[1][:-1])
+    #             end = date.isoformat()
+    #             start = (date - datetime.timedelta(hours=1)).isoformat()
+    #             print("End date from search: " + str(end_time))
+    #             if search_result != -1:
+    #                 # it has already been added to the calendar
+    #                 # see if the end times are different
+    #                 if end_time != end:
+    #                     # the due date has been updated, so delete the old event
+    #                     cal.delete_event(search_result)
+    #                     cal.insert_event(event_title, description, start, end)
+    #             else:
+    #                 # has not been added to calendar, so add normally
+    #                 # inserting event
+    #                 cal.insert_event(event_title, description, start, end)
+    #
+    # print("inserting into calendar is finished...")
+    #
+    # # Syncing quizzes to the calendar daily (so it can get the correct changes)
+    # quizzes = BS_UTILS.get_all_upcoming_quizzes()
+    # for quiz in quizzes:
+    #     cal = Calendar()
+    #     event_title = f"QUIZ DUE: {quiz['quiz_name']} ({quiz['course_id']})"
+    #     description = f"{quiz['quiz_name']} for {quiz['course_name']} is due. Don't forget to submit it!"
+    #     date = datetime.datetime.fromisoformat(quiz['due_date'][:-1])
+    #     end = date.isoformat()
+    #     start = (date - datetime.timedelta(hours=1)).isoformat()
+    #     event_id, end_time = cal.get_event_from_name(event_title)
+    #     # event has already been created in google calendar
+    #     if event_id == -1:
+    #         # insert new event to calendar
+    #         cal.insert_event(event_title, description, start, end)
+    #     # event has not been created
+    #     else:
+    #         # if end time has changed, update the event
+    #         if end_time != end:
+    #             cal.delete_event(event_id)
+    #             cal.insert_event(event_title, description, start, end)
+    #
+    # print("inserting into calendar is finished...")
 
     # print("called_once_a_day:")
     # async def send_notifications():
@@ -1618,6 +1619,8 @@ async def on_message(message):
 
     elif message.content.startswith("rename file"):
         # list out the files that they can rename
+        response = BOT_RESPONSES.get_downloaded_files(DB_USERNAME)
+        await message.channel.send(response)
         return
         # take the ones they want to rename
         # rename the files they want
