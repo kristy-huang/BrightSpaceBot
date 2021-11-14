@@ -1615,7 +1615,9 @@ async def on_message(message):
             await message.channel.send("Timeout ERROR has occurred. Please try the query again")
 
         return
-
+    elif message.content.startswith("add office hours to calendar"):
+        await message.channel.send("Please input your course name")
+        return
 
 # Now to actually run the bot!
 client.run(config['token'])
