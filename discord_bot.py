@@ -435,6 +435,7 @@ async def on_message(message):
                 return
 
         # setting up a basic 'hello' command so you get this gist of it
+        (Refactored)
         if user_message.lower() == 'hello':
             # put your custom message here for the bot to output
             # we would incorporate our chat module here and then craft an appropriate response
@@ -443,6 +444,7 @@ async def on_message(message):
             await BOT_RESPONSES.test_hello()
             return
 
+        (Refactored)
         elif user_message.lower() == 'bye':
             await message.channel.send(f'Bye {username}!')
             return
