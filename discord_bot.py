@@ -1616,6 +1616,12 @@ async def on_message(message):
 
         return
 
+    elif message.content.startswith("rename file"):
+        # list out the files that they can rename
+        return
+        # take the ones they want to rename
+        # rename the files they want
+
 
 # Now to actually run the bot!
 client.run(config['token'])

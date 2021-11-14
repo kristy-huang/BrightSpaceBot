@@ -1,6 +1,6 @@
 import discord
 from database.db_utilities import DBUtilities
-
+from file_sandbox import RenameFile
 
 # This will be a helper class to organize all the responses that the bot will need to provide back to discord
 class BotResponses:
@@ -75,6 +75,10 @@ class BotResponses:
                 # Then this text channel already exists
                 return True
         return False
+
+    def get_downloaded_files(self):
+        rename = RenameFile()
+
 
 
 # Debugging ...
