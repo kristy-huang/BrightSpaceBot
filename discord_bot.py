@@ -398,6 +398,25 @@ async def on_message(message):
         await message.channel.send(final_string)
         return
     
+    #suggest study groups
+    elif message.content.startswith("suggest study groups"):
+        #currently only implementing the general case - no parameters are specified.
+        def author_check(m):
+            return m.author == message.author
+        await message.channel.send("Would you like to specify the number of students to be in your group? If so, type in the number. If not, please type \"no\" \n")
+        num_students = await client.wait_for('message', check=author_check)
+        await message.channel.send("Would you like to specify the number of courses to have in common with your group? If so, type in the number. If not, please type \"no\" \n")
+        num_courses = await client.wait_for('message', check=author_check)
+        await message.channel.send("Would you like to specify which courses to have in common with your group? If so, indicate the courses in a comma-separated list (for ex, 'NUTR 303, CS 307, EAPS 112'). If not, please type \"no\" \n")
+        specific_courses = await client.wait_for('message', check=author_check)
+
+        output = BS_UTILS.suggest_study_groups()
+
+
+        
+        
+        return
+    
     #check if there is feedback on an assignment
     elif message.content.startswith("is there feedback"):
         await message.channel.send("Please provide the Course name (for ex, NUTR 303) \n")
