@@ -345,6 +345,28 @@ class BSUtilities():
         return False
     
     '''
+        This is a function that grabs feedback (if it exists) for an assignment in a course. 
+
+        returns: String of feedback, or NULL if there is no feedback, or error message if parameters are incorrect. 
+    '''
+    def suggest_study_groups(self):
+        enrolled_courses = self.get_classes_enrolled()
+        first_course_id = list(enrolled_courses.values())[0]
+        first_classlist_user_blocks = self._bsapi.get_enrolled_users_for_org_unit(first_course_id)
+        
+        for current_course in enrolled_courses:
+            current_course_id = enrolled_courses[current_course]
+            if current_course_id == first_course_id:
+                break
+            else:
+                first_classlist_user_blocks = self._bsapi.get_enrolled_users_for_org_unit(current_course_id)
+            #return
+
+        
+        return
+    
+    
+    '''
         This is a helper function for get_upcoming_quizzes(). It is used to determine whether a given 
 
         quiz has been attempted or not. Returns true if it is unattempted, or false it has been been attempted.  
