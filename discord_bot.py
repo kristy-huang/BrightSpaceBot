@@ -51,7 +51,7 @@ NOT_FREQ_MAP = {
 }
 
 
-nlpa = NLPAction(BS_UTILS, DB_UTILS)
+nlpa = NLPAction(DB_UTILS)
 
 # Having the bot log in and be online
 @client.event
