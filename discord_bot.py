@@ -16,6 +16,7 @@ from bot_responses import BotResponses
 from bs_calendar import Calendar
 from Authentication import setup_automation
 from werkzeug.security import generate_password_hash
+from database.mysql_database import MySQLDatabase
 
 '''
 To add the bot to your own server and test it out, copy this URL into your browser
@@ -36,6 +37,7 @@ DB_USERNAME = 'currymaster'
 db_config = "./database/db_config.py"
 BS_UTILS = BSUtilities()
 DB_UTILS = DBUtilities(db_config)
+SQL = MySQLDatabase(db_config)
 
 author_id_to_username_map = {}
 NOT_FREQ_MAP = {
@@ -1617,6 +1619,38 @@ async def on_message(message):
         return
     elif message.content.startswith("add office hours to calendar"):
         await message.channel.send("Please input your course name")
+        discord_username = ""
+        try:
+            course = await client.wait_for('message', check=check, timeout=60)
+            course = course.content.lower()
+            SQL.create_table("OFFICE_HOURS", "discord_username, course_name, office_hours")
+            sql_response = SQL.general_command('SELECT * FROM OFFICE_HOURS WHERE {col} = {condition}'.format(
+                                                                                col=discord_username,
+                                                                                condition=discord_username))
+            if sql_response is not None:
+                cal = Calendar()
+                for office_hour in sql_response:
+                    # Check if the event exists first by searching by name
+                    event_title = f"{course} OFFICE HOURS: {office_hour}"
+                    description = f"Don't forget to attend it!"
+                    search_result, end_time = cal.get_event_from_name(event_title)
+                    date = datetime.datetime.fromisoformat(office_hour[1][:-1])
+                    end = date.isoformat()
+                    start = (date - datetime.timedelta(hours=1)).isoformat()
+                    print("End date from search: " + str(end_time))
+                    if search_result != -1:
+                        # it has already been added to the calendar
+                        # see if the end times are different
+                        if end_time != end:
+                            # the due date has been updated, so delete the old event
+                            cal.delete_event(search_result)
+                            cal.insert_event(event_title, description, start, end)
+                    else:
+                        # has not been added to calendar, so add normally
+                        # inserting event
+                        cal.insert_event(event_title, description, start, end)
+        except asyncio.TimeoutError:
+            await message.channel.send("Timeout ERROR has occurred. Please try the query again")
         return
 
 # Now to actually run the bot!
