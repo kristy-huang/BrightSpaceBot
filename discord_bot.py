@@ -397,7 +397,28 @@ async def on_message(message):
 
         await message.channel.send(final_string)
         return
+    
+    #check if there is feedback on an assignment
+    elif message.content.startswith("is there feedback"):
+        await message.channel.send("Please provide the Course name (for ex, NUTR 303) \n")
+        def author_check(m):
+            return m.author == message.author
+        course_name = await client.wait_for('message', check=author_check)
+        await message.channel.send("Please provide the full assignment name (for ex, 'Recitation Assignment 1')\n")
+        assignment_name = await client.wait_for('message', check=author_check)
 
+        course_name_str = str(course_name.content)           #converting it here for unit tests
+        assignment_name_str = str(assignment_name.content)   #converting it here for unit tests
+        
+        feedback = BS_UTILS.get_assignment_feedback(course_name_str, assignment_name_str)
+
+        if feedback.__contains__("ERROR") or feedback.__contains__("BOT REPORT"):
+            await message.channel.send(feedback)
+        else:
+            await message.channel.send("Feedback has been posted for this assignment \n")
+        
+        return
+       
     #get feedback on assignment. 
     elif message.content.startswith("get assignment feedback"):
         await message.channel.send("Please provide the Course name (for ex, NUTR 303) \n")
