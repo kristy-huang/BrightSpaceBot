@@ -17,6 +17,8 @@ from Authentication import setup_automation
 #      await def <function name>(self, message, client)
 #   2. Add the mapping from a command to the function in self.PHRASES in __init__,
 #      in the format of "command": function. Please see __init__ for some examples.
+# To decide yes or no:
+#   use function self._decide_yes_or_no(message)
 
 
 class NLPAction():
@@ -33,7 +35,8 @@ class NLPAction():
         "hi": self._say_hello,
         "bye": self._say_good_bye,
         "change bot name": self._change_bot_name,
-        "change your name": self._change_bot_name
+        "change your name": self._change_bot_name,
+        "search for student": self._search_for_student
         }
 
         # 1 = yes, 0 = no
@@ -55,6 +58,8 @@ class NLPAction():
         self._id_to_bsu_map = {}
 
         self._DB_UTIL = DB_UTIL
+        # one login lock per user!
+        self._login_locks = {}
 
         self._debug = debug
         
@@ -74,9 +79,13 @@ class NLPAction():
             return
 
         await self._request_bot_username_password_if_necessary(message, client)
-        status = await self._setup_auto_if_necessary(message, client)
-        if not status:
-            return
+        if not self._login_locks[message.author.id]:
+            self._login_locks[message.author.id] = True
+            status = await self._setup_auto_if_necessary(message, client)
+            self._login_locks[message.author.id] = False
+
+            if not status:
+                return
 
         # (matched string, confidency (out of 100))
         action_tuple = process.extractOne(message.content, self.PHRASES.keys(), scorer=fuzz.token_set_ratio)
@@ -127,51 +136,67 @@ class NLPAction():
     # ----- Login to discord bot & BrightSpace Functions -----
 
 
+    # Maps the current user's id to an username. Also sets up a login lock.
     # Returns True when login succeeds, False when fails. 
     # Currently only has the case when succeeds. 
 
     async def _request_bot_username_password(self, message, client):
         await message.channel.send("Please enter your username for BrightSpace Bot.")
-        username = await self._recieve_response()
+        username = await self._recieve_response(message, client)
         self._id_to_username_map[username.author.id] = username.content
+        self._login_locks[username.author.id] = False
 
         return True
 
 
     async def _request_bot_username_password_if_necessary(self, message, client):
         if message.author.id not in self._id_to_username_map:
-            await self._request_bs_username_password(message, client)
+            await self._request_bot_username_password(message, client)
+
+
+    async def _login_if_necessary(self, message, bsu):
+        if bsu.check_connection():
+            return True
+
+        await message.channel.send("Logging into BrightSpace...")
+        bsu.set_session_auto(self._DB_UTIL, self._id_to_username_map[message.author.id])
+        if not bsu.check_connection():
+            await message.channel.send("BrightSpace login failed. please check your cridentials!")
+            return False
+
+        return True
 
 
     async def _setup_auto_if_necessary(self, message, client):
         user_id = message.author.id
         if user_id in self._id_to_bsu_map:
-            return
-
-        await message.channel.send("please get a boilerkey url and send it to me.")
-        res = await self._recieve_response()
-        url = res.content
-        await message.channel.send("bs username")
-        res = await self._recieve_response()
-        bs_username = res.content
-        await message.channel.send("bs 4 digit pin")
-        res = await self._recieve_response()
-        bs_pin = res.content
-        status = setup_automation(self._DB_UTIL, self._id_to_username_map[message.author.id], bs_username, bs_pin, url )
+            return True
 
         db_res = self._DB_UTIL.get_bs_username_pin(self._id_to_username_map[message.author.id])
         if not db_res or not db_res[0][0]:
-            await message.channel.send("BrightSpace setup failed. please check your cridentials!")
-            return False
+            await message.channel.send("please get a boilerkey url and send it to me.")
+            res = await self._recieve_response(message, client)
+            url = res.content
+            await message.channel.send("bs username")
+            res = await self._recieve_response(message, client)
+            bs_username = res.content
+            await message.channel.send("bs 4 digit pin")
+            res = await self._recieve_response(message, client)
+            bs_pin = res.content
+            status = setup_automation(self._DB_UTIL, self._id_to_username_map[message.author.id], bs_username, bs_pin, url )
+
+            db_res = self._DB_UTIL.get_bs_username_pin(self._id_to_username_map[message.author.id])
+            if not db_res or not db_res[0][0]:
+                await message.channel.send("BrightSpace setup failed. please check your cridentials!")
+                return False
+
+        # Login
 
         bsu = BSUtilities()
-        bsu.set_session_auto(self._DB_UTIL, self._id_to_username_map[message.author.id])
-        if not bsu.check_connection():
-            await message.channel.send("BrightSpace setup failed. please check your cridentials!")
-            return False
-
-        self._id_to_bsu_map[user_id] = bsu
-        return True
+        if await self._login_if_necessary(message, bsu):
+            self._id_to_bsu_map[user_id] = bsu
+            return True
+        return False
         
         
     async def _login_to_bs_if_necessary(self, message, client):
@@ -188,6 +213,7 @@ class NLPAction():
                 user_bsu.set_session_auto(self._DB_UTIL, self._id_to_username_map[user_id])
         except asyncio.TimeoutError:
             print(f"Login to bs: timed out. User: {self._id_to_username_map[user_id]}")
+    
     
     # ----- functionalities -----
 
@@ -239,5 +265,31 @@ class NLPAction():
                 await message.channel.send("Thank you for changing my name!")
             
 
+    async def _search_for_student(self, message, client):
+        await message.channel.send("Please provide the course in which you want to search \n")
 
+        course_name = await self._recieve_response(message, client)
+        await message.channel.send(
+            "Please provide the full name (First Name + Last Name, e.g 'Shaun Thomas') of the student you would like to search for.\n")
+        
+        student_name = await self._recieve_response(message, client)
+
+        course_name_str = str(course_name.content)
+        student_name_str = str(student_name.content)
+
+        user_id = message.author.id
+        curr_bs_util = self._id_to_bsu_map[user_id]
+        output = curr_bs_util.search_for_student_in_class(course_name_str, student_name_str)
+
+        if output:
+            await message.channel.send(student_name_str + " is a student in " + course_name_str)
+        elif output == False:
+            course_id = curr_bs_util.find_course_ID(course_name_str)
+            if course_id is None:
+                await message.channel.send(
+                    "ERROR: Please make sure the course you have specified is spelled correctly and is a course that you are currently enrolled in.")
+            else:
+                await message.channel.send(student_name_str + " is not a student in " + course_name_str)
+
+        return
     
