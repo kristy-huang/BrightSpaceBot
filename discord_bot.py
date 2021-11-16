@@ -189,7 +189,7 @@ async def notification_loop():
 
         await message_channel.send(string[:2000])
         return
-    
+
     '''if not BS_UTILS.check_connection():
         message_channel = client.get_channel(channel_id)
         await message_channel.send("Connection to BS lost. Attempting to reconnect to BS...")
@@ -320,8 +320,7 @@ async def on_message(message):
         await message.channel.send("bs 4 digit pin")
         res = await recieve_response()
         bs_pin = res.content
-        status = setup_automation(DB_UTILS, author_id_to_username_map[message.author.id], bs_username, bs_pin, url )
-
+        status = setup_automation(DB_UTILS, author_id_to_username_map[message.author.id], bs_username, bs_pin, url)
 
     async def delete_noti_all():
         await message.channel.send("Are you sure to delete all of your scheduled times?")
@@ -337,7 +336,7 @@ async def on_message(message):
         msg = ""
         for i, time in enumerate(current_times):
             msg += f"{i + 1}: {time[0]} {NOT_FREQ_MAP[int(time[1])].lower()}\n"
-            
+
         await message.channel.send("Which time do you want to delete?")
         await message.channel.send(msg)
 
@@ -358,17 +357,16 @@ async def on_message(message):
 
         num -= 1
         await message.channel.send(f"Delete time: {current_times[num][0]} {NOT_FREQ_MAP[int(current_times[num][1])]}?")
-        
+
         res = await recieve_response()
 
         if res.content.startswith("y") or res.content.startswith("right"):
-            DB_UTILS.delete_notification_schedule(author_id_to_username_map[message.author.id], current_times[num][0], current_times[num][1])
-            
+            DB_UTILS.delete_notification_schedule(author_id_to_username_map[message.author.id], current_times[num][0],
+                                                  current_times[num][1])
+
             await message.channel.send("Schedule deleted")
         else:
             await message.channel.send(f"No changes are made to your schedule.")
-
-
 
     if message.author.id not in author_id_to_username_map:
         await request_username_password()
@@ -789,7 +787,6 @@ async def on_message(message):
             await message.channel.send("How many notifications do you want every week?")
             res = await recieve_response()
 
-
             while True:
                 try:
                     freq = int(res.content)
@@ -804,38 +801,41 @@ async def on_message(message):
             if curr_len < freq:
                 while curr_len < freq:
                     await message.channel.send(f"There are currently {curr_len} schedules. ")
-                    
-                    
+
                     await message.channel.send(f"Do you want to add more?")
-                    
+
                     res = await recieve_response()
                     if res.content.startswith("y") or res.content.startswith("right"):
                         if freq - curr_len < 7:
-                            #await message.channel.send(f"Adding schedules every day will e")
+                            # await message.channel.send(f"Adding schedules every day will e")
                             await every_week()
                         else:
                             await add_week_or_everyday()
-                        s_times = DB_UTILS.get_notifictaion_schedule_with_description(author_id_to_username_map[message.author.id])
+                        s_times = DB_UTILS.get_notifictaion_schedule_with_description(
+                            author_id_to_username_map[message.author.id])
                         curr_len = calculate_notis_each_week(s_times)
                         continue
                     await message.channel.send(f"Understood. Have a nice day.")
                     break
             elif curr_len > freq:
                 while curr_len > freq:
-                    await message.channel.send(f"There are currently {curr_len} scheduled times. No new schedules will be added.\nDo you want to delete any schedules?")
+                    await message.channel.send(
+                        f"There are currently {curr_len} scheduled times. No new schedules will be added.\nDo you want to delete any schedules?")
                     res = await recieve_response()
                     if res.content.startswith("y") or res.content.startswith("right"):
-                        current_times = DB_UTILS.get_notifictaion_schedule_with_description(author_id_to_username_map[message.author.id])
+                        current_times = DB_UTILS.get_notifictaion_schedule_with_description(
+                            author_id_to_username_map[message.author.id])
                         await delete_noti_some(current_times)
-                        
-                        s_times = DB_UTILS.get_notifictaion_schedule_with_description(author_id_to_username_map[message.author.id])
+
+                        s_times = DB_UTILS.get_notifictaion_schedule_with_description(
+                            author_id_to_username_map[message.author.id])
                         curr_len = calculate_notis_each_week(s_times)
-                        
+
                         if curr_len <= freq:
                             break
 
                         await message.channel.send(f"Do you want to delete more?")
-                        
+
                         res = await recieve_response()
                         if res.content.startswith("y") or res.content.startswith("right"):
                             continue
@@ -919,7 +919,6 @@ async def on_message(message):
                 msg = "Old schedules:\n"
                 for i, time in enumerate(old_schedules):
                     msg += f"{i + 1}: {time[0]} {NOT_FREQ_MAP[int(time[1])].lower()}\n"
-                    
 
                 new_schedules = DB_UTILS.get_notifictaion_schedule_with_description(curr_username)
                 msg += "\nNew schedules:\n"
@@ -967,7 +966,6 @@ async def on_message(message):
         msg = ""
         for i, time in enumerate(current_times):
             msg += f"{i + 1}: {time[0]} {NOT_FREQ_MAP[int(time[1])].lower()}\n"
-            
 
         await message.channel.send("Which time do you want to change?")
         await message.channel.send(msg)
@@ -1037,11 +1035,11 @@ async def on_message(message):
 
         res = await recieve_response()
         if "all" in res.content:
-            await delete_noti_all() 
+            await delete_noti_all()
         else:
             await delete_noti_some(current_times)
-    
-    
+
+
     elif message.content.startswith("check noti"):
         if message.author.id not in author_id_to_username_map:
             await request_username_password()
@@ -1619,16 +1617,11 @@ async def on_message(message):
         try:
             user_response = await client.wait_for('message', check=check, timeout=60)
         except asyncio.TimeoutError:
-            await message.channel.send("Time ERROR has occurred. Please try the query again")
+            await message.channel.send("Time error has occurred. Please try the query again")
             return
-
-        print(user_response.content)
-        BOT_RESPONSES.process_renaming_response(DB_USERNAME, user_response.content)
-
-
+        response = BOT_RESPONSES.process_renaming_response(DB_USERNAME, user_response.content)
+        await message.channel.send(response)
         return
-        # take the ones they want to rename
-        # rename the files they want
 
 
 # Now to actually run the bot!

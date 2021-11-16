@@ -93,24 +93,26 @@ class RenameFile:
 
 if __name__ == '__main__':
     r = RenameFile()
-    #r.list_files_local("/Users/raveena/Desktop/testing")
+    f = r.list_files_local("/Users/raveena/Desktop/testing")
+    for a in f:
+        print(a)
     #id = "1G2Zak1AM5t8v9rX-rXF_zDNjeSrw0ox1"
-    bs = BSUtilities()
-    drive = bs.init_google_auths()
-
-    f, id = r.list_files_google_id("test")
-    print(f) # searching directory title
-    print(id) # searching directory id
-    files = r.list_all_files_google(drive, id)
-    for f in files:
-        print(f.fileTitle)  # file name in folder
-        print(f.filePath)  # file ID in folder
-    file_id = r.get_file_id_gd(drive, id, "Testing document")
-    print(file_id)
-    #r.rename_file_in_gd(drive, file_id, "Modified Text document")
-    request = drive.files().get_media(fileId=file_id)
-    print(request["title"])
-    print(request["id"])
+    # bs = BSUtilities()
+    # drive = bs.init_google_auths()
+    #
+    # f, id = r.list_files_google_id("test")
+    # print(f) # searching directory title
+    # print(id) # searching directory id
+    # files = r.list_all_files_google(drive, id)
+    # for f in files:
+    #     print(f.fileTitle)  # file name in folder
+    #     print(f.filePath)  # file ID in folder
+    # file_id = r.get_file_id_gd(drive, id, "Testing document")
+    # print(file_id)
+    # #r.rename_file_in_gd(drive, file_id, "Modified Text document")
+    # request = drive.files().get_media(fileId=file_id)
+    # print(request["title"])
+    # print(request["id"])
 
     #print(files)
     # newfile = "modified.png"
