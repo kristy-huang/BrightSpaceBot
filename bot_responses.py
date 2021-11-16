@@ -93,7 +93,7 @@ class BotResponses:
             else:
                 bs = BSUtilities()
                 drive = bs.init_google_auths()
-                arr = rename.list_files_google(drive, storage_path)
+                arr = rename.list_all_files_google(drive, storage_path)
             response = "List of files downloaded so far: \n"
             count = 1
             for a in arr:
@@ -102,6 +102,34 @@ class BotResponses:
             response = response + "Please type <Number> -> <New file name> for the new name you want " \
                                   "to change the files to.\nEX: 1 -> modified.png"
             return response
+
+    # process renaming response ## -> "new title"
+    def process_renaming_response(self, username, user_response):
+        sql_command = f"SELECT STORAGE_PATH FROM PREFERENCES WHERE USERNAME = '{username}';"
+        storage_path = self.DB_UTILS._mysql.general_command(sql_command)[0][0]
+        rename = RenameFile()
+        files = rename.list_files_local(storage_path)
+        arr = user_response.split("->")
+        file_nums = arr[0].split(",")  # list of files they want to rename
+        new_titles = arr[1].split(",")  # list of new_titles they have to rename to
+        count = 0
+        for num in file_nums:
+            old_path = files[int(num) - 1].split(". ")[1]
+            print(old_path)
+            self.rename_file(old_path, new_titles[count], username)
+            count = count + 1
+
+
+
+    def rename_file(self, old_file, new_file, username):
+        sql_command = f"SELECT STORAGE_LOCATION FROM PREFERENCES WHERE USERNAME = '{username}';"
+        storage_location = self.DB_UTILS._mysql.general_command(sql_command)[0][0]
+        # we know for sure their storage location will be either Local Machine
+        # or Google Drive because we did the checking before
+        rename = RenameFile()
+        if storage_location == "Local Machine":
+            rename.rename_file(old_file, new_file)
+
 
 
 

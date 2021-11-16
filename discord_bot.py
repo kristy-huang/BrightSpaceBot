@@ -447,17 +447,8 @@ async def on_message(message):
         return
     # get the current storage path
     elif user_message.lower() == 'current storage location':
-        # todo: access database and get the actual value
-
-        # storage_path = DB_UTILS._mysql.general_command("SELECT STORAGE_PATH from USERS WHERE FIRST_NAME = 'Raveena';")
-        # if storage_path[0][0] is None:
-        #     await message.channel.send('No storage path specified. Type update storage to save something')
-        # else:
-        #     await message.channel.send(f'Current location: {storage_path[0][0]}')
-        # return
         await BOT_RESPONSES.current_storage(DB_USERNAME)
         return
-
 
     # update the current storage path (used starts with so they can type update storage destination or path)
     elif message.content.startswith('update storage'):
@@ -1620,7 +1611,21 @@ async def on_message(message):
     elif message.content.startswith("rename file"):
         # list out the files that they can rename
         response = BOT_RESPONSES.get_downloaded_files(DB_USERNAME)
+
+        def check(m):
+            return m.author == message.author
+
         await message.channel.send(response)
+        try:
+            user_response = await client.wait_for('message', check=check, timeout=60)
+        except asyncio.TimeoutError:
+            await message.channel.send("Time ERROR has occurred. Please try the query again")
+            return
+
+        print(user_response.content)
+        BOT_RESPONSES.process_renaming_response(DB_USERNAME, user_response.content)
+
+
         return
         # take the ones they want to rename
         # rename the files they want
