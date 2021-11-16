@@ -14,6 +14,9 @@ class BotResponses:
         self.username = None
         self.channel = None
         self.DB_UTILS = None
+        self.BS_UTILS = None
+        self.RN_FILE = RenameFile()
+        self.google_drive = None
 
     """
     Setting the message parameter that the discord method passes in for future use
@@ -30,6 +33,13 @@ class BotResponses:
 
     def set_DB_param(self, DB):
         self.DB_UTILS = DB
+
+    def set_BS_param(self, BS):
+        self.BS_UTILS = BS
+
+    def set_google_drive(self):
+        if self.google_drive is None:
+            self.google_drive = self.BS_UTILS.init_google_auths()
 
     """
     DEBUGGING Helps see what the discord messages are 
@@ -78,7 +88,6 @@ class BotResponses:
         return False
 
     def get_downloaded_files(self, username):
-        rename = RenameFile()
         # get what type of storage they have
         sql_command = f"SELECT STORAGE_LOCATION FROM PREFERENCES WHERE USERNAME = '{username}';"
         storage_location = self.DB_UTILS._mysql.general_command(sql_command)[0][0]
@@ -88,12 +97,18 @@ class BotResponses:
             # get their list of files based on their storage location
             sql_command = f"SELECT STORAGE_PATH FROM PREFERENCES WHERE USERNAME = '{username}';"
             storage_path = self.DB_UTILS._mysql.general_command(sql_command)[0][0]
+
             if storage_location == 'Local Machine':
-                arr = rename.list_files_local(storage_path)
+                arr = self.RN_FILE.list_files_local(storage_path)
             else:
-                bs = BSUtilities()
-                drive = bs.init_google_auths()
-                arr = rename.list_all_files_google(drive, storage_path)
+                self.set_google_drive()
+                folder_name, folder_id = self.RN_FILE.get_folder_id(self.google_drive, storage_path)
+                file_list = self.RN_FILE.get_files_from_specified_folder(self.google_drive, folder_id, [])
+                arr = []
+                for f in file_list:
+                    arr.append(f['title'])
+
+            # Crafting response message
             response = "List of files downloaded so far: \n"
             count = 1
             for a in arr:
@@ -129,13 +144,14 @@ class BotResponses:
                 old_path = files[int(num) - 1]
                 self.rename_file(old_path, new_titles[count].strip(), storage_type)
                 count = count + 1
+
         return "Rename process successful!"
 
 
     def rename_file(self, old_file, new_file, storage_type):
         rename = RenameFile()
         if storage_type == "Local Machine":
-            rename.rename_file(old_file, new_file)
+            rename.rename_file_local(old_file, new_file)
 
 
 

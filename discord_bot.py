@@ -37,6 +37,7 @@ BS_UTILS = BSUtilities()
 DB_UTILS = DBUtilities(db_config)
 BOT_RESPONSES = BotResponses()
 BOT_RESPONSES.set_DB_param(DB_UTILS)
+BOT_RESPONSES.set_BS_param(BS_UTILS)
 
 author_id_to_username_map = {}
 NOT_FREQ_MAP = {
