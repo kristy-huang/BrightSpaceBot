@@ -50,6 +50,9 @@ def get_brightspace_session_auto(dbu, discord_username):
 
     user_name = db_res[0][0]
     pin = db_res[0][1]
+    pin = str(pin)
+    while len(pin) < 4:
+        pin = "0" + pin
 
     passcode = __get_password(dbu, discord_username)
     password = "{},{}".format(pin, passcode)
