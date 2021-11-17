@@ -90,6 +90,7 @@ class BSUtilities():
             self.upload_to_google_drive(drive, destination, filename)
             os.remove(filename)
 
+
     def upload_to_google_drive(self, drive, storage_path, file):
         file_to_upload = file
         # finding the folder to upload to
@@ -1011,15 +1012,15 @@ class BSUtilities():
 
         # courses sorted by grade
         user_sorted_grade = self.get_sorted_grades()[0]
-        print(user_sorted_grade)
+        #print(user_sorted_grade)
         user_missing_grade = self.get_sorted_grades()[1]
-        print(user_missing_grade)
+        #print(user_missing_grade)
 
         # courses sorted by due dates
         user_sorted_due_dates = self.get_course_by_due_date()[0]
-        print(user_sorted_due_dates)
+        #print(user_sorted_due_dates)
         user_missing_due_dates = self.get_course_by_due_date()[1]
-        print(user_missing_due_dates)
+        #print(user_missing_due_dates)
 
         # courses sorted by un-submitted assignments
         # needs implementation
@@ -1058,3 +1059,35 @@ class BSUtilities():
                                               'Lack': "Grade & Deadline"})
 
         return suggested_classes, lack_info_classes
+
+
+    # checks if a specific topic is a kaltura lecture. Returns Trur / False for the result.
+    #
+    # course_id (int / str): which course the topic belongs to
+    # topic_id (int / str): the id of the topic
+
+    def check_kaltura(self, course_id, topic_id):
+        TOPIC_TYPE_FILE = 1
+        TOPIC_TYPE_LINK = 3
+
+        topic_content = self._bsapi.get_topic_content(course_id, topic_id)
+        if not topic_content:
+            if self._debug:
+                print("Check kaltura: topic does not exist")
+            return False
+
+        if topic_content["TopicType"] != TOPIC_TYPE_LINK:
+            if self._debug:
+                print("Check kaltura: topic is not a link")
+            return False
+
+        next_url = "https://purdue.brightspace.com" + topic_content["Url"]
+        res = self._bsapi.just_gimme_a_response(next_url)
+        if res.status_code != 200:
+            if self._debug:
+                print(f"Check kaltura: failed to acces link in the topic. status code: {res.status_code}")
+            return False
+
+        if "kaf.kaltura.com" in str(res.content):
+            return True
+        return False
