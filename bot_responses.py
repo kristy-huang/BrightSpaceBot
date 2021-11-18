@@ -37,6 +37,7 @@ class BotResponses:
     def set_BS_param(self, BS):
         self.BS_UTILS = BS
 
+    # TODO instead of just checking if its None, check if it needs to be refreshed
     def set_google_drive(self):
         if self.google_drive is None:
             self.google_drive = self.BS_UTILS.init_google_auths()
@@ -142,28 +143,33 @@ class BotResponses:
             for num in file_nums:
                 num = num.strip()
                 old_path = files[int(num) - 1]
-                self.rename_file(old_path, new_titles[count].strip(), storage_type)
+                self.RN_FILE.rename_file_local(old_path, new_titles[count].strip())
+                count = count + 1
+        else:
+            folder_name, folder_id = self.RN_FILE.get_folder_id(self.google_drive, storage_path)
+            file_list = self.RN_FILE.get_files_from_specified_folder(self.google_drive, folder_id, [])
+            count = 0
+            for num in file_nums:
+                # search for the file object
+                num = num.strip()
+                searched_obj = self.RN_FILE.get_file_obj(file_list, file_list[int(num) - 1]['title'])
+                self.RN_FILE.rename_file_in_google_drive(searched_obj, new_titles[count].strip())
                 count = count + 1
 
         return "Rename process successful!"
 
+    def download_files(self, user_response, username):
+        # save what courses they want to download files for
+        courses = user_response.split(":")[1]
+        # see their storage path and location
+        sql_command = f"SELECT STORAGE_PATH from PREFERENCES WHERE USERNAME = '{username}';"
+        storage_path = self.DB_UTILS._mysql.general_command(sql_command)[0][0]
+        sql_command = f"SELECT STORAGE_LOCATION from PREFERENCES WHERE USERNAME = '{username}';"
+        storage_location = self.DB_UTILS._mysql.general_command(sql_command)[0][0]
+        full_course_name, course_id = self.BS_UTILS.find_course_id_and_fullname(courses)
+        if full_course_name is None or course_id is None:
+            return "The course specified cannot be found. Please type the name again with more clarity."
+        if storage_location != "Local Machine":
+            self.set_google_drive()  # setting up the google drive variable
+        self.BS_UTILS.download_files(course_id, storage_path, storage_location, self.google_drive, full_course_name)
 
-    def rename_file(self, old_file, new_file, storage_type):
-        rename = RenameFile()
-        if storage_type == "Local Machine":
-            rename.rename_file_local(old_file, new_file)
-
-
-
-
-
-
-# Debugging ...
-if __name__ == '__main__':
-    sql = DBUtilities("database/db_config.py")
-    r = BotResponses()
-    r.set_DB_param(sql)
-    rows = sql._mysql.general_command("SELECT * FROM PREFERENCES")
-    for i in rows:
-        print(i)
-    r.get_downloaded_files("currymaster")

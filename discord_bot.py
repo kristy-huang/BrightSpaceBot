@@ -1624,6 +1624,10 @@ async def on_message(message):
         await message.channel.send(response)
         return
 
+    elif message.content.startswith("!D:"):
+        BOT_RESPONSES.download_files(message.content, DB_USERNAME)
+
+
 
 # Now to actually run the bot!
 client.run(config['token'])

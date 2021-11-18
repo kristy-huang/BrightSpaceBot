@@ -1,5 +1,4 @@
 import os
-from bs_utilities import BSUtilities
 from File import File
 
 
@@ -31,6 +30,7 @@ class RenameFile:
                 # extensions did not match
                 return False, None
 
+    # Renames a file on the local machine
     def rename_file_local(self, oldFileName, newFileName):
         split = oldFileName.rsplit('/', 1)  # splits from last slash from the back
         extension = oldFileName.rsplit(".", 1)[1]  # get the file extension
@@ -43,6 +43,7 @@ class RenameFile:
             os.rename(oldFileName, new_file_path)
             return True
 
+    # Lists all the files in a directory (including files in subdirectories)
     def list_files_local(self, directory):
         flist = []
         for root, dirs, files in os.walk(directory):
@@ -50,6 +51,8 @@ class RenameFile:
                 string = os.path.join(root, f)
                 flist.append(string)
         return flist
+
+    ''' GOOGLE DRIVE METHODS '''
 
     # Returns the title and ID of the directory you passed
     def get_folder_id(self, drive, directory):
@@ -61,65 +64,42 @@ class RenameFile:
                 if file['title'] == directory:
                     return file['title'], file['id']
 
+    # Returns a list of files that are in a directory
     def get_files_from_specified_folder(self, drive, directory_id, files):
         string = f"'{directory_id}' in parents and trashed = false"
         fileList = drive.ListFile({'q': string}).GetList()
-        subarray = []
-        listoffiles = []
         for item in fileList:
-            files.append(item)
             if item['mimeType'] != 'application/vnd.google-apps.folder':
-                listoffiles.append(item)  # only appending files
+                files.append(item)
             else:
-                # subarray.append(item)
-                # subarray.append(listoffiles)
-                # files.append(subarray)
-
                 self.get_files_from_specified_folder(drive, item["id"], files)
 
         return files  # returns the file object type from Google
 
-    def rename_file_in_google_drive(self, file_list, old_file_title, new_file_title):
-        for file in file_list:
-            if file['title'] == old_file_title:
-                file['title'] = new_file_title  # Change title of the file
-                file.Upload()  # Update metadata
-                return
+    def get_folders_from_specified_folder(self, drive, directory_id, files):
+        string = f"'{directory_id}' in parents and trashed = false"
+        fileList = drive.ListFile({'q': string}).GetList()
+        for item in fileList:
+            if item['mimeType'] == 'application/vnd.google-apps.folder':
+                files.append(item)
+                self.get_folders_from_specified_folder(drive, item["id"], files)
 
-    def get_file_id_gd(self, drive, folder_id, file_name):
-        files = self.get_files_from_specified_folder(drive, folder_id)
-        for f in files:
-            if f.fileTitle == file_name:
-                return f.filePath  # the file id
+        return files  # returns the file object type from Google
+
+    # Renames a file in google drive
+    def rename_file_in_google_drive(self, old_file_obj, new_file_title):
+        old_file_obj['title'] = new_file_title # Change title of the file
+        old_file_obj.Upload()  # Update metadata
+
+    # Returns a file object based on search title from list of files
+    def get_file_obj(self, list_of_files, search_title):
+        for file in list_of_files:
+            if file['title'] == search_title:
+                return file
 
 
 if __name__ == '__main__':
-    r = RenameFile()
-    f = r.list_files_local("/Users/raveena/Desktop/testing")
-    for a in f:
-        print(a)
-    # id = "1G2Zak1AM5t8v9rX-rXF_zDNjeSrw0ox1"
-    # bs = BSUtilities()
-    # drive = bs.init_google_auths()
-    #
-    # f, id = r.list_files_google_id("test")
-    # print(f) # searching directory title
-    # print(id) # searching directory id
-    # files = r.list_all_files_google(drive, id)
-    # for f in files:
-    #     print(f.fileTitle)  # file name in folder
-    #     print(f.filePath)  # file ID in folder
-    # file_id = r.get_file_id_gd(drive, id, "Testing document")
-    # print(file_id)
-    # #r.rename_file_in_gd(drive, file_id, "Modified Text document")
-    # request = drive.files().get_media(fileId=file_id)
-    # print(request["title"])
-    # print(request["id"])
-
-    # print(files)
-    # newfile = "modified.png"
-    # absolute_path = r.find_file("partial.png", "/Users/raveena/testing")
-    # if absolute_path is not None:
-    #     print(r.rename_file(absolute_path, newfile))
-    # else:
-    #     print("File not found")
+    path = "/Users/raveena/Desktop/testing"
+    path = os.path.join(path, "CS 307")
+    print(path)
+    os.makedirs(path, exist_ok=True)
