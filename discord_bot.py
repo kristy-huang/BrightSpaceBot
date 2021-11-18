@@ -71,61 +71,61 @@ async def notification_loop():
     if not BS_UTILS.check_connection():
         return
 
-    #  Syncing the calendar daily (so it can get the correct changes)
-    classes = BS_UTILS.get_classes_enrolled()
-    # classes = {"EAPS": "336112"}
-    for courseName, courseID in classes.items():
-        assignment_list = BS_UTILS._bsapi.get_upcoming_assignments(courseID)
-        due = BS_UTILS.process_upcoming_dates(assignment_list)
-        if len(due) != 0:
-            # actually dates that are upcoming
-            cal = Calendar()
-            # loop through all the upcoming assignments
-            for assignment in due:
-                # Check if the event exists first by searching by name
-                event_title = f"ASSIGNMENT DUE: {assignment[0]} ({courseID})"
-                description = f"{assignment[0]} for {courseName} is due. Don't forget to submit it!"
-                search_result, end_time = cal.get_event_from_name(event_title)
-                date = datetime.datetime.fromisoformat(assignment[1][:-1])
-                end = date.isoformat()
-                start = (date - datetime.timedelta(hours=1)).isoformat()
-                print("End date from search: " + str(end_time))
-                if search_result != -1:
-                    # it has already been added to the calendar
-                    # see if the end times are different
-                    if end_time != end:
-                        # the due date has been updated, so delete the old event
-                        cal.delete_event(search_result)
-                        cal.insert_event(event_title, description, start, end)
-                else:
-                    # has not been added to calendar, so add normally
-                    # inserting event
-                    cal.insert_event(event_title, description, start, end)
+    # #  Syncing the calendar daily (so it can get the correct changes)
+    # classes = BS_UTILS.get_classes_enrolled()
+    # # classes = {"EAPS": "336112"}
+    # for courseName, courseID in classes.items():
+    #     assignment_list = BS_UTILS._bsapi.get_upcoming_assignments(courseID)
+    #     due = BS_UTILS.process_upcoming_dates(assignment_list)
+    #     if len(due) != 0:
+    #         # actually dates that are upcoming
+    #         cal = Calendar()
+    #         # loop through all the upcoming assignments
+    #         for assignment in due:
+    #             # Check if the event exists first by searching by name
+    #             event_title = f"ASSIGNMENT DUE: {assignment[0]} ({courseID})"
+    #             description = f"{assignment[0]} for {courseName} is due. Don't forget to submit it!"
+    #             search_result, end_time = cal.get_event_from_name(event_title)
+    #             date = datetime.datetime.fromisoformat(assignment[1][:-1])
+    #             end = date.isoformat()
+    #             start = (date - datetime.timedelta(hours=1)).isoformat()
+    #             print("End date from search: " + str(end_time))
+    #             if search_result != -1:
+    #                 # it has already been added to the calendar
+    #                 # see if the end times are different
+    #                 if end_time != end:
+    #                     # the due date has been updated, so delete the old event
+    #                     cal.delete_event(search_result)
+    #                     cal.insert_event(event_title, description, start, end)
+    #             else:
+    #                 # has not been added to calendar, so add normally
+    #                 # inserting event
+    #                 cal.insert_event(event_title, description, start, end)
+    #
+    # print("inserting into calendar is finished...")
 
-    print("inserting into calendar is finished...")
-
-    # Syncing quizzes to the calendar daily (so it can get the correct changes)
-    quizzes = BS_UTILS.get_all_upcoming_quizzes()
-    for quiz in quizzes:
-        cal = Calendar()
-        event_title = f"QUIZ DUE: {quiz['quiz_name']} ({quiz['course_id']})"
-        description = f"{quiz['quiz_name']} for {quiz['course_name']} is due. Don't forget to submit it!"
-        date = datetime.datetime.fromisoformat(quiz['due_date'][:-1])
-        end = date.isoformat()
-        start = (date - datetime.timedelta(hours=1)).isoformat()
-        event_id, end_time = cal.get_event_from_name(event_title)
-        # event has already been created in google calendar
-        if event_id == -1:
-            # insert new event to calendar
-            cal.insert_event(event_title, description, start, end)
-        # event has not been created
-        else:
-            # if end time has changed, update the event
-            if end_time != end:
-                cal.delete_event(event_id)
-                cal.insert_event(event_title, description, start, end)
-
-    print("inserting into calendar is finished...")
+    # # Syncing quizzes to the calendar daily (so it can get the correct changes)
+    # quizzes = BS_UTILS.get_all_upcoming_quizzes()
+    # for quiz in quizzes:
+    #     cal = Calendar()
+    #     event_title = f"QUIZ DUE: {quiz['quiz_name']} ({quiz['course_id']})"
+    #     description = f"{quiz['quiz_name']} for {quiz['course_name']} is due. Don't forget to submit it!"
+    #     date = datetime.datetime.fromisoformat(quiz['due_date'][:-1])
+    #     end = date.isoformat()
+    #     start = (date - datetime.timedelta(hours=1)).isoformat()
+    #     event_id, end_time = cal.get_event_from_name(event_title)
+    #     # event has already been created in google calendar
+    #     if event_id == -1:
+    #         # insert new event to calendar
+    #         cal.insert_event(event_title, description, start, end)
+    #     # event has not been created
+    #     else:
+    #         # if end time has changed, update the event
+    #         if end_time != end:
+    #             cal.delete_event(event_id)
+    #             cal.insert_event(event_title, description, start, end)
+    #
+    # print("inserting into calendar is finished...")
 
     # print("called_once_a_day:")
     # async def send_notifications():
@@ -1618,37 +1618,72 @@ async def on_message(message):
 
         return
     elif message.content.startswith("add office hours to calendar"):
-        await message.channel.send("Please input your course name")
-        discord_username = ""
+        await message.channel.send("Please input the course name")
         try:
-            course = await client.wait_for('message', check=check, timeout=60)
-            course = course.content.lower()
-            SQL.create_table("OFFICE_HOURS", "discord_username, course_name, office_hours")
-            sql_response = SQL.general_command('SELECT * FROM OFFICE_HOURS WHERE {col} = {condition}'.format(
-                                                                                col=discord_username,
-                                                                                condition=discord_username))
-            if sql_response is not None:
-                cal = Calendar()
-                for office_hour in sql_response:
-                    # Check if the event exists first by searching by name
-                    event_title = f"{course} OFFICE HOURS: {office_hour}"
-                    description = f"Don't forget to attend it!"
-                    search_result, end_time = cal.get_event_from_name(event_title)
-                    date = datetime.datetime.fromisoformat(office_hour[1][:-1])
-                    end = date.isoformat()
-                    start = (date - datetime.timedelta(hours=1)).isoformat()
-                    print("End date from search: " + str(end_time))
-                    if search_result != -1:
-                        # it has already been added to the calendar
-                        # see if the end times are different
-                        if end_time != end:
-                            # the due date has been updated, so delete the old event
-                            cal.delete_event(search_result)
-                            cal.insert_event(event_title, description, start, end)
-                    else:
-                        # has not been added to calendar, so add normally
-                        # inserting event
-                        cal.insert_event(event_title, description, start, end)
+            course_name = await client.wait_for('message', check=check, timeout=60)
+            course_name = course_name.content.lower()
+            await message.channel.send("Please input the instructor name")
+            instr_name = ''
+            oh_day = ''
+            oh_time = ''
+            try:
+                instr_name = await client.wait_for('message', check=check, timeout=60)
+                instr_name = instr_name.content.lower()
+            except asyncio.TimeoutError:
+                await message.channel.send("Timeout ERROR has occurred. Please try the query again")
+
+            await message.channel.send("Please input office hour days")
+            try:
+                oh_day = await client.wait_for('message', check=check, timeout=60)
+                oh_day = oh_day.content.lower()
+            except asyncio.TimeoutError:
+                await message.channel.send("Timeout ERROR has occurred. Please try the query again")
+
+            await message.channel.send("Please input office hour times")
+            try:
+                oh_time = await client.wait_for('message', check=check, timeout=60)
+                oh_time = oh_time.content.lower()
+            except asyncio.TimeoutError:
+                await message.channel.send("Timeout ERROR has occurred. Please try the query again")
+
+            SQL.create_table('OFFICE_HOURS', 'course_name VARCHAR(50), instructor VARCHAR(50), day VARCHAR(50),'
+                                             'time VARCHAR(50), PRIMARY KEY (course_name, instructor)')
+
+            sql_response = SQL.general_command(
+                'INSERT INTO OFFICE_HOURS (course_name, instructor, day, time)'
+                'VALUES(\'{c_name}\',\'{instr}\',\'{day}\',\'{time}\') ON DUPLICATE KEY UPDATE day=\'{day}\', '
+                'time=\'{time}\''.format(
+                    c_name=course_name,
+                    instr=instr_name,
+                    day=oh_day,
+                    time=oh_time
+                ))
+
+            cal = Calendar()
+            
+            print(sql_response)
+            # if sql_response is not None:
+            #     cal = Calendar()
+            #     for office_hour in sql_response:
+            #         # Check if the event exists first by searching by name
+            #         event_title = f"{course_name} OFFICE HOURS: {office_hour}"
+            #         description = f"Don't forget to attend it!"
+            #         search_result, end_time = cal.get_event_from_name(event_title)
+            #         date = datetime.datetime.fromisoformat(office_hour[1][:-1])
+            #         end = date.isoformat()
+            #         start = (date - datetime.timedelta(hours=1)).isoformat()
+            #         print("End date from search: " + str(end_time))
+            #         if search_result != -1:
+            #             # it has already been added to the calendar
+            #             # see if the end times are different
+            #             if end_time != end:
+            #                 # the due date has been updated, so delete the old event
+            #                 cal.delete_event(search_result)
+            #                 cal.insert_event(event_title, description, start, end)
+            #         else:
+            #             # has not been added to calendar, so add normally
+            #             # inserting event
+            #             cal.insert_event(event_title, description, start, end)
         except asyncio.TimeoutError:
             await message.channel.send("Timeout ERROR has occurred. Please try the query again")
         return

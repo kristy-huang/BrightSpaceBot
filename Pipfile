@@ -21,6 +21,7 @@ discord = "*"
 pydrive = "*"
 requests = "*"
 google-auth-oauthlib = "*"
+pyotp = "*"
 
 [dev-packages]
 
