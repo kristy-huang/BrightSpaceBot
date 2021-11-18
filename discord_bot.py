@@ -39,7 +39,6 @@ DB_UTILS = DBUtilities(db_config)
 BOT_RESPONSES = BotResponses()
 BOT_RESPONSES.set_DB_param(DB_UTILS)
 BOT_RESPONSES.set_BS_param(BS_UTILS)
-SQL = MySQLDatabase(db_config)
 
 author_id_to_username_map = {}
 NOT_FREQ_MAP = {
@@ -434,6 +433,9 @@ async def on_message(message):
             await message.channel.send("You should probably study...")
             return
 
+    '''
+    start of discord commands below
+    '''
     # setting up a basic 'hello' command so you get this gist of it
     if user_message.lower() == 'hello':
         # put your custom message here for the bot to output
@@ -1412,7 +1414,6 @@ async def on_message(message):
 
     elif message.content.startswith("add quiz due dates to calendar"):
         await message.channel.send("Retrieving quizzes...")
-        # Syncing quizzes to the calendar daily (so it can get the correct changes)
         quizzes = BS_UTILS.get_all_upcoming_quizzes()
         for quiz in quizzes:
             cal = Calendar()
@@ -1422,16 +1423,14 @@ async def on_message(message):
             end = date.isoformat()
             start = (date - datetime.timedelta(hours=1)).isoformat()
             event_id, end_time = cal.get_event_from_name(event_title)
-            # event has already been created in google calendar
+            # event hasn't been created in google calendar
             if event_id == -1:
                 # insert new event to calendar
                 cal.insert_event(event_title, description, start, end)
-            # event has not been created
+            # event has already been created
             else:
                 # if end time has changed, update the event
                 if end_time != end:
-                    # await message.channel.send(end_time)
-                    # await message.channel.send(end)
                     cal.delete_event(event_id)
                     cal.insert_event(event_title, description, start, end)
                 else:
@@ -1613,10 +1612,9 @@ async def on_message(message):
         try:
             course_name = await client.wait_for('message', check=check, timeout=60)
             course_name = course_name.content.lower()
+
             await message.channel.send("Please input the instructor name")
             instr_name = ''
-            oh_day = ''
-            oh_time = ''
             try:
                 instr_name = await client.wait_for('message', check=check, timeout=60)
                 instr_name = instr_name.content.lower()
@@ -1624,6 +1622,7 @@ async def on_message(message):
                 await message.channel.send("Timeout ERROR has occurred. Please try the query again")
 
             await message.channel.send("Please input office hour days")
+            oh_day = ''
             try:
                 oh_day = await client.wait_for('message', check=check, timeout=60)
                 oh_day = oh_day.content.lower()
@@ -1631,28 +1630,15 @@ async def on_message(message):
                 await message.channel.send("Timeout ERROR has occurred. Please try the query again")
 
             await message.channel.send("Please input office hour times")
+            oh_time = ''
             try:
                 oh_time = await client.wait_for('message', check=check, timeout=60)
                 oh_time = oh_time.content.lower()
             except asyncio.TimeoutError:
                 await message.channel.send("Timeout ERROR has occurred. Please try the query again")
 
-            SQL.create_table('OFFICE_HOURS', 'course_name VARCHAR(50), instructor VARCHAR(50), day VARCHAR(50),'
-                                             'time VARCHAR(50), PRIMARY KEY (course_name, instructor)')
+            response = BOT_RESPONSES.add_office_hours_to_calendar()
 
-            sql_response = SQL.general_command(
-                'INSERT INTO OFFICE_HOURS (course_name, instructor, day, time)'
-                'VALUES(\'{c_name}\',\'{instr}\',\'{day}\',\'{time}\') ON DUPLICATE KEY UPDATE day=\'{day}\', '
-                'time=\'{time}\''.format(
-                    c_name=course_name,
-                    instr=instr_name,
-                    day=oh_day,
-                    time=oh_time
-                ))
-
-            cal = Calendar()
-
-            print(sql_response)
             # if sql_response is not None:
             #     cal = Calendar()
             #     for office_hour in sql_response:

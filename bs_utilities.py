@@ -1,4 +1,3 @@
-
 from bs_api import BSAPI
 
 import datetime
@@ -632,13 +631,10 @@ class BSUtilities():
     '''
     def get_grade_updates(self):
         sql = MySQLDatabase('database/db_config.py')
-        # sql.drop_table('GRADED_ASSIGNMENTS')
         sql.create_table('GRADED_ASSIGNMENTS', 'grade_object_id INT PRIMARY KEY, '
                                                'course_id INT,'
                                                'assignment_name VARCHAR(255), '
                                                'grade VARCHAR(255)')
-
-        # sql.delete("GRADED_ASSIGNMENTS", "grade_object_id = 1537997")
         # print(sql.show_tables())
         enrolled_courses = self.get_classes_enrolled()
         # print(enrolled_courses)
@@ -666,9 +662,6 @@ class BSUtilities():
                         sql.insert_into('GRADED_ASSIGNMENTS', data)
                         grades.append(data)
 
-        # print(db_util.show_table_content("GRADED_ASSIGNMENTS"))
-        # for grade in grades:
-        #     print(grade)
         return grades
 
     def get_dict_of_discussion_dates(self):
@@ -823,20 +816,17 @@ class BSUtilities():
             quizzes = result['Objects']
             for quiz in quizzes:  # for each block in the list,
                 # get today's date
-
                 current_date = datetime.datetime.utcnow()
 
                 if quiz['DueDate'] is not None:
                     quiz_due_date = datetime.datetime.fromisoformat(quiz['DueDate'][:-1])
                     # print(quiz_due_date)
-                    # quiz_due_date = datetime.datetime.strptime(quiz['DueDate'], "%Y-%m-%dT%H:%M:%S.%fZ")
 
-                    # find diff between quiz.due date and today
+                    # find diff between quiz due date and today
                     diff = (quiz_due_date - current_date).days
                     # print(diff)
                     # for upcoming quizzes due today or later in the future: diff >= 0
-                    # TODO: fix this!!!
-                    if diff >= -7:
+                    if diff >= 0:
                         data = {
                             "course_id": course_id,
                             "course_name": course_name,
@@ -844,7 +834,6 @@ class BSUtilities():
                             "due_date": quiz['DueDate']
                         }
                         # print(data)
-                        # print(datetime.datetime.fromisoformat(quiz['DueDate'][:-1]))
                         upcoming_quizzes.append(data)
         return upcoming_quizzes
 

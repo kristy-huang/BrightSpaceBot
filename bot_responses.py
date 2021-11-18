@@ -2,6 +2,8 @@ import discord
 from database.db_utilities import DBUtilities
 from rename_file import RenameFile
 from bs_utilities import BSUtilities
+from bs_calendar import Calendar
+import datetime
 
 # This will be a helper class to organize all the responses that the bot will need to provide back to discord
 class BotResponses:
@@ -172,4 +174,35 @@ class BotResponses:
         if storage_location != "Local Machine":
             self.set_google_drive()  # setting up the google drive variable
         self.BS_UTILS.download_files(course_id, storage_path, storage_location, self.google_drive, full_course_name)
+
+    def format_days_of_week(self, user_input):
+        result = []
+        if 'm' in user_input:
+            result.append('MO')
+        if 'tu' in user_input:
+            result.append("TU")
+        if 'w' in user_input:
+            result.append("WE")
+        if 'th' in user_input:
+            result.append('TH')
+        if 'f' in user_input:
+            result.append('FR')
+        if 'sa' in user_input:
+            result.append('SA')
+        if 'su' in user_input:
+            result.append('SU')
+        return result
+
+    def add_office_hours_to_calendar(self, course_name, instr_name, end_sem):
+        cal = Calendar()
+        # check if office hour already exists in the calendar
+        event_title = f"OFFICE HOURS: for {course_name}, {instr_name}"
+        description = f"Don't forget to attend {instr_name}'s office hours!"
+        today = datetime.datetime.utcnow()
+        print(today)
+        today = today.isoformat()
+        print(today)
+
+
+
 
