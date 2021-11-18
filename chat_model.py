@@ -37,7 +37,10 @@ class NLPAction():
         "change bot name": self._change_bot_name,
         "change your name": self._change_bot_name,
         "search for student": self._search_for_student,
-        "current storage location": self._current_storage
+        "current storage location": self._current_storage,
+        "grades": self._grades,
+        "get assignment feedback": self._get_assignment_feedback,
+        "get upcoming quizzes": self._get_upcoming_quizzes
         }
 
         # 1 = yes, 0 = no
@@ -59,8 +62,9 @@ class NLPAction():
         self._id_to_bsu_map = {}
 
         self._DB_UTIL = DB_UTIL
-        # one login lock per user!
-        self._login_locks = {}
+        # one lock per user! -> only 1 command will be processed each time 
+        # (to prevent calling other functions when the bot is processing one function)
+        self._locks = {}
 
         self._debug = debug
         
@@ -72,31 +76,39 @@ class NLPAction():
     # client: the client object
 
     async def process_command(self, message, client):
+        if message.author.id not in self._locks:
+            self._locks[message.author.id] = False
+
+        if self._locks[message.author.id]:
+            return
+
+        self._locks[message.author.id] = True 
+
         if self._author_check(message, client):
             if self._debug:
                 print("Message is from the bot it self. Abort. ")
                 print(f"message author: {message.author}. client author: {client.user}")
-
+            self._locks[message.author.id] = False
             return
 
         await self._request_bot_username_password_if_necessary(message, client)
-        if not self._login_locks[message.author.id]:
-            self._login_locks[message.author.id] = True
-            status = await self._setup_auto_if_necessary(message, client)
-            self._login_locks[message.author.id] = False
+        status = await self._setup_auto_if_necessary(message, client)
 
-            if not status:
-                return
+        if not status:
+            self._locks[message.author.id] = False
+            return
 
         # (matched string, confidency (out of 100))
         action_tuple = process.extractOne(message.content, self.PHRASES.keys(), scorer=fuzz.token_set_ratio)
         if action_tuple[1] < 50:
             if self._debug:
                 print("Confidency lower than 50%. Abort.")
+            self._locks[message.author.id] = False
             return 
 
         # Run the corresponding function!
         await self.PHRASES[action_tuple[0]](message, client)
+        self._locks[message.author.id] = False
 
 
     # ----- Helpers -----
@@ -135,19 +147,7 @@ class NLPAction():
         return res
 
 
-    def _current_storage(self, message, client):
-        username = self._id_to_username_map[message.author.id]
-        sql = f'SELECT STORAGE_PATH from PREFERENCES WHERE USERNAME = \'{username}\';'
-        storage_path = self.DB_UTILS._mysql.general_command(sql)
-        if storage_path[0][0] is None:
-            return self.message.channel.send('No storage path specified. Type update storage to save something')
-        else:
-            return self.message.channel.send(f'Current location: {storage_path[0][0]}')
-
-
     
-
-
     # ----- Login to discord bot & BrightSpace Functions -----
 
 
@@ -159,13 +159,14 @@ class NLPAction():
         await message.channel.send("Please enter your username for BrightSpace Bot.")
         username = await self._recieve_response(message, client)
         self._id_to_username_map[username.author.id] = username.content
-        self._login_locks[username.author.id] = False
 
         return True
 
 
     async def _request_bot_username_password_if_necessary(self, message, client):
         if message.author.id not in self._id_to_username_map:
+            await self._request_bot_username_password(message, client)
+        elif self._id_to_username_map[message.author.id] == "":
             await self._request_bot_username_password(message, client)
 
 
@@ -186,6 +187,9 @@ class NLPAction():
         user_id = message.author.id
         if user_id in self._id_to_bsu_map:
             return True
+
+        # TODO: ask if the user wants to change their username -> ???
+        #await message.channel.send(f"Seems like your username: {self._id_to_username_map[user_id]} is not connected to BS yet!\n")
 
         db_res = self._DB_UTIL.get_bs_username_pin(self._id_to_username_map[message.author.id])
         if not db_res or not db_res[0][0]:
@@ -308,6 +312,98 @@ class NLPAction():
 
         return
     
+
+    async def _current_storage(self, message, client):
+        username = self._id_to_username_map[message.author.id]
+        sql = f'SELECT STORAGE_PATH from PREFERENCES WHERE USERNAME = \'{username}\';'
+        storage_path = self._DB_UTIL._mysql.general_command(sql)
+        if storage_path[0][0] is None:
+            await self.message.channel.send('No storage path specified. Type update storage to save something')
+        else:
+            await self.message.channel.send(f'Current location: {storage_path[0][0]}')
+
+
+    async def _grades(self, message, client):
+
+        curr_bs_util = self._id_to_bsu_map[message.author.id]
+
+        await message.channel.send("For which classes?\n")
+
+        res = await self._recieve_response(message, client)
+        
+        courses = res.content.split(",")
+
+        IDs = []
+        for c in courses:
+            course_id = curr_bs_util.find_course_id(c)
+            IDs.append(course_id)
+        #print(IDs)
+
+        grades = {}
+        counter = 0
+        for i in IDs:
+            if i == -1:
+                grades[courses[counter]] = 'Not found'
+            else:
+                fraction_string, percentage = curr_bs_util._bsapi.get_grade(i)
+                #print(fraction_string)
+                #print(percentage)
+                if len(fraction_string) <= 1:
+                    grades[courses[counter]] = 'Not found'
+                else:
+                    letter = curr_bs_util.get_letter_grade(percentage)
+                    grades[courses[counter]] = letter
+            counter = counter + 1
+
+        # print(grades)
+        grades = dict(sorted(grades.items(), key=lambda item: item[1]))
+        # print(grades)
+        final_string = "Your grades are: \n"
+        for key, value in grades.items():
+            final_string = final_string + key.upper() + ": " + value + "\n"
+
+        await message.channel.send(final_string)
+        return
+
+
+    async def _get_assignment_feedback(self, message, client):
+        await message.channel.send("Please provide the Course name (for ex, NUTR 303) \n")
+        course_name = await self._recieve_response(message, client)
+        await message.channel.send("Please provide the full assignment name (for ex, 'Recitation Assignment 1')\n")
+        assignment_name = await self._recieve_response(message, client)
+
+        #print(course_name)
+        #print(assignment_name)
+        course_name_str = str(course_name.content)  # converting it here for unit tests
+        assignment_name_str = str(assignment_name.content)  # converting it here for unit tests
+
+        curr_bs_util = self._id_to_bsu_map[message.author.id]
+        feedback = curr_bs_util.get_assignment_feedback(course_name_str, assignment_name_str)
+
+        if feedback.__contains__("ERROR") or feedback.__contains__("BOT REPORT"):
+            await message.channel.send(feedback)
+        else:
+            await message.channel.send(f"Feedback from Grader: \n{feedback}")
+        return
+
+
+    async def _get_upcoming_quizzes(self, message, client):
+
+        curr_bs_util = self._id_to_bsu_map[message.author.id]
+        upcoming_quizzes = curr_bs_util.get_upcoming_quizzes()
+        # if there are no upcoming quizzes returned, then we report to the user.
+        if not upcoming_quizzes:
+            await message.channel.send("You have no upcoming quizzes or exams.")
+        else:
+            await message.channel.send("You have the following upcoming assessments:\n")
+            for quiz in upcoming_quizzes:
+                course_name = quiz
+                current_quiz = upcoming_quizzes[quiz]
+                current_quiz_name = current_quiz["Name"]
+                current_quiz_due_date = current_quiz["DueDate"]
+                output_str = course_name + " - " + current_quiz_name + " due " + current_quiz_due_date + "\n"
+                await message.channel.send(output_str)
+
 
 
 

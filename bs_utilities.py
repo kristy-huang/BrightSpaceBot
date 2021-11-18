@@ -273,7 +273,7 @@ class BSUtilities():
         Returns: int folder_ID, or None if the inputted assignment_name is not a valid assignment in this course. 
     '''
     def get_folder_ID_from_dropbox(self, dropbox_folders, assignment_name):
-        assignment_name_str = str(assignment_name.content)
+        assignment_name_str = str(assignment_name)
 
         for folder in dropbox_folders:
             folder_name = folder['Name']
