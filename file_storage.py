@@ -105,11 +105,9 @@ def upload_file_to_local_path(localPath, fileRUL, filename):
 # Main function
 if __name__ == '__main__':
     # Example of what the typical flow would look like when interacting with Bot
-    storage_path = ask_for_path()
     drive = init_google_auths()
-    return_val = validate_path_drive(storage_path, drive)
-    print(return_val)  # for debugging
     # for debugging, just using this default file
-    file = "docs/Project Backlog - Team 14 (BrightspaceBot).pdf"
-
-    upload_to_google_drive(drive, storage_path, file)
+    folder = drive.CreateFile({'title': "New Folder",
+                               'mimeType': 'application/vnd.google-apps.folder',
+                               "parents": [{"id": "1FHtEwx0GlOzZokqsYfLY4mI85WS9S0i-"}]})
+    folder.Upload()

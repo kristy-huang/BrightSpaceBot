@@ -1,6 +1,7 @@
 import discord
 from database.db_utilities import DBUtilities
-
+from rename_file import RenameFile
+from bs_utilities import BSUtilities
 
 # This will be a helper class to organize all the responses that the bot will need to provide back to discord
 class BotResponses:
@@ -13,6 +14,9 @@ class BotResponses:
         self.username = None
         self.channel = None
         self.DB_UTILS = None
+        self.BS_UTILS = None
+        self.RN_FILE = RenameFile()
+        self.google_drive = None
 
     """
     Setting the message parameter that the discord method passes in for future use
@@ -29,6 +33,14 @@ class BotResponses:
 
     def set_DB_param(self, DB):
         self.DB_UTILS = DB
+
+    def set_BS_param(self, BS):
+        self.BS_UTILS = BS
+
+    # TODO instead of just checking if its None, check if it needs to be refreshed
+    def set_google_drive(self):
+        if self.google_drive is None:
+            self.google_drive = self.BS_UTILS.init_google_auths()
 
     """
     DEBUGGING Helps see what the discord messages are 
@@ -76,12 +88,88 @@ class BotResponses:
                 return True
         return False
 
+    def get_downloaded_files(self, username):
+        # get what type of storage they have
+        sql_command = f"SELECT STORAGE_LOCATION FROM PREFERENCES WHERE USERNAME = '{username}';"
+        storage_location = self.DB_UTILS._mysql.general_command(sql_command)[0][0]
+        if storage_location is None:
+            return "No storage type specified in configurations. Please do that first."
+        else:
+            # get their list of files based on their storage location
+            sql_command = f"SELECT STORAGE_PATH FROM PREFERENCES WHERE USERNAME = '{username}';"
+            storage_path = self.DB_UTILS._mysql.general_command(sql_command)[0][0]
 
-# Debugging ...
-if __name__ == '__main__':
-    sql = DBUtilities()
-    sql.connect_by_config("database/db_config.py")
-    sql.use_database("BSBOT")
-    print(sql.show_table_content("USERS"))
-    print(sql.show_table_content("PREFERENCES"))
-    print(sql._mysql.general_command("")[0][0])
+            if storage_location == 'Local Machine':
+                arr = self.RN_FILE.list_files_local(storage_path)
+            else:
+                self.set_google_drive()
+                folder_name, folder_id = self.RN_FILE.get_folder_id(self.google_drive, storage_path)
+                file_list = self.RN_FILE.get_files_from_specified_folder(self.google_drive, folder_id, [])
+                arr = []
+                for f in file_list:
+                    arr.append(f['title'])
+
+            # Crafting response message
+            response = "List of files downloaded so far: \n"
+            count = 1
+            for a in arr:
+                response = response + str(count) + ". " + a + "\n"
+                count = count + 1
+            response = response + "Please type <Number> -> <New file name> for the new name you want " \
+                                  "to change the files to.\nEX: 1 -> modified.png"
+            return response
+
+    # process renaming response ' ## -> "new title" '
+    def process_renaming_response(self, username, user_response):
+        sql_command = f"SELECT STORAGE_PATH FROM PREFERENCES WHERE USERNAME = '{username}';"
+        storage_path = self.DB_UTILS._mysql.general_command(sql_command)[0][0]
+        sql_command = f"SELECT STORAGE_LOCATION FROM PREFERENCES WHERE USERNAME = '{username}';"
+        storage_type = self.DB_UTILS._mysql.general_command(sql_command)[0][0]
+        rename = RenameFile()
+
+        arr = user_response.split("->")
+        file_nums = arr[0].split(",")  # list of files they want to rename
+        new_titles = arr[1].split(",")  # list of new_titles they have to rename to
+        temp = []
+        for n in new_titles:
+            if n not in temp:
+                temp.append(n)
+            else:
+                return "ERROR: Duplicate name in request."
+
+        if storage_type == "Local Machine":
+            files = rename.list_files_local(storage_path)
+            count = 0
+            for num in file_nums:
+                num = num.strip()
+                old_path = files[int(num) - 1]
+                self.RN_FILE.rename_file_local(old_path, new_titles[count].strip())
+                count = count + 1
+        else:
+            folder_name, folder_id = self.RN_FILE.get_folder_id(self.google_drive, storage_path)
+            file_list = self.RN_FILE.get_files_from_specified_folder(self.google_drive, folder_id, [])
+            count = 0
+            for num in file_nums:
+                # search for the file object
+                num = num.strip()
+                searched_obj = self.RN_FILE.get_file_obj(file_list, file_list[int(num) - 1]['title'])
+                self.RN_FILE.rename_file_in_google_drive(searched_obj, new_titles[count].strip())
+                count = count + 1
+
+        return "Rename process successful!"
+
+    def download_files(self, user_response, username):
+        # save what courses they want to download files for
+        courses = user_response.split(":")[1]
+        # see their storage path and location
+        sql_command = f"SELECT STORAGE_PATH from PREFERENCES WHERE USERNAME = '{username}';"
+        storage_path = self.DB_UTILS._mysql.general_command(sql_command)[0][0]
+        sql_command = f"SELECT STORAGE_LOCATION from PREFERENCES WHERE USERNAME = '{username}';"
+        storage_location = self.DB_UTILS._mysql.general_command(sql_command)[0][0]
+        full_course_name, course_id = self.BS_UTILS.find_course_id_and_fullname(courses)
+        if full_course_name is None or course_id is None:
+            return "The course specified cannot be found. Please type the name again with more clarity."
+        if storage_location != "Local Machine":
+            self.set_google_drive()  # setting up the google drive variable
+        self.BS_UTILS.download_files(course_id, storage_path, storage_location, self.google_drive, full_course_name)
+

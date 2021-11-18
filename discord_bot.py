@@ -29,7 +29,6 @@ client = discord.Client()
 channelID = 663863991218733058  # mine!
 # TODO save this in the database - right now this is my (Raveena's) channel)
 BS_API = BSAPI()
-BOT_RESPONSES = BotResponses()
 
 SCHEDULED_HOURS = []
 DB_USERNAME = 'currymaster'
@@ -37,6 +36,9 @@ DB_USERNAME = 'currymaster'
 db_config = "./database/db_config.py"
 BS_UTILS = BSUtilities()
 DB_UTILS = DBUtilities(db_config)
+BOT_RESPONSES = BotResponses()
+BOT_RESPONSES.set_DB_param(DB_UTILS)
+BOT_RESPONSES.set_BS_param(BS_UTILS)
 SQL = MySQLDatabase(db_config)
 
 author_id_to_username_map = {}
@@ -71,7 +73,7 @@ async def notification_loop():
     if not BS_UTILS.check_connection():
         return
 
-    # #  Syncing the calendar daily (so it can get the correct changes)
+    #  Syncing the calendar daily (so it can get the correct changes)
     # classes = BS_UTILS.get_classes_enrolled()
     # # classes = {"EAPS": "336112"}
     # for courseName, courseID in classes.items():
@@ -103,7 +105,7 @@ async def notification_loop():
     #                 cal.insert_event(event_title, description, start, end)
     #
     # print("inserting into calendar is finished...")
-
+    #
     # # Syncing quizzes to the calendar daily (so it can get the correct changes)
     # quizzes = BS_UTILS.get_all_upcoming_quizzes()
     # for quiz in quizzes:
@@ -190,7 +192,7 @@ async def notification_loop():
 
         await message_channel.send(string[:2000])
         return
-    
+
     '''if not BS_UTILS.check_connection():
         message_channel = client.get_channel(channel_id)
         await message_channel.send("Connection to BS lost. Attempting to reconnect to BS...")
@@ -321,8 +323,7 @@ async def on_message(message):
         await message.channel.send("bs 4 digit pin")
         res = await recieve_response()
         bs_pin = res.content
-        status = setup_automation(DB_UTILS, author_id_to_username_map[message.author.id], bs_username, bs_pin, url )
-
+        status = setup_automation(DB_UTILS, author_id_to_username_map[message.author.id], bs_username, bs_pin, url)
 
     async def delete_noti_all():
         await message.channel.send("Are you sure to delete all of your scheduled times?")
@@ -338,7 +339,7 @@ async def on_message(message):
         msg = ""
         for i, time in enumerate(current_times):
             msg += f"{i + 1}: {time[0]} {NOT_FREQ_MAP[int(time[1])].lower()}\n"
-            
+
         await message.channel.send("Which time do you want to delete?")
         await message.channel.send(msg)
 
@@ -359,17 +360,16 @@ async def on_message(message):
 
         num -= 1
         await message.channel.send(f"Delete time: {current_times[num][0]} {NOT_FREQ_MAP[int(current_times[num][1])]}?")
-        
+
         res = await recieve_response()
 
         if res.content.startswith("y") or res.content.startswith("right"):
-            DB_UTILS.delete_notification_schedule(author_id_to_username_map[message.author.id], current_times[num][0], current_times[num][1])
-            
+            DB_UTILS.delete_notification_schedule(author_id_to_username_map[message.author.id], current_times[num][0],
+                                                  current_times[num][1])
+
             await message.channel.send("Schedule deleted")
         else:
             await message.channel.send(f"No changes are made to your schedule.")
-
-
 
     if message.author.id not in author_id_to_username_map:
         await request_username_password()
@@ -448,17 +448,8 @@ async def on_message(message):
         return
     # get the current storage path
     elif user_message.lower() == 'current storage location':
-        # todo: access database and get the actual value
-
-        # storage_path = DB_UTILS._mysql.general_command("SELECT STORAGE_PATH from USERS WHERE FIRST_NAME = 'Raveena';")
-        # if storage_path[0][0] is None:
-        #     await message.channel.send('No storage path specified. Type update storage to save something')
-        # else:
-        #     await message.channel.send(f'Current location: {storage_path[0][0]}')
-        # return
         await BOT_RESPONSES.current_storage(DB_USERNAME)
         return
-
 
     # update the current storage path (used starts with so they can type update storage destination or path)
     elif message.content.startswith('update storage'):
@@ -799,7 +790,6 @@ async def on_message(message):
             await message.channel.send("How many notifications do you want every week?")
             res = await recieve_response()
 
-
             while True:
                 try:
                     freq = int(res.content)
@@ -814,38 +804,41 @@ async def on_message(message):
             if curr_len < freq:
                 while curr_len < freq:
                     await message.channel.send(f"There are currently {curr_len} schedules. ")
-                    
-                    
+
                     await message.channel.send(f"Do you want to add more?")
-                    
+
                     res = await recieve_response()
                     if res.content.startswith("y") or res.content.startswith("right"):
                         if freq - curr_len < 7:
-                            #await message.channel.send(f"Adding schedules every day will e")
+                            # await message.channel.send(f"Adding schedules every day will e")
                             await every_week()
                         else:
                             await add_week_or_everyday()
-                        s_times = DB_UTILS.get_notifictaion_schedule_with_description(author_id_to_username_map[message.author.id])
+                        s_times = DB_UTILS.get_notifictaion_schedule_with_description(
+                            author_id_to_username_map[message.author.id])
                         curr_len = calculate_notis_each_week(s_times)
                         continue
                     await message.channel.send(f"Understood. Have a nice day.")
                     break
             elif curr_len > freq:
                 while curr_len > freq:
-                    await message.channel.send(f"There are currently {curr_len} scheduled times. No new schedules will be added.\nDo you want to delete any schedules?")
+                    await message.channel.send(
+                        f"There are currently {curr_len} scheduled times. No new schedules will be added.\nDo you want to delete any schedules?")
                     res = await recieve_response()
                     if res.content.startswith("y") or res.content.startswith("right"):
-                        current_times = DB_UTILS.get_notifictaion_schedule_with_description(author_id_to_username_map[message.author.id])
+                        current_times = DB_UTILS.get_notifictaion_schedule_with_description(
+                            author_id_to_username_map[message.author.id])
                         await delete_noti_some(current_times)
-                        
-                        s_times = DB_UTILS.get_notifictaion_schedule_with_description(author_id_to_username_map[message.author.id])
+
+                        s_times = DB_UTILS.get_notifictaion_schedule_with_description(
+                            author_id_to_username_map[message.author.id])
                         curr_len = calculate_notis_each_week(s_times)
-                        
+
                         if curr_len <= freq:
                             break
 
                         await message.channel.send(f"Do you want to delete more?")
-                        
+
                         res = await recieve_response()
                         if res.content.startswith("y") or res.content.startswith("right"):
                             continue
@@ -929,7 +922,6 @@ async def on_message(message):
                 msg = "Old schedules:\n"
                 for i, time in enumerate(old_schedules):
                     msg += f"{i + 1}: {time[0]} {NOT_FREQ_MAP[int(time[1])].lower()}\n"
-                    
 
                 new_schedules = DB_UTILS.get_notifictaion_schedule_with_description(curr_username)
                 msg += "\nNew schedules:\n"
@@ -977,7 +969,6 @@ async def on_message(message):
         msg = ""
         for i, time in enumerate(current_times):
             msg += f"{i + 1}: {time[0]} {NOT_FREQ_MAP[int(time[1])].lower()}\n"
-            
 
         await message.channel.send("Which time do you want to change?")
         await message.channel.send(msg)
@@ -1047,11 +1038,11 @@ async def on_message(message):
 
         res = await recieve_response()
         if "all" in res.content:
-            await delete_noti_all() 
+            await delete_noti_all()
         else:
             await delete_noti_some(current_times)
-    
-    
+
+
     elif message.content.startswith("check noti"):
         if message.author.id not in author_id_to_username_map:
             await request_username_password()
@@ -1660,7 +1651,7 @@ async def on_message(message):
                 ))
 
             cal = Calendar()
-            
+
             print(sql_response)
             # if sql_response is not None:
             #     cal = Calendar()
@@ -1687,6 +1678,28 @@ async def on_message(message):
         except asyncio.TimeoutError:
             await message.channel.send("Timeout ERROR has occurred. Please try the query again")
         return
+
+    elif message.content.startswith("rename file"):
+        # list out the files that they can rename
+        response = BOT_RESPONSES.get_downloaded_files(DB_USERNAME)
+
+        def check(m):
+            return m.author == message.author
+
+        await message.channel.send(response)
+        try:
+            user_response = await client.wait_for('message', check=check, timeout=60)
+        except asyncio.TimeoutError:
+            await message.channel.send("Time error has occurred. Please try the query again")
+            return
+        response = BOT_RESPONSES.process_renaming_response(DB_USERNAME, user_response.content)
+        await message.channel.send(response)
+        return
+
+    elif message.content.startswith("!D:"):
+        BOT_RESPONSES.download_files(message.content, DB_USERNAME)
+
+
 
 # Now to actually run the bot!
 client.run(config['token'])
