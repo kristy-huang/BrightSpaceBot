@@ -11,7 +11,7 @@ from database.mysql_database import MySQLDatabase
 from pydrive.auth import GoogleAuth
 from pydrive.drive import GoogleDrive
 from File import File, StorageTypes
-
+from rename_file import RenameFile
 
 class BSUtilities():
     def __init__(self, debug=False):
@@ -64,7 +64,11 @@ class BSUtilities():
         destination (str): location the files are downloaded.
     '''
 
-    def download_file(self, course_id, topic_id, destination, type, drive):
+    def check_for_folder(self, storage_type, course_name):
+        if storage_type == "Local Machine":
+            return 0
+
+    def download_file(self, course_id, topic_id, destination, type, drive, course_name):
         res = self._bsapi.get_file_from_request(course_id, topic_id)
 
         filename = res.headers['Content-Disposition']
@@ -72,8 +76,12 @@ class BSUtilities():
         filename = filename[filename.rindex("\"") + 1:]
         filename = urllib.parse.unquote(filename)
         print(filename)
+        print(type)
         if type.startswith('Local'):
-            print("hello inside local")
+            # First check if a folder exists with course name
+            path = os.path.join(destination, course_name)  # TODO replace with course name
+            os.makedirs(path, exist_ok=True)
+            destination = path
             destination += "/" if destination[-1] != '/' else ""
             if not os.path.exists(destination):
                 os.makedirs(destination)
@@ -87,25 +95,41 @@ class BSUtilities():
             return_val = self.validate_path_drive(destination, drive)
             open(filename, 'wb').write(res.content)
             # for debugging, just using this default file
-            self.upload_to_google_drive(drive, destination, filename)
+            self.upload_to_google_drive(drive, destination, filename, course_name)
             os.remove(filename)
 
-    def upload_to_google_drive(self, drive, storage_path, file):
+    def upload_to_google_drive(self, drive, storage_path, file, course_name):
         file_to_upload = file
         # finding the folder to upload to
         folders = self.get_all_files_in_google(drive)
+        rename = RenameFile()
         folder_id = -1
+        found = False
+        course_folder_id = -1
         for folder in folders:
             if folder.fileTitle == storage_path:
                 folder_id = folder.filePath
-                break
         print(folder_id)
         if folder_id == -1:
             # upload it to the root (My Drive)
             gd_file = drive.CreateFile({'title': file})
         else:
+            subfolders = rename.get_folders_from_specified_folder(drive, folder_id, [])
+            for s in subfolders:
+                if s['title'] == course_name:
+                    found = True
+                    course_folder_id = s['id']
+                    break
             # currently takes the folder id from browser of url for the folder they want to upload something in
-            gd_file = drive.CreateFile({'parents': [{'id': folder_id}]})
+            if found == False:
+                # course folder does not exist so create one
+                folder = drive.CreateFile({'title': course_name,
+                                  'mimeType': 'application/vnd.google-apps.folder',
+                                  'parents': [{'id': folder_id}]})
+                folder.Upload()
+                course_folder_id = folder['id']
+
+            gd_file = drive.CreateFile({'parents': [{'id': course_folder_id}]})
 
         # Read file and set it as the content of this instance.
         gd_file.SetContentFile(file)
@@ -124,11 +148,8 @@ class BSUtilities():
 
     # TODO: files not located in a sub-module are not downloaded.
 
-    def download_files(self, course_id, destination, t):
+    def download_files(self, course_id, destination, t, drive, course_name):
         modules = self._bsapi.get_topics(course_id)["Modules"]
-        drive = None
-        if t != "Local Machine":
-            drive = self.init_google_auths()
 
         if self._debug:
             print("number of big sections:", len(modules))
@@ -145,7 +166,8 @@ class BSUtilities():
                     extension = suffix[len(suffix) - 1]
                     # currently only saving pdf files
                     if extension == ".pdf":
-                        self.download_file(course_id, m_topics[k]["TopicId"], destination=destination, type=t, drive=drive)
+                        self.download_file(course_id, m_topics[k]["TopicId"], destination=destination,
+                                           type=t, drive=drive, course_name=course_name)
 
     '''
         Gets a list of classes the user is currently enrolled in.
