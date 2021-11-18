@@ -241,8 +241,6 @@ async def on_message(message):
     user_message = str(message.content)
     channel = str(message.channel.name)
 
-    print(f'{username}: {user_message} ({channel}) ({message.channel.id})')
-
     def check(msg):
         return msg.author == message.author
 
@@ -451,105 +449,13 @@ async def on_message(message):
 
     # update the current storage path (used starts with so they can type update storage destination or path)
     elif message.content.startswith('update storage'):
-        await message.channel.send("Google Drive or Local Machine?")
-
-        # check what type of path they want
-        def storage_path(m):
-            return m.author == message.author
-
-        # getting the type of storage location
-        try:
-            path_type = await client.wait_for('message', check=storage_path, timeout=30)
-        except asyncio.TimeoutError:
-            await message.channel.send("taking too long...")
-            return
-
-        # checking what type of path they are going to save it in
-        if path_type.content == "google drive":
-            await message.channel.send("What folder from root?")
-            # checking to see if path is valid
-            try:
-                new_storage = await client.wait_for('message', check=storage_path, timeout=30)
-                drive = init_google_auths()
-                return_val = validate_path_drive(new_storage.content, drive)
-                if not return_val:
-                    await message.channel.send("Not a valid path. Try the cycle again.")
-                else:
-                    # todo add saving mechanism to cloud database
-
-                    sql_type = "UPDATE PREFERENCES SET STORAGE_LOCATION = '{path_type}' WHERE USERNAME = '{f_name}';" \
-                        .format(path_type="Google Drive", f_name=DB_USERNAME)
-
-                    DB_UTILS._mysql.general_command(sql_type)
-                    sql_path = "UPDATE PREFERENCES SET STORAGE_PATH = '{path}' WHERE USERNAME = '{f_name}';" \
-                        .format(path=new_storage.content, f_name=DB_USERNAME)
-                    DB_UTILS._mysql.general_command(sql_path)
-
-                    await message.channel.send("New path saved")
-                return
-            except asyncio.TimeoutError:
-                await message.channel.send("taking too long...")
-
-        # if the path is local
-        elif path_type.content == "local":
-            await message.channel.send("Send your local path")
-            # checking to see if path is valid (local)
-            try:
-                new_storage = await client.wait_for('message', check=storage_path, timeout=30)
-                return_val = validate_path_local(new_storage.content)
-                if not return_val:
-                    await message.channel.send("Not a valid path. Try the cycle again.")
-                else:
-                    # todo add saving mechanism to cloud database
-
-                    sql_type = "UPDATE PREFERENCES SET STORAGE_LOCATION = '{path_type}' WHERE USERNAME = '{f_name}';" \
-                        .format(path_type="Local Machine", f_name=DB_USERNAME)
-
-                    DB_UTILS._mysql.general_command(sql_type)
-                    sql_path = "UPDATE PREFERENCES SET STORAGE_PATH = '{path}' WHERE USERNAME = '{f_name}';" \
-                        .format(path=new_storage.content, f_name=DB_USERNAME)
-                    DB_UTILS._mysql.general_command(sql_path)
-                    await message.channel.send("New path saved")
-                return
-            except asyncio.TimeoutError:
-                await message.channel.send("taking too long...")
-
-        else:
-            await message.channel.send("Your input isn't valid")
+        await BOT_RESPONSES.update_storage(message, client, DB_USERNAME)
+        return
 
     # get a letter grade for a class
     elif message.content.startswith("grades:"):
-        courses = message.content.split(":")[1].split(",")
-        IDs = []
-        for c in courses:
-            course_id = BS_UTILS.find_course_id(c)
-            IDs.append(course_id)
-        print(IDs)
-
-        grades = {}
-        counter = 0
-        for i in IDs:
-            if i == -1:
-                grades[courses[counter]] = 'Not found'
-            else:
-                fraction_string, percentage = BS_UTILS._bsapi.get_grade(i)
-                print(fraction_string)
-                print(percentage)
-                if len(fraction_string) <= 1:
-                    grades[courses[counter]] = 'Not found'
-                else:
-                    letter = BS_UTILS.get_letter_grade(percentage)
-                    grades[courses[counter]] = letter
-            counter = counter + 1
-
-        # print(grades)
-        grades = dict(sorted(grades.items(), key=lambda item: item[1]))
-        # print(grades)
-        final_string = "Your grades are: \n"
-        for key, value in grades.items():
-            final_string = final_string + key.upper() + ": " + value + "\n"
-
-        await message.channel.send(final_string)
+        response = BOT_RESPONSES.get_letter_grade(message)
+        await BOT_RESPONSES.send_notification_to_channel(message, "GRADES_TC", response, DB_USERNAME, client)
         return
 
 
@@ -1113,60 +1019,9 @@ async def on_message(message):
             await message.channel.send(msg)
 
     elif message.content.startswith("download: "):
-        course = message.content.split(":")[1]
-        sql_command = f"SELECT STORAGE_PATH from PREFERENCES WHERE USERNAME = '{DB_USERNAME}';"
-        storage_path = DB_UTILS._mysql.general_command(sql_command)
-        sql_command = f"SELECT STORAGE_LOCATION from PREFERENCES WHERE USERNAME = '{DB_USERNAME}';"
-        storage_type = DB_UTILS._mysql.general_command(sql_command)
-        course_id = BS_UTILS.find_course_id(course)
-        if storage_path[0][0] is not None:
-            BS_UTILS.download_files(course_id, storage_path[0][0], storage_type[0][0])
-            # Check if they specified a place to have file related notifications
-            sql_command = f"SELECT FILES_TC FROM PREFERENCES WHERE USERNAME = '{DB_USERNAME}';"
-            result = DB_UTILS._mysql.general_command(sql_command)[0][0]
-            print(result)
-            # if so, redirect message to that channel
-            if result is not None:
-                # get the channel ID
-                channel_id = 0
-                for channel in message.guild.text_channels:
-                    result = result.replace(" ", "-")
-                    if channel.name == result:
-                        channel_id = channel.id
-                        break
-                if channel_id != 0:
-                    send_message_to_channel = client.get_channel(channel_id)
-                    await send_message_to_channel.send("Files downloaded successfully!")
-                else:
-                    # Some mistake came and could not find channel ID, so just go to default chat
-                    await message.channel.send("Files downloaded successfully!")
-            else:
-                # else go to normal channel
-                await message.channel.send("Files downloaded successfully!")
-            return
-        else:
-            sql_command = f"SELECT FILES_TC IN PREFERENCES WHERE USERNAME = '{DB_USERNAME}';"
-            result = DB_UTILS._mysql.general_command(sql_command)
-            print(result)
-            # if so, redirect message to that channel
-            if result is not None:
-                # get the channel ID
-                channel_id = 0
-                for channel in message.guild.text_channels:
-                    result = result.replace(" ", "-")
-                    if channel.name == result:
-                        channel_id = channel.id
-                        break
-                if channel_id != 0:
-                    send_message_to_channel = client.get_channel(channel_id)
-                    await send_message_to_channel.send("Files not downloaded successfully.")
-                else:
-                    # Some mistake came and could not find channel ID, so just go to default chat
-                    await message.channel.send("Files not downloaded successfully.")
-            else:
-                # else go to normal channel
-                await message.channel.send("Files not downloaded successfully.")
-            return
+        response_message = BOT_RESPONSES.download_files(message.content, DB_USERNAME)
+        await BOT_RESPONSES.send_notification_to_channel(message, "FILES_TC", response_message, DB_USERNAME, client)
+        return
 
     # returning user course priority by either grade or upcoming events
     elif message.content.startswith("get course priority"):
@@ -1236,177 +1091,22 @@ async def on_message(message):
 
         return
 
-        # get a letter grade for a class
+    # gets overall points for a class
     elif message.content.startswith("overall points:"):
-        courses = message.content.split(":")[1].split(",")
-        IDs = []
-        for c in courses:
-            course_id = BS_UTILS.find_course_id(c)
-            IDs.append(course_id)  # getting the list of course IDs
-        print(IDs)
-
-        grades = {}
-        tosort = {}
-        counter = 0
-        for i in IDs:
-            if i == -1:
-                grades[courses[counter]] = 'Course not recognized'
-                tosort[courses[counter]] = 0
-            else:
-                yourTotal, classTotal = BS_UTILS.sum_total_points(i)
-                if classTotal == 0:
-                    grades[courses[counter]] = "No grades are uploaded for this class."
-                    tosort[courses[counter]] = 100
-                else:
-                    percentage = (yourTotal / classTotal) * 100
-                    grades[courses[counter]] = '{num:.2f}/{den:.2f}'.format(num=yourTotal, den=classTotal)
-                    tosort[courses[counter]] = percentage
-            counter = counter + 1
-
-        print(grades)
-        print(tosort)
-        sorted_list = dict(sorted(tosort.items(), key=lambda item: item[1]))
-        print(grades)
-        print(sorted_list)
-        final_string = "Your overall grades are: \n"
-        for key, value in sorted_list.items():
-            final_string = final_string + key + ": " + str(grades[key]) + "\n"
-
-        # See if the user specified a grades text channel
-        sql_command = f"SELECT GRADES_TC FROM PREFERENCES WHERE USERNAME = '{DB_USERNAME}';"
-        result = DB_UTILS._mysql.general_command(sql_command)[0][0]
-        print(result)
-        # if so, redirect message to that channel
-        if result is not None:
-            # get the channel ID
-            channel_id = 0
-            for channel in message.guild.text_channels:
-                result = result.replace(" ", "-")
-                if channel.name == result:
-                    print("found it")
-                    channel_id = channel.id
-                    break
-            if channel_id != 0:
-                send_message_to_channel = client.get_channel(channel_id)
-                await send_message_to_channel.send(final_string)
-
-            else:
-                # Some mistake came and could not find channel ID, so just go to default chat
-                await message.channel.send(final_string)
-        else:
-            # else go to normal channel
-            await message.channel.send(final_string)
-
+        response = BOT_RESPONSES.overall_points(message)
+        await BOT_RESPONSES.send_notification_to_channel(message, "GRADES_TC", response, DB_USERNAME, client)
         return
 
     # redirecting notifications
     elif message.content.startswith("redirect notifications"):
-        await message.channel.send("Here are the notification types you can redirect - Grades, Files, Deadlines.\n"
-                                   "Format the response as <Notification Type> - <Text Channel Name>.\n"
-                                   "EX: Grades - Grades Notifications")
+        await BOT_RESPONSES.redirect_notifications(message, client, DB_USERNAME)
+        return
 
-        # check what type of path they want
-        def storage_path(m):
-            return m.author == message.author
-
-        # getting the type of redirecting of notification
-        try:
-            response = await client.wait_for('message', check=storage_path, timeout=30)
-        except asyncio.TimeoutError:
-            await message.channel.send("taking too long...")
-            return
-
-        # split the notification type and desired text channel
-        response_array = response.content.split("-")
-        category = response_array[0]
-        category = category.strip()
-        text_channel = response_array[1]
-        text_channel = text_channel.strip()
-        print(category.lower())
-        # Get the database category
-        db_category = ""
-        if category.lower() == "grades":
-            db_category = "GRADES_TC"
-        elif category.lower() == 'files':
-            db_category = "FILES_TC"
-        elif category.lower() == 'deadlines':
-            db_category = "DEADLINES_TC"
-        else:
-            await message.channel.send("Sorry, the notification type you specified is not valid. Please try the "
-                                       "process again")
-            return
-
-        # TODO get the username from a different way
-        sql_command = f"SELECT {db_category} FROM PREFERENCES WHERE USERNAME = '{DB_USERNAME}';"
-        current_saved_tc = DB_UTILS._mysql.general_command(sql_command)[0][0]
-        # Check if the channel that is being requested has already been created
-        sql_command = f"SELECT LIST_OF_TCS FROM PREFERENCES WHERE USERNAME = '{DB_USERNAME}';"
-        list_of_tcs = DB_UTILS._mysql.general_command(sql_command)[0][0]
-        if list_of_tcs is None:
-            sql_command = f"UPDATE PREFERENCES SET LIST_OF_TCS = 'general' WHERE USERNAME = '{DB_USERNAME}';"
-            DB_UTILS._mysql.general_command(sql_command)
-            sql_command = f"SELECT LIST_OF_TCS FROM PREFERENCES WHERE USERNAME = '{DB_USERNAME}';"
-            list_of_tcs = DB_UTILS._mysql.general_command(sql_command)[0][0]
-
-        array = list_of_tcs.split(",")
-        found = False
-        for a in array:
-            if a == text_channel:
-                # Then this text channel already exists
-                found = True
-        # found, list_of_tcs = BOT_RESPONSES.check_if_tc_exists(current_saved_tc, DB_USERNAME)
-
-        sql_command = f"UPDATE PREFERENCES SET {db_category} = '{text_channel}' WHERE USERNAME = '{DB_USERNAME}';"
-        DB_UTILS._mysql.general_command(sql_command)
-        print(DB_UTILS.show_table_content("PREFERENCES"))
-
-        if not found:
-            list_of_tcs = list_of_tcs + "," + text_channel
-            sql_command = f"UPDATE PREFERENCES SET LIST_OF_TCS = '{list_of_tcs}' WHERE USERNAME = '{DB_USERNAME}';"
-            DB_UTILS._mysql.general_command(sql_command)
-            name = 'Text Channels'  # This will go under the default category
-            cat = discord.utils.get(message.guild.categories, name=name)
-            await message.guild.create_text_channel(text_channel, category=cat)
-
-            channel_id = 0
-            for channel in message.guild.text_channels:
-                print(channel)
-                print(channel.id)
-                channel_id = channel.id
-
-            await message.channel.send("You successfully moved " + category + " notifications from "
-                                       + str(
-                current_saved_tc) + " to " + text_channel + ". I will send a message to this "
-                                                            "channel to start the thread.")
-
-            send_message_to_channel = client.get_channel(channel_id)
-            await send_message_to_channel.send("Hello! This thread will hold notifications about " + category)
-            return
-        else:
-            await message.channel.send("Since this channel already exists, a new channel will not be created. \nYou "
-                                       "successfully moved " + category + " notifications from "
-                                       + str(current_saved_tc) + " to " + text_channel + ".")
-            return
-
-
+    # shows where the redirections lead to for each category
     elif message.content.startswith("where are my notifications?"):
-        sql = f"SELECT GRADES_TC FROM PREFERENCES WHERE USERNAME = '{DB_USERNAME}';"
-        grades = DB_UTILS._mysql.general_command(sql)[0][0]
-        if grades is None:
-            grades = "Not specified"
-        sql = f"SELECT FILES_TC FROM PREFERENCES WHERE USERNAME = '{DB_USERNAME}';"
-        files = DB_UTILS._mysql.general_command(sql)[0][0]
-        if files is None:
-            files = "Not specified"
-        sql = f"SELECT DEADLINES_TC FROM PREFERENCES WHERE USERNAME = '{DB_USERNAME}';"
-        deadlines = DB_UTILS._mysql.general_command(sql)[0][0]
-        if deadlines is None:
-            deadlines = "Not specified"
-        final_string = f"Your notification redirections are saved as the following:\n" \
-                       f"GRADES -> {grades}\n" \
-                       f"DEADLINES -> {deadlines}\n" \
-                       f"FILES -> {files}"
+        final_string = BOT_RESPONSES.where_are_my_notifications(DB_USERNAME)
         await message.channel.send(final_string)
+        return
 
     elif message.content.startswith("add quiz due dates to calendar"):
         await message.channel.send("Retrieving quizzes...")
@@ -1623,10 +1323,6 @@ async def on_message(message):
         response = BOT_RESPONSES.process_renaming_response(DB_USERNAME, user_response.content)
         await message.channel.send(response)
         return
-
-    elif message.content.startswith("!D:"):
-        BOT_RESPONSES.download_files(message.content, DB_USERNAME)
-
 
 
 # Now to actually run the bot!
