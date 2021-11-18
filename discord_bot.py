@@ -449,7 +449,7 @@ async def on_message(message):
             await message.channel.send(f'Bye {username}!')
             return
         # get the current storage path
-        elif user_message.lower() == 'current storage location':
+        (Refactored) elif user_message.lower() == 'current storage location':
             # todo: access database and get the actual value
 
             # storage_path = DB_UTILS._mysql.general_command("SELECT STORAGE_PATH from USERS WHERE FIRST_NAME = 'Raveena';")

@@ -36,7 +36,8 @@ class NLPAction():
         "bye": self._say_good_bye,
         "change bot name": self._change_bot_name,
         "change your name": self._change_bot_name,
-        "search for student": self._search_for_student
+        "search for student": self._search_for_student,
+        "current storage location": self._current_storage
         }
 
         # 1 = yes, 0 = no
@@ -118,6 +119,7 @@ class NLPAction():
         yes_no_tuple = process.extractOne(yes_no_message.content, self.YES_NO_PHRASES.keys(), scorer=fuzz.token_set_ratio)
         return self.YES_NO_PHRASES[yes_no_tuple[0]]
 
+
     # waits for a respond from the user(s)
     # Returns: a response object
 
@@ -131,6 +133,19 @@ class NLPAction():
             await message.channel.send("Timed out.")
             return None
         return res
+
+
+    def _current_storage(self, message, client):
+        username = self._id_to_username_map[message.author.id]
+        sql = f'SELECT STORAGE_PATH from PREFERENCES WHERE USERNAME = \'{username}\';'
+        storage_path = self.DB_UTILS._mysql.general_command(sql)
+        if storage_path[0][0] is None:
+            return self.message.channel.send('No storage path specified. Type update storage to save something')
+        else:
+            return self.message.channel.send(f'Current location: {storage_path[0][0]}')
+
+
+    
 
 
     # ----- Login to discord bot & BrightSpace Functions -----
@@ -293,3 +308,6 @@ class NLPAction():
 
         return
     
+
+
+
