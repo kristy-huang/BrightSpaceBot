@@ -444,8 +444,8 @@ async def on_message(message):
             await BOT_RESPONSES.test_hello()
             return
 
-        (Refactored)
-        elif user_message.lower() == 'bye':
+        
+        (Refactored)elif user_message.lower() == 'bye':
             await message.channel.send(f'Bye {username}!')
             return
         # get the current storage path
@@ -531,7 +531,7 @@ async def on_message(message):
                 await message.channel.send("Your input isn't valid")
 
         # get a letter grade for a class
-        elif message.content.startswith("grades:"):
+        (Refactored) elif message.content.startswith("grades:"):
             courses = message.content.split(":")[1].split(",")
             IDs = []
             for c in courses:
@@ -566,7 +566,7 @@ async def on_message(message):
             return
 
 
-        elif message.content.startswith("get assignment feedback"):
+        (Refactored) elif message.content.startswith("get assignment feedback"):
             await message.channel.send("Please provide the Course name (for ex, NUTR 303) \n")
 
             def author_check(m):
@@ -590,7 +590,7 @@ async def on_message(message):
             return
 
         # enable the user to search for a specific student in a class.
-        elif message.content.startswith("search for student"):
+        (Refactored)elif message.content.startswith("search for student"):
             await message.channel.send("Please provide the course in which you want to search \n")
 
             def author_check(m):
