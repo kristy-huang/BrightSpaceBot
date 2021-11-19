@@ -1622,45 +1622,32 @@ async def on_message(message):
                 await message.channel.send("Timeout ERROR has occurred. Please try the query again")
 
             await message.channel.send("Please input office hour days")
-            oh_day = ''
+            days = ''
             try:
-                oh_day = await client.wait_for('message', check=check, timeout=60)
-                oh_day = oh_day.content.lower()
+                days = await client.wait_for('message', check=check, timeout=60)
+                days = days.content.lower()
+                days = BOT_RESPONSES.format_days_of_week(days)
             except asyncio.TimeoutError:
                 await message.channel.send("Timeout ERROR has occurred. Please try the query again")
 
-            await message.channel.send("Please input office hour times")
-            oh_time = ''
+            await message.channel.send("Please input office hour start time. ie 13:30")
+            st_time = ''
             try:
-                oh_time = await client.wait_for('message', check=check, timeout=60)
-                oh_time = oh_time.content.lower()
+                st_time = await client.wait_for('message', check=check, timeout=60)
+                st_time = st_time.content.lower()
             except asyncio.TimeoutError:
                 await message.channel.send("Timeout ERROR has occurred. Please try the query again")
 
-            response = BOT_RESPONSES.add_office_hours_to_calendar()
+            await message.channel.send("Please input office hour end time. ie 14:30")
+            end_time = ''
+            try:
+                end_time = await client.wait_for('message', check=check, timeout=60)
+                end_time = end_time.content.lower()
+            except asyncio.TimeoutError:
+                await message.channel.send("Timeout ERROR has occurred. Please try the query again")
 
-            # if sql_response is not None:
-            #     cal = Calendar()
-            #     for office_hour in sql_response:
-            #         # Check if the event exists first by searching by name
-            #         event_title = f"{course_name} OFFICE HOURS: {office_hour}"
-            #         description = f"Don't forget to attend it!"
-            #         search_result, end_time = cal.get_event_from_name(event_title)
-            #         date = datetime.datetime.fromisoformat(office_hour[1][:-1])
-            #         end = date.isoformat()
-            #         start = (date - datetime.timedelta(hours=1)).isoformat()
-            #         print("End date from search: " + str(end_time))
-            #         if search_result != -1:
-            #             # it has already been added to the calendar
-            #             # see if the end times are different
-            #             if end_time != end:
-            #                 # the due date has been updated, so delete the old event
-            #                 cal.delete_event(search_result)
-            #                 cal.insert_event(event_title, description, start, end)
-            #         else:
-            #             # has not been added to calendar, so add normally
-            #             # inserting event
-            #             cal.insert_event(event_title, description, start, end)
+            response = BOT_RESPONSES.add_office_hours_to_calendar(course_name, instr_name, days, st_time, end_time)
+            await message.channel.send(response)
         except asyncio.TimeoutError:
             await message.channel.send("Timeout ERROR has occurred. Please try the query again")
         return

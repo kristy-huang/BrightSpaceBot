@@ -5,6 +5,16 @@ from bs_utilities import BSUtilities
 from bs_calendar import Calendar
 import datetime
 
+DAY_MAP = {
+    0: "MO",
+    1: "TU",
+    2: "WE",
+    3: "TH",
+    4: "FR",
+    5: "SA",
+    6: "SU"
+}
+
 # This will be a helper class to organize all the responses that the bot will need to provide back to discord
 class BotResponses:
     """
@@ -176,32 +186,52 @@ class BotResponses:
         self.BS_UTILS.download_files(course_id, storage_path, storage_location, self.google_drive, full_course_name)
 
     def format_days_of_week(self, user_input):
-        result = []
+        days = []
         if 'm' in user_input:
-            result.append('MO')
+            days.append('MO')
         if 'tu' in user_input:
-            result.append("TU")
+            days.append("TU")
         if 'w' in user_input:
-            result.append("WE")
+            days.append("WE")
         if 'th' in user_input:
-            result.append('TH')
+            days.append('TH')
         if 'f' in user_input:
-            result.append('FR')
+            days.append('FR')
         if 'sa' in user_input:
-            result.append('SA')
+            days.append('SA')
         if 'su' in user_input:
-            result.append('SU')
-        return result
+            days.append('SU')
+        result = ''
+        for day in days:
+            result = result + "," + day
+        return result[1:]
 
-    def add_office_hours_to_calendar(self, course_name, instr_name, end_sem):
+    def add_office_hours_to_calendar(self, course_name, instr_name, days, st_time, end_time):
         cal = Calendar()
-        # check if office hour already exists in the calendar
         event_title = f"OFFICE HOURS: for {course_name}, {instr_name}"
         description = f"Don't forget to attend {instr_name}'s office hours!"
-        today = datetime.datetime.utcnow()
-        print(today)
-        today = today.isoformat()
-        print(today)
+
+        start = datetime.datetime.utcnow()
+        weekday = start.weekday()
+        st_hour = int(st_time.partition(":")[0])
+        st_min = int(st_time.partition(":")[2])
+        start = start.replace(hour=st_hour, minute=st_min)
+        start = start.isoformat()
+
+        end = datetime.datetime.utcnow()
+        end_hour = int(end_time.partition(":")[0])
+        end_min = int(end_time.partition(":")[2])
+        end = end.replace(hour=end_hour, minute=end_min)
+        end = end.isoformat()
+
+        recurring_event_id = cal.insert_event_recurring(event_title, description, start, end, days)
+
+        # cal.insert_event_recurring creates an event for today. Check if today is a day of week listed in days
+        if DAY_MAP[weekday] not in days:
+            first_event_id = cal.get_recurring_event(recurring_event_id)['id']
+            cal.delete_event(first_event_id)
+        return "Office hours successfully added to calendar!"
+
 
 
 
