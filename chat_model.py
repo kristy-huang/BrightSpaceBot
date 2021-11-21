@@ -6,6 +6,7 @@ from thefuzz import fuzz
 from thefuzz import process
 
 from Authentication import setup_automation
+from werkzeug.security import generate_password_hash, check_password_hash
 
 # A class to parse user commands, and run matching functionalities.
 #
@@ -16,7 +17,7 @@ from Authentication import setup_automation
 #   1. Implement a function in the NLPAction class. The interface should be:
 #      await def <function name>(self, message, client)
 #   2. Add the mapping from a command to the function in self.PHRASES in __init__,
-#      in the format of "command": function. Please see __init__ for some examples.
+#      in the format of "command": (function, needs_to_login). Please see __init__ for some examples.
 # To decide yes or no:
 #   use function self._decide_yes_or_no(message)
 
@@ -30,17 +31,21 @@ class NLPAction():
     def __init__(self, DB_UTIL, debug = False):
 
         # "command" for each functionality.
+        # if the 2nd entry is false, it means the user does not need to login to 
+        # brightspace / the bot to use this function. e.g. saying hello
+
         self.PHRASES = {
-        "hello": self._say_hello,
-        "hi": self._say_hello,
-        "bye": self._say_good_bye,
-        "change bot name": self._change_bot_name,
-        "change your name": self._change_bot_name,
-        "search for student": self._search_for_student,
-        "current storage location": self._current_storage,
-        "grades": self._grades,
-        "get assignment feedback": self._get_assignment_feedback,
-        "get upcoming quizzes": self._get_upcoming_quizzes
+        "hello": (self._say_hello, False),
+        "hi": (self._say_hello, False),
+        "bye": (self._say_good_bye, False),
+        "change bot name": (self._change_bot_name, False),
+        "change your name": (self._change_bot_name, False),
+        "search for student": (self._search_for_student, True),
+        "current storage location": (self._current_storage, True),
+        "grades": (self._grades, True),
+        "get assignment feedback": (self._get_assignment_feedback, True),
+        "get upcoming quizzes": (self._get_upcoming_quizzes, True),
+        "switch bot account": ("switch", False)
         }
 
         # 1 = yes, 0 = no
@@ -76,27 +81,33 @@ class NLPAction():
     # client: the client object
 
     async def process_command(self, message, client):
+
+
+        # ---- to prevent calling multiple functions -----
+        
         if message.author.id not in self._locks:
             self._locks[message.author.id] = False
 
+        if self._debug:
+            print("Incoming message: ", message.content, "author: ", message.author, " Locked: ", self._locks[message.author.id])
+
         if self._locks[message.author.id]:
+            if self._debug:
+                print("Locked. abort.")
             return
 
         self._locks[message.author.id] = True 
 
+        # ---- to prevent bot calling itself -----
+
         if self._author_check(message, client):
             if self._debug:
                 print("Message is from the bot it self. Abort. ")
-                print(f"message author: {message.author}. client author: {client.user}")
+                #print(f"message author: {message.author}. client author: {client.user}")
             self._locks[message.author.id] = False
             return
 
-        await self._request_bot_username_password_if_necessary(message, client)
-        status = await self._setup_auto_if_necessary(message, client)
-
-        if not status:
-            self._locks[message.author.id] = False
-            return
+        # ---- functionalities that does not require the user to login -----
 
         # (matched string, confidency (out of 100))
         action_tuple = process.extractOne(message.content, self.PHRASES.keys(), scorer=fuzz.token_set_ratio)
@@ -106,8 +117,36 @@ class NLPAction():
             self._locks[message.author.id] = False
             return 
 
+        if not self.PHRASES[action_tuple[0]][1]:
+
+            # Special case: user wants to switch his/her account
+            if self.PHRASES[action_tuple[0]][0] == "switch":
+                res = await self._request_bot_username_password(message, client)
+                if not res:
+                    await message.channel.send("Bot login failed. Please check your credentials!")
+            else:
+                await self.PHRASES[action_tuple[0]][0](message, client)
+            self._locks[message.author.id] = False
+            return
+
+        # ---- to setup the bot account and login -----
+
+        status = await self._request_bot_username_password_if_necessary(message, client)
+        if not status:
+            await message.channel.send("Bot login failed. Please check your credentials!")
+            self._locks[message.author.id] = False
+            return
+
+        status = await self._setup_auto_if_necessary(message, client)
+
+        if not status:
+            self._locks[message.author.id] = False
+            return
+
+
+
         # Run the corresponding function!
-        await self.PHRASES[action_tuple[0]](message, client)
+        await self.PHRASES[action_tuple[0]][0](message, client)
         self._locks[message.author.id] = False
 
 
@@ -131,6 +170,21 @@ class NLPAction():
         yes_no_tuple = process.extractOne(yes_no_message.content, self.YES_NO_PHRASES.keys(), scorer=fuzz.token_set_ratio)
         return self.YES_NO_PHRASES[yes_no_tuple[0]]
 
+
+    # Decides if the user onput is closer to <option1> or <option2>
+    #
+    # option1, option2 (str): two possible commands to decide which one the input is closer. 
+    # user_command (str): user input
+    # returns: (int) 1 if input closer to option1, 2 otherwise.
+    
+    def _get_closer_response(self, option1, option2, user_command):
+        options = [option1, option2]
+        tup = process.extractOne(user_command, options, scorer=fuzz.token_set_ratio)
+        print(tup)
+        if tup[0] == option1:
+            return 1
+        else:
+            return 2
 
     # waits for a respond from the user(s)
     # Returns: a response object
@@ -156,18 +210,38 @@ class NLPAction():
     # Currently only has the case when succeeds. 
 
     async def _request_bot_username_password(self, message, client):
-        await message.channel.send("Please enter your username for BrightSpace Bot.")
+        #print("_request_bot_username_password")
+        await message.channel.send("Please enter your username for the bot. If you do not have an account yet, please go to https://brightspacebot.herokuapp.com/ to register an account. ")
         username = await self._recieve_response(message, client)
-        self._id_to_username_map[username.author.id] = username.content
+        name_pass = self._DB_UTIL.get_username_password(username.content)
+        if not name_pass or not name_pass[0][0]:
+            return False
 
-        return True
+        await message.channel.send("Please enter your password for the bot.")
+        password = await self._recieve_response(message, client)
+        if self._check_discord_bot_password(password.content, name_pass[0][1]):
+            self._id_to_username_map[username.author.id] = username.content
+
+            return True
+        return False
 
 
+    # checks if <password> equals a hashed password. 
+    def _check_discord_bot_password(self, password, pass_hashed):
+        if self._debug:
+            print("_check_discord_bot_password:", password, pass_hashed)
+        if not password:
+            return False
+        return check_password_hash(pass_hashed, password)
+
+
+    # Returns True if the login success or does not need to login 
     async def _request_bot_username_password_if_necessary(self, message, client):
         if message.author.id not in self._id_to_username_map:
-            await self._request_bot_username_password(message, client)
+            return await self._request_bot_username_password(message, client)
         elif self._id_to_username_map[message.author.id] == "":
-            await self._request_bot_username_password(message, client)
+            return await self._request_bot_username_password(message, client)
+        return True
 
 
     async def _login_if_necessary(self, message, bsu):
@@ -185,14 +259,31 @@ class NLPAction():
 
     async def _setup_auto_if_necessary(self, message, client):
         user_id = message.author.id
-        if user_id in self._id_to_bsu_map:
+        if user_id in self._id_to_bsu_map and self._id_to_bsu_map[user_id]:
             return True
 
-        # TODO: ask if the user wants to change their username -> ???
-        #await message.channel.send(f"Seems like your username: {self._id_to_username_map[user_id]} is not connected to BS yet!\n")
 
         db_res = self._DB_UTIL.get_bs_username_pin(self._id_to_username_map[message.author.id])
         if not db_res or not db_res[0][0]:
+            # TODO: ask if the user wants to change their username -> ???
+            await message.channel.send(f"Seems like your username: {self._id_to_username_map[user_id]} is not connected to BrightSpace yet! Do you want to connect your account to BirghtSpace, or switch an account?\n")
+            res = await self._recieve_response(message, client)
+
+            option = self._get_closer_response("connect account", "switch account", res.content)
+            #print("option:", option)
+            if option == 2:
+                #print("option2!!!!")
+                status = await self._request_bot_username_password(message, client)
+                if not status:
+                    await message.channel.send("Login failed, please check your credentials.")
+                    return
+                db_res = self._DB_UTIL.get_bs_username_pin(self._id_to_username_map[message.author.id])
+                if db_res and db_res[0][0]:
+                    bsu = BSUtilities()
+                    if await self._login_if_necessary(message, bsu):
+                        self._id_to_bsu_map[message.author.id] = bsu
+                        return True
+
             await message.channel.send("please get a boilerkey url and send it to me.")
             res = await self._recieve_response(message, client)
             url = res.content
@@ -213,7 +304,7 @@ class NLPAction():
 
         bsu = BSUtilities()
         if await self._login_if_necessary(message, bsu):
-            self._id_to_bsu_map[user_id] = bsu
+            self._id_to_bsu_map[message.author.id] = bsu
             return True
         return False
         
@@ -234,6 +325,7 @@ class NLPAction():
             print(f"Login to bs: timed out. User: {self._id_to_username_map[user_id]}")
     
     
+
     # ----- functionalities -----
 
 

@@ -167,3 +167,12 @@ class DBUtilities():
 
     def change_username(self, table_name, old_username, new_username):
         res = self._mysql.general_command(f"UPDATE {table_name} SET USERNAME = \"{new_username}\" WHERE USERNAME = \"{old_username}\"")
+
+
+    # If a user exists in the USER table, return the username & encoded password 
+    # Returns None if it does not.
+    # username: str
+
+    def get_username_password(self, username):
+        res = self._mysql.general_command(f"SELECT username, password FROM USERS WHERE username = \"{username}\"")
+        return res
