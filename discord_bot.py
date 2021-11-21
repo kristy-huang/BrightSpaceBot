@@ -24,6 +24,8 @@ To add the bot to your own server and test it out, copy this URL into your brows
 https://discord.com/api/oauth2/authorize?client_id=894695859567083520&permissions=534992387152&scope=bot
  '''
 
+DEBUG = True
+
 # This will be our discord client. From here we will get our input
 client = discord.Client()
 
@@ -51,7 +53,7 @@ NOT_FREQ_MAP = {
 }
 
 
-nlpa = NLPAction(DB_UTILS)
+nlpa = NLPAction(DB_UTILS, debug=DEBUG)
 
 # Having the bot log in and be online
 @client.event
@@ -65,7 +67,6 @@ async def quit(ctx):
     return await client.logout()  # this just shuts down the bot.
 
 
-# looping every day
 # change parameter to minutes=1 and see it happen every minute
 @tasks.loop(minutes=1)
 async def notification_loop():
@@ -143,7 +144,7 @@ async def notification_loop():
     # Check if the database has a value for the deadlines text channel
 
     channel_id = 0
-    print("hello...")
+    #print("hello...")
     sql_command = f"SELECT DEADLINES_TC FROM PREFERENCES WHERE USERNAME = '{DB_USERNAME}';"
     sql_result = DB_UTILS._mysql.general_command(sql_command)[0][0]
     if sql_result is not None:
@@ -153,11 +154,6 @@ async def notification_loop():
                 channel_id = c.id
                 break
 
-        if len(string) == 0:
-            ## only for debugging ##
-            string = "No posts today"
-
-    # print("called_once_a_day:")
     async def send_notifications(string, channel_id, types):
         message_channel = client.get_channel(channel_id)
         print(channel_id, message_channel)
@@ -182,13 +178,9 @@ async def notification_loop():
             if curr_course_id in string:
                 string = string.replace(curr_course_id, course)
 
-        # print("str: ", string)
 
-        if len(string) == 0:
-            ## only for debugging ##
-            string = "No posts today"
         # send the upcoming discussion due dates
-
+        # TODO: use a loop to send the full message. 
         await message_channel.send(string[:2000])
         return
     
@@ -213,7 +205,6 @@ async def notification_loop():
         await send_notifications(string, channel_id, types)
 
 
-# TODO: stop notifying immediately after running program.
 @notification_loop.before_loop
 async def notification_before():
     await client.wait_until_ready()
