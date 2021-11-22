@@ -349,7 +349,7 @@ class BSUtilities():
 
         returns: String of feedback, or NULL if there is no feedback, or error message if parameters are incorrect. 
     '''
-    #ok so currently this is just pure bullshit. I'm just gonna be putting code here so I have something worth making a commit for.
+ 
     def suggest_study_groups(self, num_of_students, num_of_courses):
         enrolled_courses = self.get_classes_enrolled()
         first_course_id = list(enrolled_courses.values())[0]
