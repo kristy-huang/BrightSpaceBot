@@ -344,12 +344,13 @@ class BSUtilities():
         
         return False
     
-    '''
+     '''
         This is a function that grabs feedback (if it exists) for an assignment in a course. 
 
         returns: String of feedback, or NULL if there is no feedback, or error message if parameters are incorrect. 
     '''
-    def suggest_study_groups(self):
+    #ok so currently this is just pure bullshit. I'm just gonna be putting code here so I have something worth making a commit for.
+    def suggest_study_groups(self, num_of_students, num_of_courses):
         enrolled_courses = self.get_classes_enrolled()
         first_course_id = list(enrolled_courses.values())[0]
         first_classlist_user_blocks = self._bsapi.get_enrolled_users_for_org_unit(first_course_id)
@@ -359,13 +360,32 @@ class BSUtilities():
             if current_course_id == first_course_id:
                 break
             else:
-                first_classlist_user_blocks = self._bsapi.get_enrolled_users_for_org_unit(current_course_id)
+                current_classlist_user_blocks = self._bsapi.get_enrolled_users_for_org_unit(current_course_id)
+                
+                data = json.loads(current_classlist_user_blocks)
+                
+                
+                '''for key in data:
+                    first_name = data[key]["FirstName"]
+                    last_name = data[key]["LastName"]
+                    current_name = first_name + " " + last_name
+                '''    
+                #print(data)
+
+
+
             #return
 
         
         return
     
-    
+
+    #helper function for suggest_study_groups. This function will be called to deal with situations where the user specifies 
+    #the number of students and the number of courses. 
+    def suggest_study_groups_2(num_of_students, num_of_courses): 
+
+
+        return
     '''
         This is a helper function for get_upcoming_quizzes(). It is used to determine whether a given 
 
