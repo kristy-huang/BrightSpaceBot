@@ -167,3 +167,6 @@ class DBUtilities():
 
     def change_username(self, table_name, old_username, new_username):
         res = self._mysql.general_command(f"UPDATE {table_name} SET USERNAME = \"{new_username}\" WHERE USERNAME = \"{old_username}\"")
+
+    def add_discussion_schedule(self, ):
+        self._mysql.create_table('DISCUSSION_SCHEDULE', 'username VARCHAR(50), days VARCHAR(50)')

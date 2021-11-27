@@ -15,6 +15,16 @@ DAY_MAP = {
     6: "SU"
 }
 
+DAY_MAP_NUM = {
+    "MO": 0,
+    "TU": 1,
+    "WE": 2,
+    "TH": 3,
+    "FR": 4,
+    "SA": 5,
+    "SU": 6
+}
+
 # This will be a helper class to organize all the responses that the bot will need to provide back to discord
 class BotResponses:
     """
@@ -25,7 +35,7 @@ class BotResponses:
         self.message = None
         self.username = None
         self.channel = None
-        self.DB_UTILS = None
+        self.DB_UTILS = DBUtilities('database/db_config.py')
         self.BS_UTILS = None
         self.RN_FILE = RenameFile()
         self.google_drive = None
@@ -232,7 +242,10 @@ class BotResponses:
             cal.delete_event(first_event_id)
         return "Office hours successfully added to calendar!"
 
-
+    def add_discussion_schedule_to_db(self, days):
+        formatted_days = self.format_days_of_week(days)
+        self.DB_UTILS.add_discussion_schedule(formatted_days)
+        return
 
 
 

@@ -1672,6 +1672,25 @@ async def on_message(message):
     elif message.content.startswith("!D:"):
         BOT_RESPONSES.download_files(message.content, DB_USERNAME)
 
+    elif message.content.startswith("add discussion schedule"):
+        await message.channel.send('What day(s) do you want discussion reminders sent each week?')
+        days = await recieve_response()
+        days = days.content.lower()
+        days = BOT_RESPONSES.add_discussion_schedule_to_db(days)
+        return
+
+    elif message.content.startswith("add discussion to schedule"):
+        await message.channel.send("Which class's discussions do you want to add to the schedule?")
+
+        try:
+            user_response = await client.wait_for('message', check=check, timeout=60)
+        except asyncio.TimeoutError:
+            await message.channel.send("Time error has occurred. Please try the query again")
+            return
+    elif message.content.startwith("Remove discussion from schedule"):
+
+
+
 
 
 # Now to actually run the bot!

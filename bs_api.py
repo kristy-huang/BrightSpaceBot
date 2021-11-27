@@ -270,6 +270,11 @@ class BSAPI():
                         forum_id=forum_id)
         return self.__process_api_json("get_disscussion_topics", url)
 
+    def get_discussion_posts(self, course_id, forum_id, topic_id):
+        url = "https://purdue.brightspace.com/d2l/api/le/1.38/{course_id}/discussions/forums/{forum_id}/topics/{topic_id}/posts/" \
+                .format(course_id=course_id, forum_id=forum_id, topic_id=topic_id)
+        return self.__process_api_json("get_dicussion_posts", url)
+
     '''
         Pulls all announcements from BrightSpace with a given course id.
         Announcements posted after "since" are returned. If no since is provided, 
