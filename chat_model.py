@@ -1,12 +1,14 @@
 
 import asyncio
-from bs_utilities import BSUtilities
+import datetime
+from requests.models import Response
+from werkzeug.security import check_password_hash
 
 from thefuzz import fuzz
 from thefuzz import process
 
+from bs_utilities import BSUtilities
 from Authentication import setup_automation
-from werkzeug.security import generate_password_hash, check_password_hash
 
 # A class to parse user commands, and run matching functionalities.
 #
@@ -40,12 +42,15 @@ class NLPAction():
         "bye": (self._say_good_bye, False),
         "change bot name": (self._change_bot_name, False),
         "change your name": (self._change_bot_name, False),
+        "switch bot account": ("switch", False),
         "search for student": (self._search_for_student, True),
         "current storage location": (self._current_storage, True),
         "grades": (self._grades, True),
         "get assignment feedback": (self._get_assignment_feedback, True),
         "get upcoming quizzes": (self._get_upcoming_quizzes, True),
-        "switch bot account": ("switch", False)
+        "get newly graded assignments": (self._get_newly_graded_assignments, True),
+        "get upcoming discussion": (self._get_upcoming_discussion, True),
+        "update notification schedule": (self._update_notification_schedule, True)
         }
 
         # 1 = yes, 0 = no
@@ -59,6 +64,17 @@ class NLPAction():
             "no": 0,
             "false": 0,
             "nope": 0
+        }
+
+        self._NOT_FREQ_MAP = {
+            0: "EVERY MONDAY",
+            1: "EVERY TUESDAY",
+            2: "EVERY WEDNSDAY",
+            3: "EVERY THURSDAY",
+            4: "EVERY FRIDAY",
+            5: "EVERY SATURDAY",
+            6: "EVERY SUNDAY",
+            7: "EVERYDAY"
         }
 
         # maps an user's discord user id to an username. (The username used as a key in db) 
@@ -173,18 +189,19 @@ class NLPAction():
 
     # Decides if the user onput is closer to <option1> or <option2>
     #
-    # option1, option2 (str): two possible commands to decide which one the input is closer. 
+    # options2 (list of str): possible commands to decide which one the input is closer. 
     # user_command (str): user input
-    # returns: (int) 1 if input closer to option1, 2 otherwise.
+    # returns: (int) the index of the closest response. if Confidentiality is lower 
+    #          than 50, -1 is returned.
     
-    def _get_closer_response(self, option1, option2, user_command):
-        options = [option1, option2]
+    def _get_closer_response(self, options, user_command):
         tup = process.extractOne(user_command, options, scorer=fuzz.token_set_ratio)
-        print(tup)
-        if tup[0] == option1:
-            return 1
-        else:
-            return 2
+        #print(tup)
+        if tup[1] < 50:
+            return -1
+        return options.index(tup[0])
+        
+        
 
     # waits for a respond from the user(s)
     # Returns: a response object
@@ -201,7 +218,68 @@ class NLPAction():
         return res
 
 
-    
+    # Asks the user to input a time and returns a response object
+    # if the entered time is legit.
+    #
+    # message: a message object from discord!
+    async def get_time(self, message, client):
+        await message.channel.send("What time? (e.g. 09: 12, 10:00, 23:24)")
+
+        new_time = await self._recieve_response(message, client)
+        if not new_time:
+            return
+
+        if len(new_time.content) != 5 or new_time.content[2] != ":":
+            await message.channel.send("Please re-enter your time as the format given.")
+            return None
+
+        try:
+            h = int(new_time.content[:2])
+            m = int(new_time.content[3:])
+        except ValueError:
+            await message.channel.send("Please re-enter your time as the format given.")
+            return None
+
+        if h < 0 or h > 23 or m < 0 or m > 59:
+            await message.channel.send("Please re-enter your time as the format given.")
+            return None
+
+        return new_time
+
+
+    # Returns an int representing the entered weekday.
+    # returns -1 if not matched to any of the weekdays.
+    #
+    # msg: str
+
+    async def get_weekday(self, msg):
+        msg = msg.lower()
+
+        weekdays = {
+            "Monday": 0,
+            "Tuesday": 1,
+            "Wednesday": 2,
+            "Thursday": 3,
+            "Friday": 4,
+            "Saturday": 5,
+            "Sunday": 6
+        }
+
+        option = process.extractOne(msg, weekdays.keys(), scorer=fuzz.token_set_ratio)
+        if option[1] > 50:
+            print("weekday returned ", weekdays[option[0]])
+            return weekdays[option[0]]
+        return -1
+
+
+    def parse_time(string):
+        time = datetime.datetime.strptime(string, "%H:%M")
+        return time
+
+    def time_to_string(time):
+        time_str = datetime.datetime.strftime("%H:%M")
+        return time_str
+
     # ----- Login to discord bot & BrightSpace Functions -----
 
 
@@ -265,14 +343,11 @@ class NLPAction():
 
         db_res = self._DB_UTIL.get_bs_username_pin(self._id_to_username_map[message.author.id])
         if not db_res or not db_res[0][0]:
-            # TODO: ask if the user wants to change their username -> ???
             await message.channel.send(f"Seems like your username: {self._id_to_username_map[user_id]} is not connected to BrightSpace yet! Do you want to connect your account to BirghtSpace, or switch an account?\n")
             res = await self._recieve_response(message, client)
 
-            option = self._get_closer_response("connect account", "switch account", res.content)
-            #print("option:", option)
-            if option == 2:
-                #print("option2!!!!")
+            option = self._get_closer_response(["connect account", "switch account"], res.content)
+            if option == 1:
                 status = await self._request_bot_username_password(message, client)
                 if not status:
                     await message.channel.send("Login failed, please check your credentials.")
@@ -497,5 +572,332 @@ class NLPAction():
                 await message.channel.send(output_str)
 
 
+    async def _get_newly_graded_assignments(self, message, client):
+        curr_bs_util = self._id_to_bsu_map[message.author.id]
+        await message.channel.send("Retrieving grades...")
+        grade_updates = curr_bs_util.get_grade_updates()
+        # if there are no grade updates returned, then we report to the user.
+        if len(grade_updates) == 0:
+            await message.channel.send("You have no new grade updates.")
+            return
+        else:
+            await message.channel.send("The following assignments have been graded:\n")
+            for grade in grade_updates:
+                output_str = "Course Id:" + str(grade['course_id']) + "- " + grade['assignment_name'] + " " + grade[
+                    'grade'] + "\n"
+                await message.channel.send(output_str)
+            return
+
+
+    async def _get_upcoming_discussion(self, message, client):
+        curr_bs_util = self._id_to_bsu_map[message.author.id]
+
+        # dictionary of class_name, [list of dates]
+        dates = curr_bs_util.get_dict_of_discussion_dates()
+
+        # dates = DATES #ONLY FOR DEBUG
+
+        # find discussion post deadline for 2 weeks
+        string = curr_bs_util.find_upcoming_disc_dates(14, dates)
+
+        if len(string) == 0:
+            await message.channel.send("No upcoming posts for the next two weeks. Would you like to look further than 2 weeks?")
+            response = await self._recieve_response(message, client)
+
+            # they want to see everything
+            if self._decide_yes_or_no(response):
+                string = curr_bs_util.find_upcoming_disc_dates(0, dates)
+                if len(string) == 0:
+                    await message.channel.send("No upcoming posts.")
+                else:
+                    await message.channel.send(string)
+                return
+            # don't want to see anything
+            else:
+                await message.channel.send("Okay, sounds good!")
+        else:
+            await message.channel.send(string)
+
+
+    async def _update_notification_schedule(self, message, client):
+        
+        async def everyday():
+            new_time = None
+            while not new_time:
+                new_time = await self.get_time(message, client)
+
+            await message.channel.send(f"{new_time.content}, right?")
+            res = await self._recieve_response(message, client)
+
+            if res.content.startswith("y") or res.content.startswith("right"):
+                self._DB_UTIL.add_notifictaion_schedule(self._id_to_username_map[res.author.id], new_time.content,
+                                                1 * 24 * 60, res.channel.id, description=7)  # 7 = everyday
+                # SCHEDULED_HOURS.append(new_hour)
+                await message.channel.send(f"Schedule changed.")
+            else:
+                await message.channel.send(f"No changes are made to your schedule.")
+
+        async def every_week():
+            await message.channel.send("Which week day?")
+            while True:
+                res = await self._recieve_response(message, client)
+                day = await self.get_weekday(res.content)
+                if day == -1:
+                    await message.channel.send("Please choose from Mon/Tues/Wed/Thurs/Fri/Sat/Sun")
+                    continue
+                break
+
+            new_time = None
+            while not new_time:
+                new_time = await self.get_time(message, client)
+
+            print(day)
+            day_str = self._NOT_FREQ_MAP[day]
+            await message.channel.send(f"{new_time.content} for {day_str.lower()}?")
+            res = await self._recieve_response(message, client)
+            if res.content.startswith("y") or res.content.startswith("right"):
+                self._DB_UTIL.add_notifictaion_schedule(self._id_to_username_map[res.author.id], new_time.content,
+                                                1 * 24 * 7 * 60, res.channel.id, description=day)
+                await message.channel.send(f"Schedule changed.")
+            else:
+                await message.channel.send(f"No changes are made to your schedule.")
+
+        async def add_week_or_everyday():
+            await message.channel.send(f"Do you want to be notified everyday, or by a specific weekday?")
+            res = await self._recieve_response(message, client)
+            if "every" in res.content:
+                await everyday()
+            else:
+                await every_week()
+
+        async def by_amount():
+            def calculate_notis_each_week(schedules):
+                notifications = 0
+                for schedule in schedules:
+                    weekday = schedule[1]
+                    if weekday == '7':
+                        notifications += 7
+                    else:
+                        notifications += 1
+                return notifications
+
+            await message.channel.send("How many notifications do you want every week?")
+            res = await self._recieve_response(message, client)
+
+
+            while True:
+                try:
+                    freq = int(res.content)
+                except ValueError:
+                    await message.channel.send("Please enter a number")
+                    continue
+                break
+
+            s_times = self._DB_UTIL.get_notifictaion_schedule_with_description(self._id_to_username_map[message.author.id])
+            curr_len = calculate_notis_each_week(s_times)
+
+            if curr_len < freq:
+                while curr_len < freq:
+                    await message.channel.send(f"There are currently {curr_len} schedules. ")
+                    
+                    
+                    await message.channel.send(f"Do you want to add more?")
+                    
+                    res = await self._recieve_response(message, client)
+                    if self._decide_yes_or_no(res):
+                        if freq - curr_len < 7:
+                            #await message.channel.send(f"Adding schedules every day will e")
+                            await every_week()
+                        else:
+                            await add_week_or_everyday()
+                        s_times = self._DB_UTIL.get_notifictaion_schedule_with_description(self._id_to_username_map[message.author.id])
+                        curr_len = calculate_notis_each_week(s_times)
+                        continue
+                    await message.channel.send(f"Understood. Have a nice day.")
+                    break
+            elif curr_len > freq:
+                while curr_len > freq:
+                    await message.channel.send(f"There are currently {curr_len} scheduled times. No new schedules will be added.\nDo you want to delete any schedules?")
+                    res = await self._recieve_response(message, client)
+                    if self._decide_yes_or_no(res):
+                        current_times = self._DB_UTIL.get_notifictaion_schedule_with_description(self._id_to_username_map[message.author.id])
+                        await self._delete_noti_some(message, client, current_times)
+                        
+                        s_times = self._DB_UTIL.get_notifictaion_schedule_with_description(self._id_to_username_map[message.author.id])
+                        curr_len = calculate_notis_each_week(s_times)
+                        
+                        if curr_len <= freq:
+                            break
+
+                        await message.channel.send(f"Do you want to delete more?")
+                        
+                        res = await self._recieve_response(message, client)
+                        if res.content.startswith("y") or res.content.startswith("right"):
+                            continue
+                    await message.channel.send(f"Understood. Have a nice day.")
+                    break
+            else:
+                await message.channel.send(f"You already have {freq} schedules.")
+
+        async def by_class_schedule():
+            scheduled_classes = self._DB_UTIL.get_classes_in_schedule(self._id_to_username_map[message.author.id])
+            if not scheduled_classes:
+                await message.channel.send("You don't have any scheduled classes.")
+                return
+
+            msg = "Which class do you want to recieve notifications before?\n\n"
+            msg += "List of classes:\n"
+            for i, c in enumerate(scheduled_classes):
+                msg += f"{i + 1}. {c}\n"
+
+            await message.channel.send(msg)
+
+            while True:
+                res = await self._recieve_response(message, client)
+
+                try:
+                    num = int(res.content)
+                except ValueError:
+                    await message.channel.send(f"Please choose a number between 1 ~ {i + 1}")
+                    continue
+
+                if num not in range(1, i + 2):
+                    await message.channel.send(f"Please choose a number between 1 ~ {i + 1}")
+                    continue
+
+                break
+
+            class_name = scheduled_classes[num - 1]
+
+            await message.channel.send("How many minutes before class?")
+            while True:
+                res = await self._recieve_response(message, client)
+                try:
+                    mins = int(res.content)
+                except ValueError:
+                    await message.channel.send("Please enter a number")
+                    continue
+                break
+
+            scheduled_classes = self._DB_UTIL.get_class_schedule_with_description(
+                self._id_to_username_map[message.author.id])
+            # print(scheduled_classes)
+            for c in scheduled_classes:
+                # print(c[0])
+                if c[0] != class_name:
+                    continue
+
+                time_str = c[1]
+                time = self.parse_time(time_str)
+                time = time - datetime.timedelta(minutes=mins)
+                new_time_str = self.time_to_string(time)
+
+                self._DB_UTIL.add_notifictaion_schedule(self._id_to_username_map[message.author.id], new_time_str,
+                                                1 * 60 * 24 * 7, res.channel.id, c[2])
+
+            await message.channel.send("Schedule modified.")
+
+        async def check_replace(noti_func):
+            await message.channel.send(f"Do you want to add to your current schedule or build a brand new one?")
+
+            res = await self._recieve_response(message, client)
+            if "new" in res.content:
+                curr_username = self._id_to_username_map[message.author.id]
+
+                # moves all old schedules to a temp username
+                temp_username = curr_username + "_temp"
+                self._DB_UTIL.change_username("NOTIFICATION_SCHEDULE", curr_username, temp_username)
+
+                await noti_func()
+
+                old_schedules = self._DB_UTIL.get_notifictaion_schedule_with_description(temp_username)
+                msg = "Old schedules:\n"
+                for i, time in enumerate(old_schedules):
+                    msg += f"{i + 1}: {time[0]} {self._NOT_FREQ_MAP[int(time[1])].lower()}\n"
+                    
+
+                new_schedules = self._DB_UTIL.get_notifictaion_schedule_with_description(curr_username)
+                msg += "\nNew schedules:\n"
+                for i, time in enumerate(new_schedules):
+                    msg += f"{i + 1}: {time[0]} {self._NOT_FREQ_MAP[int(time[1])].lower()}\n"
+
+                msg += "\nDo you want to replace your old schedule with the new one?"
+                await message.channel.send(msg)
+
+                res = await self._recieve_response(message, client)
+                if self._decide_yes_or_no(res):
+                    self._DB_UTIL.clear_notification_schedule(temp_username)
+                else:
+                    self._DB_UTIL.clear_notification_schedule(curr_username)
+                    self._DB_UTIL.change_username("NOTIFICATION_SCHEDULE", temp_username, curr_username)
+
+                await message.channel.send("Finished. Please check your schedule with \"check notifications\"")
+            else:
+                await noti_func()
+
+        await message.channel.send(
+            "Do you want your notification to be sent every day, every week, by a specific amount, or according to your class schedule?")
+
+        res = await self._recieve_response(message, client)
+        if "day" in res.content:
+            await check_replace(everyday)
+        elif "week" in res.content:
+            await check_replace(every_week)
+        elif "amount" in res.content:
+            await check_replace(by_amount)
+        elif "class" in res.content:
+            await check_replace(by_class_schedule)
+        else:
+            await message.channel.send("I am not sure about what you want to do")
+            return
+
+
+    # helper function. will not be called directly be a user command. 
+    async def _delete_noti_all(self, message, client):
+        await message.channel.send("Are you sure to delete all of your scheduled times?")
+
+        res = await self._recieve_response(message, client)
+        if self._decide_yes_or_no(res):
+            self._DB_UTIL.clear_notification_schedule(self._id_to_username_map[message.author.id])
+            await message.channel.send("Schedule deleted")
+        else:
+            await message.channel.send(f"No changes are made to your schedule.")
+
+
+    # helper function. will not be called directly be a user command. 
+    async def _delete_noti_some(self, message, client, current_times):
+        msg = ""
+        for i, time in enumerate(current_times):
+            msg += f"{i + 1}: {time[0]} {self._NOT_FREQ_MAP[int(time[1])].lower()}\n"
+            
+        await message.channel.send("Which time do you want to delete?")
+        await message.channel.send(msg)
+
+        while True:
+            res = await self._recieve_response(message, client)
+
+            try:
+                num = int(res.content)
+            except ValueError:
+                await message.channel.send(f"Please choose a number between 1 ~ {i + 1}")
+                continue
+
+            if num not in range(1, i + 2):
+                await message.channel.send(f"Please choose a number between 1 ~ {i + 1}")
+                continue
+
+            break
+
+        num -= 1
+        await message.channel.send(f"Delete time: {current_times[num][0]} {self._NOT_FREQ_MAP[int(current_times[num][1])]}?")
+        
+        res = await self._recieve_response(message, client)
+
+        if self._decide_yes_or_no(res):
+            self._DB_UTIL.delete_notification_schedule(self._id_to_username_map[message.author.id], current_times[num][0], current_times[num][1])
+            
+            await message.channel.send("Schedule deleted")
+        else:
+            await message.channel.send(f"No changes are made to your schedule.")
 
 

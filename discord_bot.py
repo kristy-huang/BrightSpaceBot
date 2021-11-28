@@ -156,7 +156,7 @@ async def notification_loop():
 
     async def send_notifications(string, channel_id, types):
         message_channel = client.get_channel(channel_id)
-        print(channel_id, message_channel)
+        #print(channel_id, message_channel)
 
         if types[0] == "1":
             dates = BS_UTILS.get_dict_of_discussion_dates()
@@ -611,7 +611,7 @@ async def on_message(message):
 
 
         # get upcoming quizzes across all classes
-        elif message.content.startswith("get upcoming quizzes"):
+        (Refactored) elif message.content.startswith("get upcoming quizzes"):
             upcoming_quizzes = BS_UTILS.get_upcoming_quizzes()
             # if there are no upcoming quizzes returned, then we report to the user.
             if not upcoming_quizzes:
@@ -632,7 +632,7 @@ async def on_message(message):
             bs_utils = BSUtilities()
             bs_utils.set_session(USERNAME, PIN)
 
-        elif message.content.startswith("get newly graded assignments"):
+        (Refactored)elif message.content.startswith("get newly graded assignments"):
             await message.channel.send("Retrieving grades...")
             grade_updates = BS_UTILS.get_grade_updates()
             # if there are no grade updates returned, then we report to the user.
@@ -648,7 +648,7 @@ async def on_message(message):
                 return
 
         # changing bot name
-        elif message.content.startswith("change bot name"):
+        (Refactored) elif message.content.startswith("change bot name"):
 
             # change value used to check if the user keep wants to change the name of the bot
             # initialized to True
@@ -693,7 +693,7 @@ async def on_message(message):
                     await message.channel.send("Timeout ERROR has occurred. Please try the query again.")
                     return
 
-        elif message.content.startswith("upcoming discussion"):
+        (Refactored) elif message.content.startswith("upcoming discussion"):
             # dictionary of class_name, [list of dates]
             dates = BS_UTILS.get_dict_of_discussion_dates()
 
