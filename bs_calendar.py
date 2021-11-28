@@ -7,7 +7,7 @@ class Calendar:
         API_VERSION = 'v3'
         SCOPES = ['https://www.googleapis.com/auth/calendar']
         CLIENT_FILE = 'client_secret.json'
-        self.service = Create_Service(CLIENT_FILE, API_NAME, API_VERSION, SCOPES, 'x')
+        self.service = Create_Service(CLIENT_FILE, API_NAME, API_VERSION, SCOPES)
 
     # This method adds a singular event to the calendar
     def insert_event(self, eventTitle, eventDescription, startTime, endTime):

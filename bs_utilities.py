@@ -12,6 +12,7 @@ from pydrive.auth import GoogleAuth
 from pydrive.drive import GoogleDrive
 from File import File, StorageTypes
 from rename_file import RenameFile
+import json
 
 class BSUtilities():
     def __init__(self, debug=False):
@@ -247,23 +248,21 @@ class BSUtilities():
 
     def get_discussion_due_dates(self, course_id):
         dates = []
-
         threads = self._bsapi.get_forums(course_id)
+
         if not threads:
             return dates
 
         for thread in threads:
             # get the list of topics for each thread
-            topics = self._bsapi.get_discussion_topics(course_id, thread["ForumId"])
+            file = open("/Users/raveena/Library/Preferences/PyCharmCE2019.2/scratches/scratch2.json")
+            topics = json.load(file)
+            #topics = self._bsapi.get_discussion_topics(course_id, thread["ForumId"])
             for t in topics:
-                # if its null, then we don't need the value
-                if t["EndDate"] is not None:
-                    # string_rep = t["EndDate"]
-                    # mdy = string_rep.split(" ")[0].split("-")
-                    # end = datetime(int(mdy[0]), int(mdy[1]), int(mdy[2]))
-                    end = t["EndDate"]
-                    # saving datetime objects
-                    dates.append(end)
+                arr = []
+                arr.append(t["Name"])
+                arr.append(t["EndDate"])
+                dates.append(arr)
         return dates
     
     
@@ -1080,3 +1079,5 @@ class BSUtilities():
                                               'Lack': "Grade & Deadline"})
 
         return suggested_classes, lack_info_classes
+
+

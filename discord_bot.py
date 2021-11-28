@@ -71,38 +71,65 @@ async def notification_loop():
     if not BS_UTILS.check_connection():
         return
 
-    #  Syncing the calendar daily (so it can get the correct changes)
-    # classes = BS_UTILS.get_classes_enrolled()
-    # # classes = {"EAPS": "336112"}
-    # for courseName, courseID in classes.items():
-    #     assignment_list = BS_UTILS._bsapi.get_upcoming_assignments(courseID)
-    #     due = BS_UTILS.process_upcoming_dates(assignment_list)
-    #     if len(due) != 0:
-    #         # actually dates that are upcoming
-    #         cal = Calendar()
-    #         # loop through all the upcoming assignments
-    #         for assignment in due:
-    #             # Check if the event exists first by searching by name
-    #             event_title = f"ASSIGNMENT DUE: {assignment[0]} ({courseID})"
-    #             description = f"{assignment[0]} for {courseName} is due. Don't forget to submit it!"
-    #             search_result, end_time = cal.get_event_from_name(event_title)
-    #             date = datetime.datetime.fromisoformat(assignment[1][:-1])
-    #             end = date.isoformat()
-    #             start = (date - datetime.timedelta(hours=1)).isoformat()
-    #             print("End date from search: " + str(end_time))
-    #             if search_result != -1:
-    #                 # it has already been added to the calendar
-    #                 # see if the end times are different
-    #                 if end_time != end:
-    #                     # the due date has been updated, so delete the old event
-    #                     cal.delete_event(search_result)
-    #                     cal.insert_event(event_title, description, start, end)
-    #             else:
-    #                 # has not been added to calendar, so add normally
-    #                 # inserting event
-    #                 cal.insert_event(event_title, description, start, end)
-    #
-    # print("inserting into calendar is finished...")
+    # Syncing the calendar daily (so it can get the correct changes)
+    #classes = BS_UTILS.get_classes_enrolled()
+    classes = {"EAPS": "336112"}
+    print("CALENDAR STUFF")
+    for courseName, courseID in classes.items():
+        assignment_list = BS_UTILS._bsapi.get_upcoming_assignments(courseID)
+        due = BS_UTILS.process_upcoming_dates(assignment_list)
+        if len(due) != 0:
+            # loop through all the upcoming assignments
+            cal = Calendar()
+            for assignment in due:
+                # Check if the event exists first by searching by name
+                event_title = f"ASSIGNMENT DUE: {assignment[0]} ({courseID})"
+                description = f"{assignment[0]} for {courseName} is due. Don't forget to submit it!"
+                search_result, end_time = cal.get_event_from_name(event_title)
+                date = datetime.datetime.fromisoformat(assignment[1][:-1])
+                end = date.isoformat()
+                start = (date - datetime.timedelta(hours=1)).isoformat()
+                print("End date from search: " + str(end_time))
+                if search_result != -1:
+                    # it has already been added to the calendar
+                    # see if the end times are different
+                    if end_time != end:
+                        # the due date has been updated, so delete the old event
+                        cal.delete_event(search_result)
+                        cal.insert_event(event_title, description, start, end)
+                else:
+                    # has not been added to calendar, so add normally
+                    # inserting event
+                    cal.insert_event(event_title, description, start, end)
+
+        print("DISCUSSION STUFF")
+        # Now adding dicussions
+        discussion_list = BS_UTILS.get_discussion_due_dates(courseID)
+        due = BS_UTILS.process_upcoming_dates(discussion_list)
+        if len(due) != 0:
+            cal = Calendar()
+            for disc in due:
+                event_title = f"DISCUSSION POST DUE: {disc[0]} ({courseID})"
+                description = f"{disc[0]} for {courseName} is due. Don't forget to submit it!"
+                search_result, end_time = cal.get_event_from_name(event_title)
+                date = datetime.datetime.fromisoformat(disc[1][:-1])
+                end = date.isoformat()
+                start = (date - datetime.timedelta(hours=1)).isoformat()
+                print("End date from search: " + str(end_time))
+                if search_result != -1:
+                    # it has already been added to the calendar
+                    # see if the end times are different
+                    if end_time != end:
+                        # the due date has been updated, so delete the old event
+                        cal.delete_event(search_result)
+                        cal.insert_event(event_title, description, start, end)
+                else:
+                    # has not been added to calendar, so add normally
+                    # inserting event
+                    cal.insert_event(event_title, description, start, end)
+
+
+    print("inserting into calendar is finished...")
     #
     # # Syncing quizzes to the calendar daily (so it can get the correct changes)
     # quizzes = BS_UTILS.get_all_upcoming_quizzes()
@@ -125,16 +152,16 @@ async def notification_loop():
     #             cal.delete_event(event_id)
     #             cal.insert_event(event_title, description, start, end)
     #
-    # print("inserting into calendar is finished...")
+    print("inserting into calendar is finished...")
 
-    # print("called_once_a_day:")
-    # async def send_notifications():
-    # print(datetime.datetime.now().hour)
+    print(datetime.datetime.now().hour)
     message_channel = client.get_channel(channelID)
     dates = BS_UTILS.get_dict_of_discussion_dates()
     # dates = DATES
     string = BS_UTILS.find_upcoming_disc_dates(1, dates)
     string += BS_UTILS.get_notifications_past_24h()
+
+
 
     # Check if the user has a designated text channel for deadline notifications to be sent
     # print("str: ", string)
@@ -240,6 +267,8 @@ async def on_message(message):
     username = str(message.author).split('#')[0]
     user_message = str(message.content)
     channel = str(message.channel.name)
+    channelID = message.channel.id
+    print(channelID)
 
     def check(msg):
         return msg.author == message.author
