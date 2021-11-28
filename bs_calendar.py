@@ -24,11 +24,11 @@ class Calendar:
 
         # insert the event into the calendar
         event = self.service.events().insert(calendarId='primary', body=eventBody).execute()
-        print("created event")
+        '''print("created event")
         print("id: ", event['id'])
         print("summary: ", event['summary'])
         print("starts at: ", event['start']['dateTime'])
-        print("ends at: ", event['end']['dateTime'])
+        print("ends at: ", event['end']['dateTime'])'''
 
     # Based on the event title, find the event ID
     def get_event_from_name(self, eventTitle):

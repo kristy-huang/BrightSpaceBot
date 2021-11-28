@@ -70,139 +70,11 @@ async def quit(ctx):
 # change parameter to minutes=1 and see it happen every minute
 @tasks.loop(minutes=1)
 async def notification_loop():
-    if not BS_UTILS.check_connection():
-        return
 
-    #  Syncing the calendar daily (so it can get the correct changes)
-    classes = BS_UTILS.get_classes_enrolled()
-    # classes = {"EAPS": "336112"}
-    for courseName, courseID in classes.items():
-        assignment_list = BS_UTILS._bsapi.get_upcoming_assignments(courseID)
-        due = BS_UTILS.process_upcoming_dates(assignment_list)
-        if len(due) != 0:
-            # actually dates that are upcoming
-            cal = Calendar()
-            # loop through all the upcoming assignments
-            for assignment in due:
-                # Check if the event exists first by searching by name
-                event_title = f"ASSIGNMENT DUE: {assignment[0]} ({courseID})"
-                description = f"{assignment[0]} for {courseName} is due. Don't forget to submit it!"
-                search_result, end_time = cal.get_event_from_name(event_title)
-                date = datetime.datetime.fromisoformat(assignment[1][:-1])
-                end = date.isoformat()
-                start = (date - datetime.timedelta(hours=1)).isoformat()
-                print("End date from search: " + str(end_time))
-                if search_result != -1:
-                    # it has already been added to the calendar
-                    # see if the end times are different
-                    if end_time != end:
-                        # the due date has been updated, so delete the old event
-                        cal.delete_event(search_result)
-                        cal.insert_event(event_title, description, start, end)
-                else:
-                    # has not been added to calendar, so add normally
-                    # inserting event
-                    cal.insert_event(event_title, description, start, end)
+    await nlpa.sync_calendar_classes()
+    await nlpa.sync_calender_quizzes()
 
-    print("inserting into calendar is finished...")
-
-    # Syncing quizzes to the calendar daily (so it can get the correct changes)
-    quizzes = BS_UTILS.get_all_upcoming_quizzes()
-    for quiz in quizzes:
-        cal = Calendar()
-        event_title = f"QUIZ DUE: {quiz['quiz_name']} ({quiz['course_id']})"
-        description = f"{quiz['quiz_name']} for {quiz['course_name']} is due. Don't forget to submit it!"
-        date = datetime.datetime.fromisoformat(quiz['due_date'][:-1])
-        end = date.isoformat()
-        start = (date - datetime.timedelta(hours=1)).isoformat()
-        event_id, end_time = cal.get_event_from_name(event_title)
-        # event has already been created in google calendar
-        if event_id == -1:
-            # insert new event to calendar
-            cal.insert_event(event_title, description, start, end)
-        # event has not been created
-        else:
-            # if end time has changed, update the event
-            if end_time != end:
-                cal.delete_event(event_id)
-                cal.insert_event(event_title, description, start, end)
-
-    print("inserting into calendar is finished...")
-
-    # print("called_once_a_day:")
-    # async def send_notifications():
-    # print(datetime.datetime.now().hour)
-    message_channel = client.get_channel(channelID)
-    dates = BS_UTILS.get_dict_of_discussion_dates()
-    # dates = DATES
-    string = BS_UTILS.find_upcoming_disc_dates(1, dates)
-    string += BS_UTILS.get_notifications_past_24h()
-
-    # Check if the user has a designated text channel for deadline notifications to be sent
-    # print("str: ", string)
-
-    # Check if the database has a value for the deadlines text channel
-
-    channel_id = 0
-    #print("hello...")
-    sql_command = f"SELECT DEADLINES_TC FROM PREFERENCES WHERE USERNAME = '{DB_USERNAME}';"
-    sql_result = DB_UTILS._mysql.general_command(sql_command)[0][0]
-    if sql_result is not None:
-        for c in client.get_all_channels():
-            sql_result = sql_result.replace(" ", "-")
-            if c.name == sql_result:
-                channel_id = c.id
-                break
-
-    async def send_notifications(string, channel_id, types):
-        message_channel = client.get_channel(channel_id)
-        #print(channel_id, message_channel)
-
-        if types[0] == "1":
-            dates = BS_UTILS.get_dict_of_discussion_dates()
-            # dates = DATES
-            string += BS_UTILS.find_upcoming_disc_dates(1, dates)
-        if types[1] == "1":
-            string += BS_UTILS.get_notifications_past_24h()
-        if types[2] == "1":
-            string += BS_UTILS.get_events_by_type_past_24h(1)  # Reminder
-        if types[3] == "1":
-            string += BS_UTILS.get_events_by_type_past_24h(6)  # DueDate
-
-        # replace course id's with course names:
-
-        courses = BS_UTILS.get_classes_enrolled()
-        for course in courses.keys():
-            curr_course_id = courses[course]
-            curr_course_id = str(curr_course_id)
-            if curr_course_id in string:
-                string = string.replace(curr_course_id, course)
-
-
-        # send the upcoming discussion due dates
-        # TODO: use a loop to send the full message. 
-        await message_channel.send(string[:2000])
-        return
-    
-    '''if not BS_UTILS.check_connection():
-        message_channel = client.get_channel(channel_id)
-        await message_channel.send("Connection to BS lost. Attempting to reconnect to BS...")
-        BS_UTILS.set_session_auto(DB_UTILS, author_id_to_username_map[message.author.id])
-    '''
-
-    now = datetime.datetime.now()
-    time_string = now.strftime("%H:%M")
-    weekday = now.weekday()
-
-    schedules = DB_UTILS.get_notifictaion_schedule_by_time(time_string, weekday)
-
-    for schedule in schedules:
-
-        types = schedule[2]
-        if not types:
-            types = "1111"
-        # print("int id", channel_id)
-        await send_notifications(string, channel_id, types)
+    await nlpa.send_notifications(client)
 
 
 @notification_loop.before_loop
@@ -728,7 +600,7 @@ async def on_message(message):
                 await message.channel.send(string)
                 return
 
-        elif message.content.startswith("update schedule"):
+        (Refactored) elif message.content.startswith("update schedule"):
 
             async def everyday():
                 new_time = None

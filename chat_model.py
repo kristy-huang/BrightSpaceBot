@@ -8,6 +8,7 @@ from thefuzz import fuzz
 from thefuzz import process
 
 from bs_utilities import BSUtilities
+from bs_calendar import Calendar
 from Authentication import setup_automation
 
 # A class to parse user commands, and run matching functionalities.
@@ -276,6 +277,7 @@ class NLPAction():
         time = datetime.datetime.strptime(string, "%H:%M")
         return time
 
+
     def time_to_string(time):
         time_str = datetime.datetime.strftime("%H:%M")
         return time_str
@@ -326,10 +328,12 @@ class NLPAction():
         if bsu.check_connection():
             return True
 
-        await message.channel.send("Logging into BrightSpace...")
+        if message:
+            await message.channel.send("Logging into BrightSpace...")
         bsu.set_session_auto(self._DB_UTIL, self._id_to_username_map[message.author.id])
         if not bsu.check_connection():
-            await message.channel.send("BrightSpace login failed. please check your cridentials!")
+            if message:
+                await message.channel.send("BrightSpace login failed. please check your cridentials!")
             return False
 
         return True
@@ -852,6 +856,72 @@ class NLPAction():
             return
 
 
+    async def _update_notification_type(self, message, client):
+        current_times = self._DB_UTIL.get_notifictaion_schedule_with_description(
+            self._id_to_username_map[message.author.id])
+
+        if not current_times:
+            await message.channel.send("You don't have any scheduled times now.")
+            return
+
+        msg = ""
+        for i, time in enumerate(current_times):
+            msg += f"{i + 1}: {time[0]} {self._NOT_FREQ_MAP[int(time[1])].lower()}\n"
+            
+
+        await message.channel.send("Which time do you want to change?")
+        await message.channel.send(msg)
+
+        while True:
+            res = await self.recieve_response(message, client)
+
+            try:
+                num = int(res.content)
+            except ValueError:
+                await message.channel.send(f"Please choose a number between 1 ~ {i + 1}")
+                continue
+
+            if num not in range(1, i + 2):
+                await message.channel.send(f"Please choose a number between 1 ~ {i + 1}")
+                continue
+
+            break
+
+        new_types = ['0', '0', '0', '0']
+        await message.channel.send(f"Discussions?")
+        res = await self._recieve_response(message, client)
+        if res.content.startswith("y") or res.content.startswith("right"):
+            new_types[0] = '1'
+
+        await message.channel.send(f"Announcements?")
+        res = await self._recieve_response(message, client)
+        if res.content.startswith("y") or res.content.startswith("right"):
+            new_types[1] = '1'
+
+        await message.channel.send(f"Reminders?")
+        res = await self._recieve_response(message, client)
+        if res.content.startswith("y") or res.content.startswith("right"):
+            new_types[2] = '1'
+
+        await message.channel.send(f"Due dates?")
+        res = await self._recieve_response(message, client)
+        if res.content.startswith("y") or res.content.startswith("right"):
+            new_types[3] = '1'
+
+        new_types = "".join(new_types)
+        num -= 1
+        await message.channel.send(f"Change time: {current_times[num][0]} {current_times[num][1]}'s types?")
+
+        res = await self._recieve_response(message, client)
+
+        if res.content.startswith("y") or res.content.startswith("right"):
+            self._DB_UTIL.update_notification_schedule_types(self._id_to_username_map[message.author.id],
+                                                        current_times[num][0], current_times[num][1], new_types)
+
+            await message.channel.send("Type updated")
+        else:
+            await message.channel.send(f"No changes are made to your schedule.")
+
     # helper function. will not be called directly be a user command. 
     async def _delete_noti_all(self, message, client):
         await message.channel.send("Are you sure to delete all of your scheduled times?")
@@ -901,3 +971,151 @@ class NLPAction():
             await message.channel.send(f"No changes are made to your schedule.")
 
 
+    # ----- recurring events -----
+
+
+    # TODO: how to sync to different Google drive accounts?
+    # TODO: I don't have a client secret... how to get one? - Katherine
+    async def sync_calendar_classes(self):
+
+        # Sync calendar for every user!
+        for BS_UTILS in self._id_to_bsu_map.values():
+            if not self._login_if_necessary(None, BS_UTILS):
+                if self._debug:
+                    print("sync calendar classes: login to bs failed.")
+                continue
+
+
+            #  Syncing the calendar daily (so it can get the correct changes)
+            classes = BS_UTILS.get_classes_enrolled()
+            # classes = {"EAPS": "336112"}
+            for courseName, courseID in classes.items():
+                assignment_list = BS_UTILS._bsapi.get_upcoming_assignments(courseID)
+                due = BS_UTILS.process_upcoming_dates(assignment_list)
+                if len(due) != 0:
+                    # actually dates that are upcoming
+                    cal = Calendar()
+                    # loop through all the upcoming assignments
+                    for assignment in due:
+                        # Check if the event exists first by searching by name
+                        event_title = f"ASSIGNMENT DUE: {assignment[0]} ({courseID})"
+                        description = f"{assignment[0]} for {courseName} is due. Don't forget to submit it!"
+                        search_result, end_time = cal.get_event_from_name(event_title)
+                        date = datetime.datetime.fromisoformat(assignment[1][:-1])
+                        end = date.isoformat()
+                        start = (date - datetime.timedelta(hours=1)).isoformat()
+
+                        if self._debug:
+                            print("End date from search: " + str(end_time))
+
+                        if search_result != -1:
+                            # it has already been added to the calendar
+                            # see if the end times are different
+                            if end_time != end:
+                                # the due date has been updated, so delete the old event
+                                cal.delete_event(search_result)
+                                cal.insert_event(event_title, description, start, end)
+                        else:
+                            # has not been added to calendar, so add normally
+                            # inserting event
+                            cal.insert_event(event_title, description, start, end)
+
+
+    async def sync_calender_quizzes(self):
+        # Sync calendar for every user!
+        for BS_UTILS in self._id_to_bsu_map.values():
+            if not self._login_if_necessary(None, BS_UTILS):
+                if self._debug:
+                    print("sync calendar classes: login to bs failed.")
+                continue
+
+            quizzes = BS_UTILS.get_all_upcoming_quizzes()
+            for quiz in quizzes:
+                cal = Calendar()
+                event_title = f"QUIZ DUE: {quiz['quiz_name']} ({quiz['course_id']})"
+                description = f"{quiz['quiz_name']} for {quiz['course_name']} is due. Don't forget to submit it!"
+                date = datetime.datetime.fromisoformat(quiz['due_date'][:-1])
+                end = date.isoformat()
+                start = (date - datetime.timedelta(hours=1)).isoformat()
+                event_id, end_time = cal.get_event_from_name(event_title)
+                # event has already been created in google calendar
+                if event_id == -1:
+                    # insert new event to calendar
+                    cal.insert_event(event_title, description, start, end)
+                # event has not been created
+                else:
+                    # if end time has changed, update the event
+                    if end_time != end:
+                        cal.delete_event(event_id)
+                        cal.insert_event(event_title, description, start, end)
+
+        #print("inserting into calendar is finished...")
+
+
+    async def send_notifications(self, client):
+        async def send_notifications(string, BS_UTILS, channel_id, types):
+            message_channel = client.get_channel(channel_id)
+            #print(channel_id, message_channel)
+
+            if types[0] == "1":
+                dates = BS_UTILS.get_dict_of_discussion_dates()
+                # dates = DATES
+                string += BS_UTILS.find_upcoming_disc_dates(1, dates)
+            if types[1] == "1":
+                string += BS_UTILS.get_notifications_past_24h()
+            if types[2] == "1":
+                string += BS_UTILS.get_events_by_type_past_24h(1)  # Reminder
+            if types[3] == "1":
+                string += BS_UTILS.get_events_by_type_past_24h(6)  # DueDate
+
+            # replace course id's with course names:
+
+            courses = BS_UTILS.get_classes_enrolled()
+            for course in courses.keys():
+                curr_course_id = courses[course]
+                curr_course_id = str(curr_course_id)
+                if curr_course_id in string:
+                    string = string.replace(curr_course_id, course)
+
+
+            # send the upcoming discussion due dates
+            # TODO: use a loop to send the full message. 
+            await message_channel.send(string[:2000])
+            return
+        
+        now = datetime.datetime.now()
+        time_string = now.strftime("%H:%M")
+        weekday = now.weekday()
+
+        schedules = self._DB_UTIL.get_notifictaion_schedule_by_time(time_string, weekday)
+
+        for schedule in schedules:
+            username = schedule[0]
+            # The default channel!
+            channel_id = int(schedule[1])
+            types = schedule[2]
+            if not types:
+                types = "1111"
+
+            # Check if the user wants another channel
+            sql_command = f"SELECT DEADLINES_TC FROM PREFERENCES WHERE USERNAME = '{username}';"
+            sql_result = self.DB_UTIL._mysql.general_command(sql_command)[0][0]
+            if sql_result is not None:
+                for c in client.get_all_channels():
+                    sql_result = sql_result.replace(" ", "-")
+                    if c.name == sql_result:
+                        channel_id = c.id
+                        break
+
+            
+            BS_UTILS = self._id_to_bsu_map[username]
+            if not self._login_if_necessary(None, BS_UTILS):
+                if self._debug:
+                    print("send_notifications: login to bs failed.")
+                continue
+
+            dates = BS_UTILS.get_dict_of_discussion_dates()
+            string = BS_UTILS.find_upcoming_disc_dates(1, dates)
+            string += BS_UTILS.get_notifications_past_24h()
+
+            await send_notifications(string, BS_UTILS, channel_id, types)
