@@ -1675,19 +1675,16 @@ async def on_message(message):
     elif message.content.startswith("add discussion schedule"):
         await message.channel.send('What day(s) do you want discussion reminders sent each week?')
         days = await recieve_response()
+        username = author_id_to_username_map[days.author.id]
         days = days.content.lower()
-        days = BOT_RESPONSES.add_discussion_schedule_to_db(days)
+        await message.channel.send("Which class's discussions do you want to add to the schedule?")
+        classes = await recieve_response()
+        classes = classes.content.lower()
+        BOT_RESPONSES.add_discussion_schedule_to_db(username, days, classes)
         return
 
-    elif message.content.startswith("add discussion to schedule"):
-        await message.channel.send("Which class's discussions do you want to add to the schedule?")
-
-        try:
-            user_response = await client.wait_for('message', check=check, timeout=60)
-        except asyncio.TimeoutError:
-            await message.channel.send("Time error has occurred. Please try the query again")
-            return
-    elif message.content.startwith("Remove discussion from schedule"):
+    elif message.content.startswith("Remove discussion from schedule"):
+        return
 
 
 

@@ -1061,5 +1061,21 @@ class BSUtilities():
         students = []
         posts = self._bsapi.get_discussion_posts(course_id=course_id, forum_id=forum_id, topic_id=topic_id)
         for post in posts:
-            students.append(post['PostingUserDisplayName'])
+            name = post['PostingUserDisplayName']
+            name = name.lower()
+            students.append(name)
         return students
+
+    def get_all_forum_ids(self, course_id):
+        forums = self._bsapi.get_forums(course_id)
+        forum_ids = []
+        for forum in forums:
+            forum_ids.append(forum['ForumId'])
+        return forum_ids
+
+    def get_all_topic_ids(self, course_id, forum_id):
+        topics = self._bsapi.get_discussion_topics(course_id, forum_id)
+        topic_ids = []
+        for topic in topics:
+            topic_ids.append(topic['TopicId'])
+        return topic_ids

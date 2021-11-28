@@ -4,6 +4,7 @@ from rename_file import RenameFile
 from bs_utilities import BSUtilities
 from bs_calendar import Calendar
 import datetime
+import re
 
 DAY_MAP = {
     0: "MO",
@@ -13,16 +14,6 @@ DAY_MAP = {
     4: "FR",
     5: "SA",
     6: "SU"
-}
-
-DAY_MAP_NUM = {
-    "MO": 0,
-    "TU": 1,
-    "WE": 2,
-    "TH": 3,
-    "FR": 4,
-    "SA": 5,
-    "SU": 6
 }
 
 # This will be a helper class to organize all the responses that the bot will need to provide back to discord
@@ -216,6 +207,15 @@ class BotResponses:
             result = result + "," + day
         return result[1:]
 
+    def format_classes(self, classes):
+        classes = re.split('[^a-zA-Z0-9]+', classes)
+        result = ''
+        for c in classes:
+            course_id = self.BS_UTILS.find_course_ID(c)
+            result = result + "," + str(course_id)
+        return result[1:]
+
+
     def add_office_hours_to_calendar(self, course_name, instr_name, days, st_time, end_time):
         cal = Calendar()
         event_title = f"OFFICE HOURS: for {course_name}, {instr_name}"
@@ -242,10 +242,35 @@ class BotResponses:
             cal.delete_event(first_event_id)
         return "Office hours successfully added to calendar!"
 
-    def add_discussion_schedule_to_db(self, days):
+    def add_discussion_schedule_to_db(self, username, days, classes):
         formatted_days = self.format_days_of_week(days)
-        self.DB_UTILS.add_discussion_schedule(formatted_days)
+        formatted_classes = self.format_classes(classes)
+        self.DB_UTILS.add_discussion_schedule(username, formatted_days, formatted_classes)
         return
+
+    def check_if_student_posted(self, students, current_user):
+        current_user = current_user.lower()
+        return current_user in students
+
+    # def discussion_reminder(self):
+    #     students = []
+    #     classes = self.DB_UTILS.get_classes_in_discussion_schedule()
+    #     full_name = self.DB_UTILS.get_full_name()
+    #     for c in classes:
+    #         course_id = self.BS_UTILS.find_course_ID(c)
+    #         forum_ids = self.BS_UTILS.get_all_forum_ids(course_id)
+    #         for forum_id in forum_ids:
+    #             topic_ids = self.BS_UTILS.get_all_topic_ids(course_id, forum_id)
+    #             for topic_id in topic_ids:
+    #                 student = self.BS_UTILS.get_students_who_posted(course_id, forum_id, topic_id)
+    #                 if student.equals(full_name)
+    #                     return
+    #      #           students.append(self.BS_UTILS.get_students_who_posted(course_id, forum_id, topic_id))
+    #     #self.check_if_student_posted(students, "Kristy Huang")
+    #     days = self.DB_UTILS.get_days_in_discussion_schedule()
+    #     for day in days:
+    #         if day is equal to the day of the week today, then construct a reply.
+
 
 
 
