@@ -193,4 +193,4 @@ class DBUtilities():
         for r in result:
             full_name = full_name + " " + r
         full_name = full_name.lower()
-        return full_name
+        return full_name[1:]

@@ -1066,16 +1066,16 @@ class BSUtilities():
             students.append(name)
         return students
 
-    def get_all_forum_ids(self, course_id):
+    def get_all_forum_ids_names(self, course_id):
         forums = self._bsapi.get_forums(course_id)
-        forum_ids = []
+        forum_ids_names = []
         for forum in forums:
-            forum_ids.append(forum['ForumId'])
-        return forum_ids
+            forum_ids_names.append({"id": forum['ForumId'], "name": forum['Name']})
+        return forum_ids_names
 
-    def get_all_topic_ids(self, course_id, forum_id):
+    def get_all_topic_ids_names(self, course_id, forum_id):
         topics = self._bsapi.get_discussion_topics(course_id, forum_id)
-        topic_ids = []
+        topic_ids_names = []
         for topic in topics:
-            topic_ids.append(topic['TopicId'])
-        return topic_ids
+            topic_ids_names.append({"id": topic['TopicId'], "name": topic['Name'], "due_date": topic['EndDate']})
+        return topic_ids_names

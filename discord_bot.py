@@ -71,7 +71,6 @@ async def quit(ctx):
 async def notification_loop():
     if not BS_UTILS.check_connection():
         return
-
     #  Syncing the calendar daily (so it can get the correct changes)
     # classes = BS_UTILS.get_classes_enrolled()
     # # classes = {"EAPS": "336112"}
@@ -157,6 +156,11 @@ async def notification_loop():
             ## only for debugging ##
             string = "No posts today"
 
+    response = BOT_RESPONSES.discussion_remind_to_post(BOT_RESPONSES.db_username)
+    string += "Reminder to reply to the following discussions: "
+    if response != '-1':
+        string += response
+
     # print("called_once_a_day:")
     async def send_notifications(string, channel_id, types):
         message_channel = client.get_channel(channel_id)
@@ -222,7 +226,6 @@ async def notification_before():
 notification_loop.start()
 login_lock = False
 
-
 # This is our input stream for our discord bot
 # Every message that comes from the chat server will go through here
 @client.event
@@ -259,6 +262,7 @@ async def on_message(message):
         await message.channel.send("What is your username?")
         username = await recieve_response()
         author_id_to_username_map[username.author.id] = username.content
+        BOT_RESPONSES.set_db_username(username.content)
 
     def get_weekday(msg):
         msg = msg.lower()
@@ -1362,7 +1366,6 @@ async def on_message(message):
 
         sql_command = f"UPDATE PREFERENCES SET {db_category} = '{text_channel}' WHERE USERNAME = '{DB_USERNAME}';"
         DB_UTILS._mysql.general_command(sql_command)
-        print(DB_UTILS.show_table_content("PREFERENCES"))
 
         if not found:
             list_of_tcs = list_of_tcs + "," + text_channel
@@ -1683,12 +1686,12 @@ async def on_message(message):
         BOT_RESPONSES.add_discussion_schedule_to_db(username, days, classes)
         return
 
-    elif message.content.startswith("Remove discussion from schedule"):
+    elif message.content.startswith("check discussion schedule"):
+        response = BOT_RESPONSES.discussion_remind_to_post(BOT_RESPONSES.db_username)
+        await message.channel.send("Reminder to reply to the following discussions: ")
+        if response != '-1':
+            await message.channel.send(response)
         return
-
-
-
-
 
 # Now to actually run the bot!
 client.run(config['token'])
