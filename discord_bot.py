@@ -71,6 +71,8 @@ async def notification_loop():
     if not BS_UTILS.check_connection():
         return
 
+    # yoho
+
     # Syncing the calendar daily (so it can get the correct changes)
     #classes = BS_UTILS.get_classes_enrolled()
     classes = {"EAPS": "336112"}
