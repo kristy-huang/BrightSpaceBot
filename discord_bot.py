@@ -168,7 +168,7 @@ async def notification_loop():
 
     # Check if the database has a value for the deadlines text channel
 
-    channel_id = 0
+    channel_id = channelID
     print("hello...")
     sql_command = f"SELECT DEADLINES_TC FROM PREFERENCES WHERE USERNAME = '{DB_USERNAME}';"
     sql_result = DB_UTILS._mysql.general_command(sql_command)[0][0]
