@@ -40,18 +40,6 @@ db_config = "./database/db_config.py"
 BS_UTILS = BSUtilities()
 DB_UTILS = DBUtilities(db_config)
 
-author_id_to_username_map = {}
-NOT_FREQ_MAP = {
-    0: "EVERY MONDAY",
-    1: "EVERY TUESDAY",
-    2: "EVERY WEDNSDAY",
-    3: "EVERY THURSDAY",
-    4: "EVERY FRIDAY",
-    5: "EVERY SATURDAY",
-    6: "EVERY SUNDAY",
-    7: "EVERYDAY"
-}
-
 
 nlpa = NLPAction(DB_UTILS, debug=DEBUG)
 
@@ -67,23 +55,32 @@ async def quit(ctx):
     return await client.logout()  # this just shuts down the bot.
 
 
-# change parameter to minutes=1 and see it happen every minute
+
 @tasks.loop(minutes=1)
-async def notification_loop():
-
-    await nlpa.sync_calendar_classes()
-    await nlpa.sync_calender_quizzes()
-
+async def minute_loop():
     await nlpa.send_notifications(client)
+    
 
 
-@notification_loop.before_loop
-async def notification_before():
+@minute_loop.before_loop
+async def minute_loop_before():
     await client.wait_until_ready()
 
 
-notification_loop.start()
-login_lock = False
+
+@tasks.loop(minutes=24 * 60)
+async def day_loop():
+    await nlpa.sync_calendar_classes()
+    await nlpa.sync_calender_quizzes()
+
+
+@day_loop.before_loop
+async def day_loop_before():
+    await client.wait_until_ready()
+
+
+minute_loop.start()
+day_loop.start()
 
 # This is our input stream for our discord bot
 # Every message that comes from the chat server will go through here
@@ -897,7 +894,7 @@ async def on_message(message):
             else:
                 await message.channel.send(f"No changes are made to your schedule.")
 
-        elif message.content.startswith("delete noti"):
+        (Refactored) elif message.content.startswith("delete noti"):
             if message.author.id not in author_id_to_username_map:
                 await request_username_password()
 
@@ -917,7 +914,7 @@ async def on_message(message):
                 await delete_noti_some(current_times)
         
         
-        elif message.content.startswith("check noti"):
+        (Refactored) elif message.content.startswith("check noti"):
             if message.author.id not in author_id_to_username_map:
                 await request_username_password()
 
@@ -931,7 +928,7 @@ async def on_message(message):
 
                 await message.channel.send(msg)
 
-        elif message.content.startswith("add class"):
+        (Refactored) elif message.content.startswith("add class"):
             while True:
                 await message.channel.send("What is the class name?")
                 res = await recieve_response()
@@ -973,7 +970,7 @@ async def on_message(message):
                     continue
                 break
 
-        elif message.content.startswith("check class"):
+        (Refactored) elif message.content.startswith("check class"):
             if message.author.id not in author_id_to_username_map:
                 await request_username_password()
 

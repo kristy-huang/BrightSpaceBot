@@ -51,7 +51,16 @@ class NLPAction():
         "get upcoming quizzes": (self._get_upcoming_quizzes, True),
         "get newly graded assignments": (self._get_newly_graded_assignments, True),
         "get upcoming discussion": (self._get_upcoming_discussion, True),
-        "update notification schedule": (self._update_notification_schedule, True)
+        "update notification schedule": (self._update_notification_schedule, True),
+        "add notification schedule": (self._update_notification_schedule, True),
+        "delete notification schedule": (self._delete_notification_schedule, True),
+        "check notification schedule": (self._check_nofication_schedule, True),
+        "update class schedule": (self._update_class_schedule, True),
+        "add class schedule": (self._update_class_schedule, True),
+        "check class schedule": (self._check_class_schedule, True),
+        "update download schedule": (self._update_download_schedule, True),
+        "add download schedule": (self._update_download_schedule, True),
+        "check download schedule": (self._check_download_schedule, True)
         }
 
         # 1 = yes, 0 = no
@@ -655,7 +664,6 @@ class NLPAction():
             while not new_time:
                 new_time = await self.get_time(message, client)
 
-            print(day)
             day_str = self._NOT_FREQ_MAP[day]
             await message.channel.send(f"{new_time.content} for {day_str.lower()}?")
             res = await self._recieve_response(message, client)
@@ -971,6 +979,147 @@ class NLPAction():
             await message.channel.send(f"No changes are made to your schedule.")
 
 
+    async def _delete_notification_schedule(self, message, client):
+            current_times = self._DB_UTIL.get_notifictaion_schedule_with_description(
+                self._id_to_username_map[message.author.id])
+
+            if not current_times:
+                await message.channel.send("You don't have any scheduled times now.")
+                return
+
+            await message.channel.send("Do you want to delete all scheduled times or specific times?")
+
+            res = await self._recieve_response(message, client)
+            if self._get_closer_response(["all", "some"],res.content) == 0:
+                await self._delete_noti_all(message, client) 
+            else:
+                await self._delete_noti_some(message, client, current_times)
+
+
+    async def _check_nofication_schedule(self, message, client):
+
+            s_times = self._DB_UTIL.get_notifictaion_schedule_with_description(self._id_to_username_map[message.author.id])
+            if not s_times:
+                await message.channel.send("No schedules now!")
+            else:
+                msg = f"Scheduled times for {self._id_to_username_map[message.author.id]}:\n"
+                for hour in s_times:
+                    msg += f"{hour[0]} {self._NOT_FREQ_MAP[int(hour[1])].lower()}\n"
+
+                await message.channel.send(msg)
+
+
+    async def _update_class_schedule(self, message, client):
+            while True:
+                await message.channel.send("What is the class name?")
+                res = await self._recieve_response(message, client)
+                class_name = res.content
+
+                while True:
+                    await message.channel.send("Which week day?")
+                    while True:
+                        res = await self._recieve_response(message, client)
+                        day = await self.get_weekday(res.content)
+                        if day == -1:
+                            await message.channel.send("Please choose from Mon/Tues/Wed/Thurs/Fri/Sat/Sun")
+                            continue
+                        break
+
+                    new_time = None
+                    while not new_time:
+                        new_time = await self.get_time(message, client)
+
+                    day_str = self._NOT_FREQ_MAP[day]
+                    await message.channel.send(f"{new_time.content} for {day_str.lower()}?")
+                    res = await self._recieve_response(message, client)
+                    if self._decide_yes_or_no(res):
+                        self._DB_UTIL.add_class_schedule(self._id_to_username_map[res.author.id], class_name, new_time.content,
+                                                    description=day)
+                        await message.channel.send(f"Schedule changed.")
+                    else:
+                        await message.channel.send(f"No changes are made to your schedule.")
+
+                    await message.channel.send(f"Do you want to add another time for this class?")
+                    res = await self._recieve_response(message, client)
+                    if self._decide_yes_or_no(res):
+                        continue
+                    break
+
+                await message.channel.send(f"Do you want to add another class?")
+                res = await self._recieve_response(message, client)
+                if self._decide_yes_or_no(res):
+                    continue
+                
+                await message.channel.send(f"Understood. Have a nice day.")
+                break
+
+
+    async def _check_class_schedule(self, message, client):
+            c_times = self._DB_UTIL.get_class_schedule_with_description(self._id_to_username_map[message.author.id])
+
+            if not c_times:
+                await message.channel.send("No schedules now!")
+            else:
+                msg = f"Scheduled classes for {self._id_to_username_map[message.author.id]}:\n"
+                for hour in c_times:
+                    msg += f"{hour[0]} {hour[1]} {self._NOT_FREQ_MAP[int(hour[2])].lower()}\n"
+
+                await message.channel.send(msg)
+
+    
+    async def _update_download_schedule(self, message, client):
+        #await message.channel.send(f"What time every day do you want your files to be downloaded?")
+        new_time = None
+        while not new_time:
+            new_time = await self.get_time(message, client)
+
+        await message.channel.send(f"What type of files? (Videos, pdf, slides, other files, or all)")
+        res = await self._recieve_response(message, client)
+        option = self._get_closer_response(["videos", "pdf", "slides", "ppt", "other files", "all"],
+                                           res.content)
+
+        if option == 0:
+            type = "video"
+        elif option == 1:
+            type = "pdf"
+        elif option == 2 or option == 3:
+            type = "slides"
+        elif option == 4:
+            type = "other"
+        else:
+            type = "all"
+
+
+        await message.channel.send(f"Add to {new_time.content}, right?")
+        res = await self._recieve_response(message, client)
+
+        if self._decide_yes_or_no(res):
+            self._DB_UTIL.add_download_shcedule(self._id_to_username_map[res.author.id], new_time.content,
+                                                type, description=7)  # 7 = everyday
+            # SCHEDULED_HOURS.append(new_hour)
+            await message.channel.send(f"Schedule changed.")
+        else:
+            await message.channel.send(f"No changes are made to your schedule.")
+
+
+    async def _check_download_schedule(self, message, client):
+
+        s_times = self._DB_UTIL.get_download_schedule(self._id_to_username_map[message.author.id])
+        if not s_times:
+            await message.channel.send("No downloading schedules now!")
+        else:
+            msg = f"Scheduled download times for {self._id_to_username_map[message.author.id]}:\n"
+            for hour in s_times:
+                msg += f"{hour[0]} {self._NOT_FREQ_MAP[int(hour[1])].lower()}\n"
+
+            await message.channel.send(msg)
+
+
+
+
+
+
+
     # ----- recurring events -----
 
 
@@ -1099,8 +1248,9 @@ class NLPAction():
 
             # Check if the user wants another channel
             sql_command = f"SELECT DEADLINES_TC FROM PREFERENCES WHERE USERNAME = '{username}';"
-            sql_result = self.DB_UTIL._mysql.general_command(sql_command)[0][0]
-            if sql_result is not None:
+            sql_result = self._DB_UTIL._mysql.general_command(sql_command)
+            if sql_result:
+                sql_result = sql_result[0][0]
                 for c in client.get_all_channels():
                     sql_result = sql_result.replace(" ", "-")
                     if c.name == sql_result:
@@ -1119,3 +1269,6 @@ class NLPAction():
             string += BS_UTILS.get_notifications_past_24h()
 
             await send_notifications(string, BS_UTILS, channel_id, types)
+
+
+    #async def download_files(self,)

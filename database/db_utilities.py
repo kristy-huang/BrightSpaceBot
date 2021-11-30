@@ -176,3 +176,23 @@ class DBUtilities():
     def get_username_password(self, username):
         res = self._mysql.general_command(f"SELECT username, password FROM USERS WHERE username = \"{username}\"")
         return res
+
+
+
+
+    # description: weekday!
+    def add_download_shcedule(self, username, scheduled_time, type, description):
+        cols = {
+            "USERNAME": username,
+            "TIME": scheduled_time,
+            "TYPE": type,
+            "DESCRIPTION": str(description)
+        }
+
+        self._mysql.insert_into("DOWNLOAD_SCHEDULE", cols)
+
+
+    def get_download_schedule(self, username):
+        return self._mysql.general_command(f"SELECT DISTINCT TIME,DESCRIPTION FROM DOWNLOAD_SCHEDULE WHERE USERNAME = \"{username}\" ORDER BY TIME ASC")
+
+
