@@ -182,10 +182,6 @@ class BotResponses:
             self.set_google_drive()  # setting up the google drive variable
         self.BS_UTILS.download_files(course_id, storage_path, storage_location, self.google_drive, full_course_name)
 
-    def change_bot_name(self, user_response):
-
-        # change value used to check if the user keep wants to change the name of the bot
-        # initialized to True
-        # change = True
+    def change_bot_setting(self):
 
         return

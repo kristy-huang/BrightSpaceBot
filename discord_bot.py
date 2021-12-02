@@ -1626,7 +1626,35 @@ async def on_message(message):
     elif message.content.startswith("!D:"):
         BOT_RESPONSES.download_files(message.content, DB_USERNAME)
 
+    elif message.content.startswith("change configuration"):
+        # Bot configuration includes:
+        # 1. BrightSpace configuration
+        # 1.1 Notification
+        # 1.2 Read/Unread Status
+        # 1.3
+        #
+        # 2. Bot configuration
+        # 2.1 Bot name
+        # 2.2
+        #
+        # 3. Default setting
+        # 3.1 Default mode: set everything to default
+        # 3.2 Change default: allow user to save their own default
 
+        # Ask for specific configuration
+        await message.channel.send("Please select a configuration you would like to change:\n" +
+                                   "[1] BrightSpace\t[2] BrightSpaceBot\t[3] Default setting\n")
+
+        try:
+            user_choice = await client.wait_for("message", check=check, timeout=60)
+
+            if user_choice.content == "1":
+                return
+
+        except asyncio.TimeoutError:
+            await message.channel.send("Timeout Error has occurred. Please try the query again!")
+
+        return
 
 # Now to actually run the bot!
 client.run(config['token'])
