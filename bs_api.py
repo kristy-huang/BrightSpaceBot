@@ -435,8 +435,8 @@ class BSAPI():
 
     def get_past_assignments(self, course_id):
         url = self._API_URL_PREFIX + "le/1.38/{course_id}/dropbox/folders/".format(course_id=course_id)
-        assignments = self.__process_api_json("get_upcoming_assignments", url)
-        print(assignments)
+        assignments = self.__process_api_json("get_past_assignments", url)
+        # print(assignments)
         if assignments is None:
             return []
         past_assignments = []
@@ -445,12 +445,12 @@ class BSAPI():
             attachment_file = None
             if attachment_len > 0:
                 attachment_file = assignment['Attachments'][0]['FileName']
-                print(attachment_file)
+                # print(attachment_file)
 
             if assignment["DueDate"] is None:
-                l = [assignment["Name"], None, attachment_file]
+                l = {'assignment_name': assignment["Name"], 'due_date': None, 'file_name': attachment_file}
             else:
-                l = [assignment["Name"], assignment["DueDate"], attachment_file]
+                l = {'assignment_name': assignment["Name"], 'due_date': assignment["DueDate"], 'file_name': attachment_file}
 
             current_date = datetime.datetime.utcnow()
             assignment_due_date = datetime.datetime.fromisoformat(assignment['DueDate'][:-1])

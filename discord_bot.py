@@ -1694,5 +1694,12 @@ async def on_message(message):
             await message.channel.send(response)
         return
 
+    elif message.content.startswith("archive"):
+        response = BOT_RESPONSES.archive_past_assignments(BS_UTILS._bsapi)
+        if response != '-1':
+            await message.channel.send(response)
+        return
+
+
 # Now to actually run the bot!
 client.run(config['token'])

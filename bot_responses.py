@@ -5,6 +5,7 @@ from bs_utilities import BSUtilities
 from bs_calendar import Calendar
 import datetime
 import re
+from file_storage import *
 
 DAY_MAP = {
     0: "MO",
@@ -325,3 +326,10 @@ class BotResponses:
         # change = True
 
         return
+
+    def archive_past_assignments(self, bs_api):
+        reply = '-1'
+        drive = init_google_auths()
+        move_past_assignments_to_archive(drive, bs_api)
+        reply = 'success'
+        return reply
