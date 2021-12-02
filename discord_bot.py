@@ -197,7 +197,8 @@ async def notification_loop():
         await message_channel.send(string[:2000])
         return
 
-    '''if not BS_UTILS.check_connection():
+    '''
+        if not BS_UTILS.check_connection():
         message_channel = client.get_channel(channel_id)
         await message_channel.send("Connection to BS lost. Attempting to reconnect to BS...")
         BS_UTILS.set_session_auto(DB_UTILS, author_id_to_username_map[message.author.id])
@@ -658,9 +659,7 @@ async def on_message(message):
 
         # change value used to check if the user keep wants to change the name of the bot
         # initialized to True
-
         change = True
-        valid_change_response = True
 
         # check method for waiting client's reply back
         def check(msg):
@@ -689,10 +688,10 @@ async def on_message(message):
                 change_again = await client.wait_for('message', check=check)
 
                 # user does not want to change again
-                if change_again.content.startswith('No'):
+                if change_again.content.lower().startswith('no') or change_again.content.lower().startswith('n'):
                     change = False
                     await message.channel.send("Thank you for changing my name!")
-                elif not change_again.content.startswith('Yes'):  # user input invalid response
+                elif not change_again.content.lower().startswith('yes') or not change_again.content.lower().startswith('y'):  # user input invalid response
                     await message.channel.send("Invalid response given! Please try the query again.")
                     return
             except asyncio.TimeoutError:
