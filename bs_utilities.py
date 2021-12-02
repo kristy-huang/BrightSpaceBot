@@ -1081,3 +1081,40 @@ class BSUtilities():
         return suggested_classes, lack_info_classes
 
 
+    '''Returns an array of the last modified dates in each section and topic'''
+    def get_last_mod_from_sections(self, course_id):
+        modules = self._bsapi.get_topics(course_id)["Modules"]
+
+        if self._debug:
+            print("number of big sections:", len(modules))
+
+        last_mod_dates = []
+        # going through the big sections
+        for i in range(len(modules)):
+            arr = []
+            module_string = "MODULE: " + modules[i]["Title"]
+            arr.append(module_string)
+            arr.append(modules[i]["LastModifiedDate"])
+            # go through any folders the module section may have (module inside module)
+            for j in range(len(modules[i]["Modules"])):
+                m_topics = modules[i]["Modules"][j]["Topics"]
+                topic_string = "TOPIC: " + modules[i]["Modules"][j]["Title"]
+                arr.append(topic_string)
+                arr.append(modules[i]["Modules"][j]["LastModifiedDate"])
+                # going through the topics to see files listed
+                for k in range(len(m_topics)):
+                    assignment_string = "FILE: " + m_topics[k]["Title"]
+                    arr.append(assignment_string)
+                    arr.append(m_topics[k]["LastModifiedDate"])
+
+            last_mod_dates.append(arr)
+
+
+
+
+
+
+        return last_mod_dates
+
+
+

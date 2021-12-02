@@ -2,6 +2,7 @@ import discord
 from rename_file import RenameFile
 import asyncio
 from file_storage import validate_path_local
+from datetime import datetime
 
 # This will be a helper class to organize all the responses that the bot will need to provide back to discord
 class BotResponses:
@@ -477,5 +478,47 @@ class BotResponses:
 
         else:
             await message.channel.send("Your input isn't valid")
+
+    def see_if_section_updated(self, courseID):
+        # get current date and time
+        todays_date = datetime.utcnow()
+        due_dates = self.BS_UTILS.get_last_mod_from_sections(courseID)
+        updated = []
+        for section in due_dates:
+            for item in section:
+                module = ""
+                topic = ""
+                file = ""
+                if item.startswith("MODULE"):
+                    module = item
+                if item.startswith("TOPIC:"):
+                    topic = item
+                if item.startswith("FILE:"):
+                    file = item
+
+                else:
+                    date = datetime.fromisoformat(item[:-1])
+                    diff = date - todays_date
+                    print(diff)
+                    if diff.days == 0:
+                        # then it was updated today
+                        updated.append(module)
+                        updated.append(topic)
+                        updated.append(file)
+
+
+        return updated
+
+
+
+
+
+        # loop through courses user is enrolled in
+        # classes = self.BS_UTILS.get_classes_enrolled()
+        # for courseName, courseID in classes.items():
+        #     self.BS_UTILS.get_topics_from_modules(courseID)
+        # go through table of contents and save last modified date
+        # compare its value with todays date. If same, then modified -> send message
+
 
 

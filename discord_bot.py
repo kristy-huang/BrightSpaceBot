@@ -131,6 +131,8 @@ async def notification_loop():
                     cal.insert_event(event_title, description, start, end)
 
 
+
+
     print("inserting into calendar is finished...")
     #
     # # Syncing quizzes to the calendar daily (so it can get the correct changes)
@@ -156,13 +158,18 @@ async def notification_loop():
     #
     print("inserting into calendar is finished...")
 
-    print(datetime.datetime.now().hour)
-    message_channel = client.get_channel(channelID)
-    dates = BS_UTILS.get_dict_of_discussion_dates()
-    # dates = DATES
-    string = BS_UTILS.find_upcoming_disc_dates(1, dates)
-    string += BS_UTILS.get_notifications_past_24h()
+    # SEEING IF A SECTION HAS BEEN UPDATED / ADDED
 
+
+
+    print(datetime.datetime.now().hour)
+    # message_channel = client.get_channel(channelID)
+    # dates = BS_UTILS.get_dict_of_discussion_dates()
+    # # dates = DATES
+    # string = BS_UTILS.find_upcoming_disc_dates(1, dates)
+    # string += BS_UTILS.get_notifications_past_24h()
+
+    string = "no post 165"
 
 
     # Check if the user has a designated text channel for deadline notifications to be sent
