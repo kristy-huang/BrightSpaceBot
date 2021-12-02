@@ -3,7 +3,7 @@ from Authentication import get_brightspace_session, get_brightspace_session_auto
 import requests
 import os
 import json
-
+import datetime
 
 class BSAPI():
     # ---------- Some initialization functions -----------
@@ -432,6 +432,32 @@ class BSAPI():
                 l = [assignment["Name"], assignment["DueDate"]]
             due.append(l)
         return due
+
+    def get_past_assignments(self, course_id):
+        url = self._API_URL_PREFIX + "le/1.38/{course_id}/dropbox/folders/".format(course_id=course_id)
+        assignments = self.__process_api_json("get_upcoming_assignments", url)
+        print(assignments)
+        if assignments is None:
+            return []
+        past_assignments = []
+        for assignment in assignments:
+            attachment_len = len(assignment['Attachments'])
+            attachment_file = None
+            if attachment_len > 0:
+                attachment_file = assignment['Attachments'][0]['FileName']
+                print(attachment_file)
+
+            if assignment["DueDate"] is None:
+                l = [assignment["Name"], None, attachment_file]
+            else:
+                l = [assignment["Name"], assignment["DueDate"], attachment_file]
+
+            current_date = datetime.datetime.utcnow()
+            assignment_due_date = datetime.datetime.fromisoformat(assignment['DueDate'][:-1])
+            diff = (assignment_due_date - current_date).days
+            if diff < 0:
+                past_assignments.append(l)
+        return past_assignments
 
 
 
