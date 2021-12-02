@@ -99,6 +99,13 @@ def upload_file_to_local_path(localPath, fileRUL, filename):
     urllib.urlretrieve(fileRUL, fullfilename)
 
 
+def create_folder_in_drive(drive, file_name):
+    folder_meta = {'title': file_name, 'mimeType': 'application/vnd.google-apps.folder'}
+    archive_folder = drive.CreateFile(folder_meta)
+    archive_folder.Upload()
+    return {'title': archive_folder['title'], 'id': archive_folder['id']}
+
+
 # Prompt options for storage locations when prompting users to specify a location
 
 

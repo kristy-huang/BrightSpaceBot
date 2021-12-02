@@ -71,6 +71,7 @@ async def quit(ctx):
 async def notification_loop():
     if not BS_UTILS.check_connection():
         return
+
     #  Syncing the calendar daily (so it can get the correct changes)
     # classes = BS_UTILS.get_classes_enrolled()
     # # classes = {"EAPS": "336112"}
@@ -141,7 +142,7 @@ async def notification_loop():
 
     # Check if the database has a value for the deadlines text channel
 
-    channel_id = 0
+    channel_id = channelID
     print("hello...")
     sql_command = f"SELECT DEADLINES_TC FROM PREFERENCES WHERE USERNAME = '{DB_USERNAME}';"
     sql_result = DB_UTILS._mysql.general_command(sql_command)[0][0]
@@ -244,7 +245,8 @@ async def on_message(message):
     username = str(message.author).split('#')[0]
     user_message = str(message.content)
     channel = str(message.channel.name)
-
+    channelID = message.channel.id
+    
     print(f'{username}: {user_message} ({channel}) ({message.channel.id})')
 
     def check(msg):
