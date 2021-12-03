@@ -1688,6 +1688,7 @@ async def on_message(message):
 
         except asyncio.TimeoutError:
             await message.channel.send("Timeout Error has occurred. Please try the query again!")
+
         return
 
     elif message.content.startswith("check read"):
