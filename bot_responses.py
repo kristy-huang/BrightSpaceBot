@@ -182,6 +182,6 @@ class BotResponses:
             self.set_google_drive()  # setting up the google drive variable
         self.BS_UTILS.download_files(course_id, storage_path, storage_location, self.google_drive, full_course_name)
 
-    def change_bot_setting(self):
+    def change_configuration(self):
 
         return

@@ -681,7 +681,8 @@ async def on_message(message):
                 if change_again.content.lower().startswith('no') or change_again.content.lower().startswith('n'):
                     change = False
                     await message.channel.send("Thank you for changing my name!")
-                elif not change_again.content.lower().startswith('yes') or not change_again.content.lower().startswith('y'):  # user input invalid response
+                elif not change_again.content.lower().startswith('yes') or not change_again.content.lower().startswith(
+                        'y'):  # user input invalid response
                     await message.channel.send("Invalid response given! Please try the query again.")
                     return
             except asyncio.TimeoutError:
@@ -1626,35 +1627,72 @@ async def on_message(message):
     elif message.content.startswith("!D:"):
         BOT_RESPONSES.download_files(message.content, DB_USERNAME)
 
-    elif message.content.startswith("change configuration"):
+    elif message.content.startswith("configuration setting"):
         # Bot configuration includes:
-        # 1. BrightSpace configuration
+        # 1 BrightSpace configuration
         # 1.1 Notification
-        # 1.2 Read/Unread Status
-        # 1.3
+        # 1.2 Download location
         #
-        # 2. Bot configuration
-        # 2.1 Bot name
-        # 2.2
+        # 2 Bot configuration
+        # 2.1 Notification
+        # 2.2 Bot name
         #
-        # 3. Default setting
+        # 3 Default setting
         # 3.1 Default mode: set everything to default
         # 3.2 Change default: allow user to save their own default
 
         # Ask for specific configuration
         await message.channel.send("Please select a configuration you would like to change:\n" +
-                                   "[1] BrightSpace\t[2] BrightSpaceBot\t[3] Default setting\n")
+                                   "[1] Download location\n"
+                                   "[2] BrightSpaceBot Notification\n[3] Change Bot name\n"
+                                   "[4] Set configuration to default\n")
 
         try:
             user_choice = await client.wait_for("message", check=check, timeout=60)
+            user_choice = user_choice.content
 
-            if user_choice.content == "1":
+            user_subchoice = ""
+
+            if user_choice.startswith("1"):
+                # download location change
+                await message.channel.send("Please confirm option selection by typing \"update storage\" to continue")
                 return
+            elif user_choice.startswith("2"):
+                # Notification Setting
+                await message.channel.send("Would you like to \"check notifications\", "
+                                           "\"check notification setting\", \"update schedule\"?")
+                return
+            elif user_choice.startswith("3"):
+                # Bot name change
+                await message.channel.send("Please confirm option selection by typing \"change bot name\" to continue")
+                return
+
+            elif user_choice.startswith("4"):
+                # Set to Default
+                await message.channel.send("Are you sure that you want to set every custom changes to default?\n"
+                                           "This includes notification setting, local drive location, "
+                                           " and the bot name.\n"
+                                           "Yes / No")
+                default_change = await client.wait_for("message", check=check, timeout=60)
+                default_change = default_change.content
+                if default_change.lower() == "yes":
+                    # set to default
+                    DB_UTILS.clear_notification_schedule(author_id_to_username_map[message.author.id])
+                    # Bot name
+                    await message.guild.me.edit(nick="BrightSpace Bot")
+                    await message.channel.send("Everything is set to default now!")
+                elif not default_change.lower() == "no":
+                    await message.channel.send("Given option is invalid. Please try the query from the beginning!")
+            else:
+                await message.channel.send("Given option is invalid. Please try the query again!")
 
         except asyncio.TimeoutError:
             await message.channel.send("Timeout Error has occurred. Please try the query again!")
-
         return
+
+    elif message.content.startswith("check read"):
+        return
+
 
 # Now to actually run the bot!
 client.run(config['token'])

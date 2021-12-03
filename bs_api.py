@@ -428,7 +428,9 @@ class BSAPI():
             due.append(l)
         return due
 
-
+    def get_all_notifications_on_brightspace(self):
+        url = self._API_URL_PREFIX + "/d2l/api/lp/1.38/notifications/instant/carriers/"
+        return self.__process_api_json("get_all_notification_on_brightspace", url)
 
 
 
