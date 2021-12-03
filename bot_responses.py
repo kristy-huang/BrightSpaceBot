@@ -333,3 +333,7 @@ class BotResponses:
         move_past_assignments_to_archive(drive, bs_api)
         reply = 'success'
         return reply
+
+    def updated_section(self):
+        reply = self.BS_UTILS.get_updated_sections(self.db_username)
+        return reply

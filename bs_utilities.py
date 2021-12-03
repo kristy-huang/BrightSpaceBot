@@ -1079,3 +1079,56 @@ class BSUtilities():
         for topic in topics:
             topic_ids_names.append({"id": topic['TopicId'], "name": topic['Name'], "due_date": topic['EndDate']})
         return topic_ids_names
+
+    def get_updated_sections(self, username):
+        sql = MySQLDatabase('database/db_config.py')
+        sql.create_table('COURSE_SECTIONS', 'username VARCHAR(255),'
+                                            'course_id VARCHAR(255),'
+                                            'num_sections INT,'
+                                            'sections VARCHAR(2048),'
+                                            'PRIMARY KEY (username, course_id)')
+        # course_id = 335093  # com 217
+        # print(sql.show_tables())
+        enrolled_courses = self.get_classes_enrolled()
+        response = 'You have no new sections added.'
+        for course_name, course_id in enrolled_courses.items():
+            secs = []
+            sections = self._bsapi.get_topics(course_id)
+            if len(sections) != 0 and sections is not None:
+                num_sections = len(sections['Modules'])
+                for section in sections['Modules']:
+                    sec_title = section['Title']
+                    secs.append(sec_title)
+                formatted_secs = self.format_sections(secs)
+                print(formatted_secs)
+                sql_response = sql.general_command(f"SELECT * FROM COURSE_SECTIONS "
+                                                   f"WHERE username=\'{username}\' AND course_id=\'{course_id}\'")
+                # if that section is not in the db yet, insert into db
+                if len(sql_response) == 0:
+                    sql.general_command(f"INSERT INTO COURSE_SECTIONS (username, course_id, num_sections, sections) "
+                                        f"VALUES (\"{username}\", \"{course_id}\", \"{num_sections}\", \"{formatted_secs}\")")
+                    response = response + f"{course_name} has {num_sections} new sections added. The following sections have been added by " \
+                               f"your instructor: {formatted_secs} \n\n"
+                else:
+                    num_sec_in_db = sql_response[0][2]
+                    if num_sections > num_sec_in_db:
+                        diff = self.get_diff_in_list(sql_response[0][3], formatted_secs)
+                        response = response + f"{course_name} has {num_sections - num_sec_in_db} new sections added. The following sections have been added by " \
+                                   f"your instructor: {diff} \n\n"
+
+        return response
+
+    def format_sections(self, sections):
+        result = ''
+        for section in sections:
+            result = result + "," + section
+        return result[1:]
+
+    def get_diff_in_list(self, original, new):
+        og_arr = original.split(",")
+        new_arr = new.split(",")
+        result = []
+        for n in new_arr:
+            if n not in og_arr:
+                result.append(n)
+        return result
