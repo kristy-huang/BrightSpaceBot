@@ -102,7 +102,7 @@ class BotResponses:
         sql_command = f"SELECT STORAGE_LOCATION FROM PREFERENCES WHERE USERNAME = '{username}';"
         storage_location = self.DB_UTILS._mysql.general_command(sql_command)[0][0]
         if storage_location is None:
-            return "No storage type specified in configurations. Please do that first."
+            return "No storage type specified in configurations. Please do that first.", False
         else:
             # get their list of files based on their storage location
             sql_command = f"SELECT STORAGE_PATH FROM PREFERENCES WHERE USERNAME = '{username}';"
@@ -117,6 +117,8 @@ class BotResponses:
                 arr = []
                 for f in file_list:
                     arr.append(f['title'])
+            if len(arr) == 0:
+                return "No files downloaded that you can rename.", False
 
             # Crafting response message
             response = "List of files downloaded so far: \n"
@@ -126,7 +128,7 @@ class BotResponses:
                 count = count + 1
             response = response + "Please type <Number> -> <New file name> for the new name you want " \
                                   "to change the files to.\nEX: 1 -> modified.png"
-            return response
+            return response, True
 
     """
         HELPER FUNCTION
@@ -485,40 +487,67 @@ class BotResponses:
         due_dates = self.BS_UTILS.get_last_mod_from_sections(courseID)
         updated = []
         for section in due_dates:
+            module = ""
+            topic = ""
+            file = ""
+            arr = []
             for item in section:
-                module = ""
-                topic = ""
-                file = ""
+
                 if item.startswith("MODULE"):
                     module = item
-                if item.startswith("TOPIC:"):
+                elif item.startswith("TOPIC:"):
                     topic = item
-                if item.startswith("FILE:"):
+                elif item.startswith("FILE:"):
                     file = item
-
                 else:
                     date = datetime.fromisoformat(item[:-1])
                     diff = date - todays_date
-                    print(diff)
                     if diff.days == 0:
                         # then it was updated today
-                        updated.append(module)
-                        updated.append(topic)
-                        updated.append(file)
+                        arr.append(module)
+                        arr.append(topic)
+                        arr.append(file)
+            updated.append(arr)
+
+        new_list = list(filter(None, updated))
+
+        string = ""
+        if len(new_list) > 0:
+            for subarray in new_list:
+                for item in subarray:
+                    if len(item) > 0:
+                        if item.startswith("MODULE"):
+                            string = string + "\n"
+                        string = string + item + " "
+        return string
 
 
-        return updated
+    def get_update_section_all(self):
+        classes = self.BS_UTILS.get_classes_enrolled()
+        string = ""
+        #classes = {"Fall 2021 CS 38100-LE1 LEC": "335578"}
+        for courseName, courseID in classes.items():
+            sub_string = self.see_if_section_updated(courseID)
+            if len(sub_string) > 0:
+                string = "Updates for " + courseName + "\n"
+                string = string + sub_string + "\n"
+        return string
 
 
+from bs_utilities import BSUtilities
+from database.db_utilities import DBUtilities
+db_config = "./database/db_config.py"
+BS_UTILS = BSUtilities()
+DB_UTILS = DBUtilities(db_config)
+
+if __name__ == '__main__':
+    print(datetime.utcnow())
+    br = BotResponses()
+    bs = BSUtilities()
+    bs.set_session("nair64", "1500,push2")
+    br.set_BS_param(bs)
 
 
-
-        # loop through courses user is enrolled in
-        # classes = self.BS_UTILS.get_classes_enrolled()
-        # for courseName, courseID in classes.items():
-        #     self.BS_UTILS.get_topics_from_modules(courseID)
-        # go through table of contents and save last modified date
-        # compare its value with todays date. If same, then modified -> send message
-
+    print(br.get_update_section_all())
 
 

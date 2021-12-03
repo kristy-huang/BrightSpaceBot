@@ -25,7 +25,8 @@ https://discord.com/api/oauth2/authorize?client_id=894695859567083520&permission
 # This will be our discord client. From here we will get our input
 client = discord.Client()
 
-channelID = 663863991218733058  # mine!
+#channelID = 663863991218733058  # mine!
+channelID = 0
 # TODO save this in the database - right now this is my (Raveena's) channel)
 BS_API = BSAPI()
 
@@ -66,7 +67,7 @@ async def quit(ctx):
 
 # looping every day
 # change parameter to minutes=1 and see it happen every minute
-@tasks.loop(minutes=1)
+@tasks.loop(seconds=30)
 async def notification_loop():
     if not BS_UTILS.check_connection():
         return
@@ -75,38 +76,39 @@ async def notification_loop():
 
     # Syncing the calendar daily (so it can get the correct changes)
     #classes = BS_UTILS.get_classes_enrolled()
-    classes = {"EAPS": "336112"}
+    classes = {"EAPS": "336112"}  # IN TEST MODE
     print("CALENDAR STUFF")
     for courseName, courseID in classes.items():
-        assignment_list = BS_UTILS._bsapi.get_upcoming_assignments(courseID)
-        due = BS_UTILS.process_upcoming_dates(assignment_list)
-        if len(due) != 0:
-            # loop through all the upcoming assignments
-            cal = Calendar()
-            for assignment in due:
-                # Check if the event exists first by searching by name
-                event_title = f"ASSIGNMENT DUE: {assignment[0]} ({courseID})"
-                description = f"{assignment[0]} for {courseName} is due. Don't forget to submit it!"
-                search_result, end_time = cal.get_event_from_name(event_title)
-                date = datetime.datetime.fromisoformat(assignment[1][:-1])
-                end = date.isoformat()
-                start = (date - datetime.timedelta(hours=1)).isoformat()
-                print("End date from search: " + str(end_time))
-                if search_result != -1:
-                    # it has already been added to the calendar
-                    # see if the end times are different
-                    if end_time != end:
-                        # the due date has been updated, so delete the old event
-                        cal.delete_event(search_result)
-                        cal.insert_event(event_title, description, start, end)
-                else:
-                    # has not been added to calendar, so add normally
-                    # inserting event
-                    cal.insert_event(event_title, description, start, end)
+        # assignment_list = BS_UTILS._bsapi.get_upcoming_assignments(courseID)
+        # due = BS_UTILS.process_upcoming_dates(assignment_list)
+        # if len(due) != 0:
+        #     # loop through all the upcoming assignments
+        #     cal = Calendar()
+        #     for assignment in due:
+        #         # Check if the event exists first by searching by name
+        #         event_title = f"ASSIGNMENT DUE: {assignment[0]} ({courseID})"
+        #         description = f"{assignment[0]} for {courseName} is due. Don't forget to submit it!"
+        #         search_result, end_time = cal.get_event_from_name(event_title)
+        #         date = datetime.datetime.fromisoformat(assignment[1][:-1])
+        #         end = date.isoformat()
+        #         start = (date - datetime.timedelta(hours=1)).isoformat()
+        #         print("End date from search: " + str(end_time))
+        #         if search_result != -1:
+        #             # it has already been added to the calendar
+        #             # see if the end times are different
+        #             if end_time != end:
+        #                 # the due date has been updated, so delete the old event
+        #                 cal.delete_event(search_result)
+        #                 cal.insert_event(event_title, description, start, end)
+        #         else:
+        #             # has not been added to calendar, so add normally
+        #             # inserting event
+        #             cal.insert_event(event_title, description, start, end)
 
         print("DISCUSSION STUFF")
         # Now adding dicussions
-        discussion_list = BS_UTILS.get_discussion_due_dates(courseID)
+        discussion_list = BS_UTILS.get_discussion_due_dates_TEST()  # IN TEST MODE
+        #discussion_list = BS_UTILS.get_discussion_due_dates(courseID)
         due = BS_UTILS.process_upcoming_dates(discussion_list)
         if len(due) != 0:
             cal = Calendar()
@@ -114,6 +116,7 @@ async def notification_loop():
                 event_title = f"DISCUSSION POST DUE: {disc[0]} ({courseID})"
                 description = f"{disc[0]} for {courseName} is due. Don't forget to submit it!"
                 search_result, end_time = cal.get_event_from_name(event_title)
+                print("Search result: " + str(search_result))
                 date = datetime.datetime.fromisoformat(disc[1][:-1])
                 end = date.isoformat()
                 start = (date - datetime.timedelta(hours=1)).isoformat()
@@ -160,16 +163,24 @@ async def notification_loop():
 
     # SEEING IF A SECTION HAS BEEN UPDATED / ADDED
 
-
-
-    print(datetime.datetime.now().hour)
     # message_channel = client.get_channel(channelID)
     # dates = BS_UTILS.get_dict_of_discussion_dates()
     # # dates = DATES
     # string = BS_UTILS.find_upcoming_disc_dates(1, dates)
     # string += BS_UTILS.get_notifications_past_24h()
 
-    string = "no post 165"
+    string = ""
+
+    section_updated = BOT_RESPONSES.get_update_section_all()
+    if len(section_updated) > 0:
+        string = string + " " + section_updated
+    print("got section stuff")
+    #await client.get_channel(894679160981696555).send(string)
+    print(channelID)
+    print(len(string))
+
+    if len(string) != 0:
+        await client.get_channel(channelID).send(string)
 
 
     # Check if the user has a designated text channel for deadline notifications to be sent
@@ -197,16 +208,16 @@ async def notification_loop():
         message_channel = client.get_channel(channel_id)
         print(channel_id, message_channel)
 
-        if types[0] == "1":
-            dates = BS_UTILS.get_dict_of_discussion_dates()
-            # dates = DATES
-            string += BS_UTILS.find_upcoming_disc_dates(1, dates)
-        if types[1] == "1":
-            string += BS_UTILS.get_notifications_past_24h()
-        if types[2] == "1":
-            string += BS_UTILS.get_events_by_type_past_24h(1)  # Reminder
-        if types[3] == "1":
-            string += BS_UTILS.get_events_by_type_past_24h(6)  # DueDate
+        # if types[0] == "1":
+        #     dates = BS_UTILS.get_dict_of_discussion_dates()
+        #     # dates = DATES
+        #     string += BS_UTILS.find_upcoming_disc_dates(1, dates)
+        # if types[1] == "1":
+        #     string += BS_UTILS.get_notifications_past_24h()
+        # if types[2] == "1":
+        #     string += BS_UTILS.get_events_by_type_past_24h(1)  # Reminder
+        # if types[3] == "1":
+        #     string += BS_UTILS.get_events_by_type_past_24h(6)  # DueDate
 
         # replace course id's with course names:
 
@@ -237,15 +248,17 @@ async def notification_loop():
     time_string = now.strftime("%H:%M")
     weekday = now.weekday()
 
-    schedules = DB_UTILS.get_notifictaion_schedule_by_time(time_string, weekday)
+    # schedules = DB_UTILS.get_notifictaion_schedule_by_time(time_string, weekday)
+    #
+    # for schedule in schedules:
+    #
+    #     types = schedule[2]
+    #     if not types:
+    #         types = "1111"
+    #     # print("int id", channel_id)
+    #     await send_notifications(string, channel_id, types)
+    #await send_notifications(string, channelID, "0")
 
-    for schedule in schedules:
-
-        types = schedule[2]
-        if not types:
-            types = "1111"
-        # print("int id", channel_id)
-        await send_notifications(string, channel_id, types)
 
 
 # TODO: stop notifying immediately after running program.
@@ -276,6 +289,7 @@ async def on_message(message):
     username = str(message.author).split('#')[0]
     user_message = str(message.content)
     channel = str(message.channel.name)
+    global channelID
     channelID = message.channel.id
     print(channelID)
 
@@ -1347,12 +1361,15 @@ async def on_message(message):
 
     elif message.content.startswith("rename file"):
         # list out the files that they can rename
-        response = BOT_RESPONSES.get_downloaded_files(DB_USERNAME)
+        response, status = BOT_RESPONSES.get_downloaded_files(DB_USERNAME)
+        if status == False:
+            await message.channel.send(response)
+            return
 
         def check(m):
             return m.author == message.author
 
-        await message.channel.send(response)
+        await message.channel.send(response[:2000])
         try:
             user_response = await client.wait_for('message', check=check, timeout=60)
         except asyncio.TimeoutError:

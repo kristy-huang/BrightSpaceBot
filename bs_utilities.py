@@ -246,6 +246,17 @@ class BSUtilities():
         returns: an array of dates(str).
     '''
 
+    def get_discussion_due_dates_TEST(self):
+        file = open("/Users/raveena/Library/Preferences/PyCharmCE2019.2/scratches/scratch2.json")
+        topics = json.load(file)
+        dates = []
+        for t in topics:
+            arr = []
+            arr.append(t["Name"])
+            arr.append(t["EndDate"])
+            dates.append(arr)
+        return dates
+
     def get_discussion_due_dates(self, course_id):
         dates = []
         threads = self._bsapi.get_forums(course_id)
@@ -255,9 +266,9 @@ class BSUtilities():
 
         for thread in threads:
             # get the list of topics for each thread
-            file = open("/Users/raveena/Library/Preferences/PyCharmCE2019.2/scratches/scratch2.json")
-            topics = json.load(file)
-            #topics = self._bsapi.get_discussion_topics(course_id, thread["ForumId"])
+            # file = open("/Users/raveena/Library/Preferences/PyCharmCE2019.2/scratches/scratch2.json")
+            # topics = json.load(file)
+            topics = self._bsapi.get_discussion_topics(course_id, thread["ForumId"])
             for t in topics:
                 arr = []
                 arr.append(t["Name"])
@@ -1084,6 +1095,10 @@ class BSUtilities():
     '''Returns an array of the last modified dates in each section and topic'''
     def get_last_mod_from_sections(self, course_id):
         modules = self._bsapi.get_topics(course_id)["Modules"]
+        #file = open("/Users/raveena/Library/Preferences/PyCharmCE2019.2/scratches/scratch3.json")
+        #modules = json.load(file)
+        #modules = modules["Modules"]
+
 
         if self._debug:
             print("number of big sections:", len(modules))
@@ -1092,28 +1107,25 @@ class BSUtilities():
         # going through the big sections
         for i in range(len(modules)):
             arr = []
-            module_string = "MODULE: " + modules[i]["Title"]
+            m = modules[i]["Title"]
+            module_string = f"MODULE: {m}"
             arr.append(module_string)
             arr.append(modules[i]["LastModifiedDate"])
             # go through any folders the module section may have (module inside module)
             for j in range(len(modules[i]["Modules"])):
                 m_topics = modules[i]["Modules"][j]["Topics"]
-                topic_string = "TOPIC: " + modules[i]["Modules"][j]["Title"]
+                t = modules[i]["Modules"][j]["Title"]
+                topic_string = f"TOPIC: {t}"
                 arr.append(topic_string)
                 arr.append(modules[i]["Modules"][j]["LastModifiedDate"])
                 # going through the topics to see files listed
                 for k in range(len(m_topics)):
-                    assignment_string = "FILE: " + m_topics[k]["Title"]
+                    a = m_topics[k]["Title"]
+                    assignment_string = f"FILE: {a}"
                     arr.append(assignment_string)
                     arr.append(m_topics[k]["LastModifiedDate"])
 
             last_mod_dates.append(arr)
-
-
-
-
-
-
         return last_mod_dates
 
 
