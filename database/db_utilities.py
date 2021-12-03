@@ -181,18 +181,26 @@ class DBUtilities():
 
 
     # description: weekday!
-    def add_download_shcedule(self, username, scheduled_time, type, description):
+    def add_download_shcedule(self, username, scheduled_time, type, description, user_id):
         cols = {
             "USERNAME": username,
             "TIME": scheduled_time,
             "TYPE": type,
-            "DESCRIPTION": str(description)
+            "DESCRIPTION": str(description),
+            "user_id": user_id
         }
 
         self._mysql.insert_into("DOWNLOAD_SCHEDULE", cols)
 
 
     def get_download_schedule(self, username):
-        return self._mysql.general_command(f"SELECT DISTINCT TIME,DESCRIPTION FROM DOWNLOAD_SCHEDULE WHERE USERNAME = \"{username}\" ORDER BY TIME ASC")
+        return self._mysql.general_command(f"SELECT DISTINCT TIME,DESCRIPTION,TYPE FROM DOWNLOAD_SCHEDULE WHERE USERNAME = \"{username}\" ORDER BY TIME ASC")
+
+
+    def get_download_schedule_by_time(self, time_string):
+        return self._mysql.general_command(f"SELECT DISTINCT user_id,TYPE FROM DOWNLOAD_SCHEDULE WHERE TIME = \"{time_string}\"")
+
+    def clear_download_schedule(self, user_name):
+        self._mysql.delete("DOWNLOAD_SCHEDULE", f"USERNAME = \"{user_name}\"")
 
 

@@ -1,6 +1,8 @@
 
 import asyncio
 import datetime
+from urllib.parse import scheme_chars
+from discord.ext.commands.errors import UserNotFound
 from requests.models import Response
 from werkzeug.security import check_password_hash
 
@@ -10,6 +12,7 @@ from thefuzz import process
 from bs_utilities import BSUtilities
 from bs_calendar import Calendar
 from Authentication import setup_automation
+from file_storage import validate_path_local
 
 # A class to parse user commands, and run matching functionalities.
 #
@@ -46,6 +49,7 @@ class NLPAction():
         "switch bot account": ("switch", False),
         "search for student": (self._search_for_student, True),
         "current storage location": (self._current_storage, True),
+        "check storage": (self._current_storage, True),
         "grades": (self._grades, True),
         "get assignment feedback": (self._get_assignment_feedback, True),
         "get upcoming quizzes": (self._get_upcoming_quizzes, True),
@@ -55,12 +59,18 @@ class NLPAction():
         "add notification schedule": (self._update_notification_schedule, True),
         "delete notification schedule": (self._delete_notification_schedule, True),
         "check notification schedule": (self._check_nofication_schedule, True),
+        "get notification schedule": (self._check_nofication_schedule, True),
         "update class schedule": (self._update_class_schedule, True),
         "add class schedule": (self._update_class_schedule, True),
         "check class schedule": (self._check_class_schedule, True),
+        "get class schedule": (self._check_class_schedule, True),
         "update download schedule": (self._update_download_schedule, True),
         "add download schedule": (self._update_download_schedule, True),
-        "check download schedule": (self._check_download_schedule, True)
+        "check download schedule": (self._check_download_schedule, True),
+        "get download schedule": (self._check_download_schedule, True),
+        "delete download schedule": (self._delete_download_schedule, True),
+        "download files": (self._download_files, True),
+        "update storage": (self._update_storage, True)
         }
 
         # 1 = yes, 0 = no
@@ -108,10 +118,11 @@ class NLPAction():
 
     async def process_command(self, message, client):
 
-
         # ---- to prevent calling multiple functions -----
         
         if message.author.id not in self._locks:
+            if self._debug:
+                print(f"Added new lock: {message.author}")
             self._locks[message.author.id] = False
 
         if self._debug:
@@ -164,15 +175,22 @@ class NLPAction():
             return
 
         status = await self._setup_auto_if_necessary(message, client)
-
+        
         if not status:
+            await message.channel.send("Bot login failed. Please check your credentials!")
             self._locks[message.author.id] = False
             return
 
-
-
-        # Run the corresponding function!
         await self.PHRASES[action_tuple[0]][0](message, client)
+        # Run the corresponding function!
+        '''try:
+        except Exception as e:
+            self._locks[message.author.id] = False
+            print(e)'''
+
+
+        if self._debug:
+            print("--- reached the end of process request. Will be unlocking ---")
         self._locks[message.author.id] = False
 
 
@@ -290,6 +308,7 @@ class NLPAction():
     def time_to_string(time):
         time_str = datetime.datetime.strftime("%H:%M")
         return time_str
+
 
     # ----- Login to discord bot & BrightSpace Functions -----
 
@@ -497,10 +516,10 @@ class NLPAction():
         username = self._id_to_username_map[message.author.id]
         sql = f'SELECT STORAGE_PATH from PREFERENCES WHERE USERNAME = \'{username}\';'
         storage_path = self._DB_UTIL._mysql.general_command(sql)
-        if storage_path[0][0] is None:
-            await self.message.channel.send('No storage path specified. Type update storage to save something')
+        if not storage_path or not storage_path[0][0]:
+            await message.channel.send('No storage path specified. Type update storage to save something')
         else:
-            await self.message.channel.send(f'Current location: {storage_path[0][0]}')
+            await message.channel.send(f'Current location: {storage_path[0][0]}')
 
 
     async def _grades(self, message, client):
@@ -1073,9 +1092,9 @@ class NLPAction():
         while not new_time:
             new_time = await self.get_time(message, client)
 
-        await message.channel.send(f"What type of files? (Videos, pdf, slides, other files, or all)")
+        await message.channel.send(f"What type of files? (Videos, pdf, slides, or all)")
         res = await self._recieve_response(message, client)
-        option = self._get_closer_response(["videos", "pdf", "slides", "ppt", "other files", "all"],
+        option = self._get_closer_response(["videos", "pdf", "slides", "ppt", "all"],
                                            res.content)
 
         if option == 0:
@@ -1084,8 +1103,6 @@ class NLPAction():
             type = "pdf"
         elif option == 2 or option == 3:
             type = "slides"
-        elif option == 4:
-            type = "other"
         else:
             type = "all"
 
@@ -1095,7 +1112,7 @@ class NLPAction():
 
         if self._decide_yes_or_no(res):
             self._DB_UTIL.add_download_shcedule(self._id_to_username_map[res.author.id], new_time.content,
-                                                type, description=7)  # 7 = everyday
+                                                type, 7, message.author.id)  # 7 = everyday
             # SCHEDULED_HOURS.append(new_hour)
             await message.channel.send(f"Schedule changed.")
         else:
@@ -1115,10 +1132,117 @@ class NLPAction():
             await message.channel.send(msg)
 
 
+    async def _download_files(self, message, client):
+        username = self._id_to_username_map[message.author.id]
+        bsu = self._id_to_bsu_map[message.author.id]
+
+
+        await message.channel.send("For what class do you want to download?")
+        res = await self._recieve_response(message, client)
+        
+        # save what courses they want to download files for
+        courses = res.content
+        # see their storage path and location
+        sql_command = f"SELECT STORAGE_PATH from PREFERENCES WHERE USERNAME = '{username}';"
+        storage_path = self._DB_UTIL._mysql.general_command(sql_command)
+        sql_command = f"SELECT STORAGE_LOCATION from PREFERENCES WHERE USERNAME = '{username}';"
+        storage_location = self._DB_UTIL._mysql.general_command(sql_command)
+        
+        storage_location = "Local" if not storage_location or not storage_location[0][0] else storage_location[0][0]
+        storage_path = "./" if not storage_path or not storage_path[0][0] else storage_path[0][0]
+
+        if storage_location != "Local" and not bsu.drive:
+            bsu.init_google_auths()
+
+        full_course_name, course_id = bsu.find_course_id_and_fullname(courses)
+        if not full_course_name or not course_id:
+            await message.channel.send("The course specified cannot be found. Please type the name again with more clarity.")
+            return 
+
+        await message.channel.send("Start downloading...")
+        bsu.download_files(course_id, storage_path, storage_location, full_course_name)
+
+        await message.channel.send(f"{full_course_name}: Files downloaded successfully!")
+
+    async def _update_storage(self, message, client):
+        await message.channel.send("Google Drive or Local Machine?")
+
+        # getting the type of storage location
+        path_type = await self._recieve_response(message, client)
+
+        options = ["google drive", "local"]
+        selection = self._get_closer_response(options, path_type.content)
+
+        bsu = self._id_to_bsu_map[message.author.id]
+        username = self._id_to_username_map[message.author.id]
+
+        # checking what type of path they are going to save it in
+        if selection == 0: # Google drive
+            bsu.init_google_auths()
+
+            await message.channel.send("What folder from root?")
+
+            # checking to see if path is valid
+            new_storage = await self._recieve_response(message, client)
+
+            return_val = bsu.validate_path_drive(new_storage.content, bsu.drive)
+            
+            if not return_val:
+                await message.channel.send("Not a valid path. Try the cycle again.")
+                return
+            
+            # todo add saving mechanism to cloud database
+
+            sql_path =  \
+            sql_type = "INSERT INTO PREFERENCES (USERNAME, STORAGE_LOCATION) VALUES (\"{f_name}\",\"{path_type}\") ON DUPLICATE KEY UPDATE STORAGE_LOCATION=\"{path_type}\"" \
+                .format(path_type="Google Drive", f_name=username)
+            self._DB_UTIL._mysql.general_command(sql_type)
+            
+            sql_path = "INSERT INTO PREFERENCES (USERNAME,STORAGE_PATH) VALUES (\"{f_name}\",\"{path}\") ON DUPLICATE KEY UPDATE STORAGE_PATH=\"{path}\"" \
+                .format(path=new_storage.content, f_name=username)
+            self._DB_UTIL._mysql.general_command(sql_path)
+
+            await message.channel.send("New path saved")
+            return
+
+        # if the path is local
+        elif selection == 1: # local
+            await message.channel.send("Send your local path")
+            # checking to see if path is valid (local)
+            new_storage = await self._recieve_response(message, client)
+            return_val = validate_path_local(new_storage.content)
+            if not return_val:
+                await message.channel.send("Not a valid path. Try the cycle again.")
+            else:
+                # todo add saving mechanism to cloud database
+
+                sql_type = "UPDATE PREFERENCES SET STORAGE_LOCATION = '{path_type}' WHERE USERNAME = '{f_name}';" \
+                    .format(path_type="Local Machine", f_name=username)
+                self._DB_UTIL._mysql.general_command(sql_type)
+
+                sql_path = "UPDATE PREFERENCES SET STORAGE_PATH = '{path}' WHERE USERNAME = '{f_name}';" \
+                    .format(path=new_storage.content, f_name=username)
+                self._DB_UTIL._mysql.general_command(sql_path)
+                await message.channel.send("New path saved")
+            return
+        else:
+            await message.channel.send("Your input isn't valid")
 
 
 
+    async def _delete_download_schedule(self, message, client):
+        current_times = self._DB_UTIL.get_download_schedule(self._id_to_username_map[message.author.id])
 
+        if not current_times:
+            await message.channel.send("You don't have any scheduled times now.")
+            return
+
+        await message.channel.send("Do you want to delete all scheduled times?")
+
+        res = await self._recieve_response(message, client)
+        if self._decide_yes_or_no(res):
+            self._DB_UTIL.clear_download_schedule(self._id_to_username_map[message.author.id])
+        await message.channel.send("Schedule deleted.")
 
     # ----- recurring events -----
 
@@ -1229,7 +1353,10 @@ class NLPAction():
 
             # send the upcoming discussion due dates
             # TODO: use a loop to send the full message. 
-            await message_channel.send(string[:2000])
+
+            while string:
+                await message_channel.send(string[:2000])
+                string = string[2000:]
             return
         
         now = datetime.datetime.now()
@@ -1271,4 +1398,42 @@ class NLPAction():
             await send_notifications(string, BS_UTILS, channel_id, types)
 
 
-    #async def download_files(self,)
+    async def download_files_by_schedule(self, client): 
+        now = datetime.datetime.now()
+        time_string = now.strftime("%H:%M")
+
+        schedules = self._DB_UTIL.get_download_schedule_by_time(time_string)
+        print(schedules)
+        for schedule in schedules:
+            user_id = schedule[0]
+            type = schedule[1]
+            if user_id in self._id_to_bsu_map.keys():
+                print("1")
+                bsu = self._id_to_bsu_map[user_id]
+                username = self._id_to_username_map[user_id]
+
+                sql_command = f"SELECT STORAGE_PATH from PREFERENCES WHERE USERNAME = '{username}';"
+                storage_path = self._DB_UTIL._mysql.general_command(sql_command)
+                sql_command = f"SELECT STORAGE_LOCATION from PREFERENCES WHERE USERNAME = '{username}';"
+                storage_location = self._DB_UTIL._mysql.general_command(sql_command)
+                
+                print("1")
+                storage_location = "Local" if not storage_location or not storage_location[0][0] else storage_location[0][0]
+                storage_path = "./" if not storage_path or not storage_path[0][0] else storage_path[0][0]
+
+                if storage_location != "Local" and not bsu.drive:
+                    storage_location = "Local" if not storage_location or not storage_location[0][0] else storage_location[0][0]
+                    storage_path = "./" if not storage_path or not storage_path[0][0] else storage_path[0][0]
+
+
+                print("1")
+                courses = bsu.get_classes_enrolled()
+                for course_name in courses.keys():
+                    try:
+                        print("downloading course: ", course_name)
+                    except:
+                        pass
+                bsu.download_files(courses[course_name], storage_path, storage_location, course_name, type=type)
+
+
+

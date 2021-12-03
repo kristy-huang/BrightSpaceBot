@@ -11,12 +11,14 @@ from database.mysql_database import MySQLDatabase
 from pydrive.auth import GoogleAuth
 from pydrive.drive import GoogleDrive
 from File import File, StorageTypes
+from rename_file import RenameFile
 
 
 class BSUtilities():
     def __init__(self, debug=False):
         self._bsapi = BSAPI(debug=debug)
         self._debug = debug
+        self.drive = None
 
 
     # Logs in to BS automatically
@@ -53,6 +55,13 @@ class BSUtilities():
         bsapi: instance of BSAPI()
     '''
 
+    def init_google_auths(self):
+        gauth = GoogleAuth()
+        gauth.LocalWebserverAuth()  # client_secrets.json need to be in the same directory as the script
+        drive = GoogleDrive(gauth)
+        self.drive = drive
+
+
     def replace_bsapi(self, bsapi):
         self._bsapi = bsapi
 
@@ -64,16 +73,20 @@ class BSUtilities():
         destination (str): location the files are downloaded.
     '''
 
-    def download_file(self, course_id, topic_id, destination, type, drive):
+    def download_file(self, course_id, topic_id, destination, type, course_name):
         res = self._bsapi.get_file_from_request(course_id, topic_id)
 
         filename = res.headers['Content-Disposition']
         filename = filename[:filename.rindex("\"")]
         filename = filename[filename.rindex("\"") + 1:]
         filename = urllib.parse.unquote(filename)
-        print(filename)
+        #print(filename)
+        #print(type)
         if type.startswith('Local'):
-            print("hello inside local")
+            # First check if a folder exists with course name
+            path = os.path.join(destination, course_name)  # TODO replace with course name
+            os.makedirs(path, exist_ok=True)
+            destination = path
             destination += "/" if destination[-1] != '/' else ""
             if not os.path.exists(destination):
                 os.makedirs(destination)
@@ -84,29 +97,49 @@ class BSUtilities():
                 print("File {filename}: downloaded.".format(filename=filename))
         else:
             # TODO download to google drive
-            return_val = self.validate_path_drive(destination, drive)
+            return_val = self.validate_path_drive(destination, self.drive)
             open(filename, 'wb').write(res.content)
             # for debugging, just using this default file
-            self.upload_to_google_drive(drive, destination, filename)
-            os.remove(filename)
+            self.upload_to_google_drive(self.drive, destination, filename, course_name)
+            try:
+                os.remove(filename)
+            except PermissionError:
+                if self._debug:
+                    print("Removal permission denied")
 
 
-    def upload_to_google_drive(self, drive, storage_path, file):
+    def upload_to_google_drive(self, drive, storage_path, file, course_name):
         file_to_upload = file
         # finding the folder to upload to
         folders = self.get_all_files_in_google(drive)
+        rename = RenameFile()
         folder_id = -1
+        found = False
+        course_folder_id = -1
         for folder in folders:
             if folder.fileTitle == storage_path:
                 folder_id = folder.filePath
-                break
-        print(folder_id)
+        #print(folder_id)
         if folder_id == -1:
             # upload it to the root (My Drive)
             gd_file = drive.CreateFile({'title': file})
         else:
+            subfolders = rename.get_folders_from_specified_folder(drive, folder_id, [])
+            for s in subfolders:
+                if s['title'] == course_name:
+                    found = True
+                    course_folder_id = s['id']
+                    break
             # currently takes the folder id from browser of url for the folder they want to upload something in
-            gd_file = drive.CreateFile({'parents': [{'id': folder_id}]})
+            if found == False:
+                # course folder does not exist so create one
+                folder = drive.CreateFile({'title': course_name,
+                                  'mimeType': 'application/vnd.google-apps.folder',
+                                  'parents': [{'id': folder_id}]})
+                folder.Upload()
+                course_folder_id = folder['id']
+
+            gd_file = drive.CreateFile({'parents': [{'id': course_folder_id}]})
 
         # Read file and set it as the content of this instance.
         gd_file.SetContentFile(file)
@@ -114,6 +147,8 @@ class BSUtilities():
         gd_file.Upload()
         # handles memory leaks
         gd_file = None
+
+
 
 
     '''
@@ -125,11 +160,8 @@ class BSUtilities():
 
     # TODO: files not located in a sub-module are not downloaded.
 
-    def download_files(self, course_id, destination, t):
+    def download_files(self, course_id, destination, t, course_name, file_types=None):
         modules = self._bsapi.get_topics(course_id)["Modules"]
-        drive = None
-        if t != "Local Machine":
-            drive = self.init_google_auths()
 
         if self._debug:
             print("number of big sections:", len(modules))
@@ -143,11 +175,23 @@ class BSUtilities():
                 for k in range(len(m_topics)):
                     # getting the type of file it is
                     suffix = Path(m_topics[k]["Url"]).suffixes
+                    if len(suffix) == 0:
+                        continue
                     extension = suffix[len(suffix) - 1]
                     # currently only saving pdf files
-                    if extension == ".pdf":
-                        self.download_file(course_id, m_topics[k]["TopicId"], destination=destination, type=t, drive=drive)
-
+                    print(Path(m_topics[k]["Url"]).suffixes)
+                    if file_types  == "pdf" and extension == ".pdf":
+                        self.download_file(course_id, m_topics[k]["TopicId"], destination=destination,
+                            type=t, course_name=course_name)
+                    elif file_types == "videos" and extension.lower() in ["mp4", "avi", "wmv"]:
+                        self.download_file(course_id, m_topics[k]["TopicId"], destination=destination,
+                            type=t, course_name=course_name)
+                    elif file_types == "slides" and extension.lower() in ["pptx", "ppt"]:
+                        self.download_file(course_id, m_topics[k]["TopicId"], destination=destination,
+                            type=t, course_name=course_name)
+                    elif extension in [".pdf", ".mp4", ".avi", ".wmv", ".pptx", ".ppt", ".html", '.xlsx']:
+                        self.download_file(course_id, m_topics[k]["TopicId"], destination=destination,
+                                            type=t, course_name=course_name)
     '''
         Gets a list of classes the user is currently enrolled in.
         Returns a dictionary in the format of 
@@ -590,6 +634,7 @@ class BSUtilities():
         if time1 == time2:
             return 0
 
+
     def get_letter_grade(self, percentage):
         if percentage >= 90:
             return 'A'
@@ -650,6 +695,7 @@ class BSUtilities():
         #     print(grade)
         return grades
 
+
     def get_dict_of_discussion_dates(self):
         classes = self.get_classes_enrolled()
         dates = {}
@@ -681,6 +727,7 @@ class BSUtilities():
 
         return string
 
+
     def find_course_id(self, class_name):
         dictionary = self.get_classes_enrolled()
         
@@ -700,21 +747,22 @@ class BSUtilities():
         class_name = class_name.replace(' ', '')
         course_id = -1
         for c_full_name, c_id in dictionary.items():
+            c_full_name = c_full_name.replace(' ', '')
             if c_full_name.lower().find(class_name.lower()) != -1:
                 return c_full_name, c_id
-        return None
+        return (None, None)
 
     # Since our project is in "testing" phase, you have to manually add test users until you publish the app
     # My personal email is the only test user now, but we can add more
     def init_google_auths(self):
         gauth = GoogleAuth()
         gauth.LocalWebserverAuth()  # client_secrets.json need to be in the same directory as the script
-        drive = GoogleDrive(gauth)
-        return drive
+        self.drive = GoogleDrive(gauth)
 
     def get_all_files_in_google(self, drive):
         # only querying files (everything) from the 'MyDrive' root
         fileList = drive.ListFile({'q': "'root' in parents and trashed=false"}).GetList()
+        #print(fileList)
         # Use this to save all the folders in 'MyDrive'
         folderList = []
         for file in fileList:
@@ -722,7 +770,7 @@ class BSUtilities():
                 myFile = File(file['title'], file['id'])
                 myFile.storageType = StorageTypes.GOOGLE_DRIVE
                 folderList.append(myFile)
-
+        #print(folderList)
         return folderList
 
 
@@ -760,7 +808,7 @@ class BSUtilities():
     # Algorithm to get overall points received in a class if not displayed at top
     def sum_total_points(self, courseID):
         gradeIDs = self._bsapi.get_all_assignments_in_gradebook(courseID)
-        print(gradeIDs)
+        #print(gradeIDs)
         yourTotal = 0
         classTotal = 0
         for id in gradeIDs:

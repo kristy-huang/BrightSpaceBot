@@ -8,7 +8,6 @@ from discord.ext import tasks, commands
 import asyncio
 from file_storage import *
 import datetime
-from bs_api import BSAPI
 import time
 from bs_utilities import BSUtilities
 from database.db_utilities import DBUtilities
@@ -31,15 +30,10 @@ client = discord.Client()
 
 channelID = 663863991218733058  # mine!
 # TODO save this in the database - right now this is my (Raveena's) channel)
-BS_API = BSAPI()
 BOT_RESPONSES = BotResponses()
 
-DB_USERNAME = 'currymaster'
-
 db_config = "./database/db_config.py"
-BS_UTILS = BSUtilities()
 DB_UTILS = DBUtilities(db_config)
-
 
 nlpa = NLPAction(DB_UTILS, debug=DEBUG)
 
@@ -58,7 +52,9 @@ async def quit(ctx):
 
 @tasks.loop(minutes=1)
 async def minute_loop():
+    print("minute loop")
     await nlpa.send_notifications(client)
+    await nlpa.download_files_by_schedule(client)
     
 
 
