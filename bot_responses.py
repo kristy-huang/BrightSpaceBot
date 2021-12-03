@@ -114,7 +114,7 @@ class BotResponses:
         list_of_tcs = self.DB_UTILS._mysql.general_command(sql_command)[0][0]
         if list_of_tcs is None:
             sql_command = f"UPDATE PREFERENCES SET LIST_OF_TCS = 'general' WHERE USERNAME = '{username}';"
-            self.DB_UTILS._mysql.general_command(sql_command) # execute command
+            self.DB_UTILS._mysql.general_command(sql_command)  # execute command
             sql_command = f"SELECT LIST_OF_TCS FROM PREFERENCES WHERE USERNAME = '{username}';"
             list_of_tcs = self.DB_UTILS._mysql.general_command(sql_command)[0][0]
 
@@ -261,8 +261,11 @@ class BotResponses:
             result = result + "," + str(course_id)
         return result[1:]
 
-
     def add_office_hours_to_calendar(self, course_name, instr_name, days, st_time, end_time):
+        self.DB_UTILS._mysql.create_table('OFFICE_HOURS', 'username VARCHAR(50), '
+                                                          'recurring_event_id VARCHAR(255), '
+                                                          'event_title VARCHAR(255), '
+                                                          'PRIMARY KEY (username, recurring_event_id)')
         cal = Calendar()
         event_title = f"OFFICE HOURS: for {course_name}, {instr_name}"
         description = f"Don't forget to attend {instr_name}'s office hours!"
@@ -280,7 +283,18 @@ class BotResponses:
         end = end.replace(hour=end_hour, minute=end_min)
         end = end.isoformat()
 
+        sql_command = f"SELECT recurring_event_id, event_title from OFFICE_HOURS WHERE USERNAME = '{self.db_username}';"
+        event_titles = self.DB_UTILS._mysql.general_command(sql_command)
+        for et in event_titles:
+            if et[1] == event_title:
+                cal.delete_event(et[0])
+        # print(event_titles)
+
         recurring_event_id = cal.insert_event_recurring(event_title, description, start, end, days)
+        print(recurring_event_id)
+        self.DB_UTILS._mysql.general_command(f"INSERT INTO OFFICE_HOURS (username, recurring_event_id, event_title) "
+                                             f"VALUES(\'{self.db_username}\', \'{recurring_event_id}\', \'{event_title}\') "
+                                             f"ON DUPLICATE KEY UPDATE event_title=\'{event_title}\'")
 
         # cal.insert_event_recurring creates an event for today. Check if today is a day of week listed in days
         if DAY_MAP[weekday] not in days:
@@ -306,18 +320,17 @@ class BotResponses:
                 for forum_id_name in forum_ids_names:
                     topic_ids_names = self.BS_UTILS.get_all_topic_ids_names(course_id, forum_id_name['id'])
                     for topic_id_name in topic_ids_names:
-                        students = self.BS_UTILS.get_students_who_posted(course_id, forum_id_name['id'], topic_id_name['id'])
+                        students = self.BS_UTILS.get_students_who_posted(course_id, forum_id_name['id'],
+                                                                         topic_id_name['id'])
                         # student hasn't replied to another student or hasn't posted
                         due_date = '-1'
                         if topic_id_name['due_date'] is not None:
                             due_date = datetime.datetime.fromisoformat(topic_id_name['due_date'][:-1])
                             due_date = (due_date - datetime.datetime.utcnow()).days
                         if students.count(full_name) < 2 and (due_date == '-1' or due_date >= 0):
-                            reply = reply +\
+                            reply = reply + \
                                     f"course:{course_id}->{forum_id_name['name']}->{topic_id_name['name']}\n"
         return reply
-
-
 
     def change_bot_name(self, user_response):
 

@@ -1613,47 +1613,28 @@ async def on_message(message):
         return
     elif message.content.startswith("add office hours to calendar"):
         await message.channel.send("Please input the course name")
-        try:
-            course_name = await client.wait_for('message', check=check, timeout=60)
-            course_name = course_name.content.lower()
+        course_name = await recieve_response()
+        course_name = course_name.content.lower()
 
-            await message.channel.send("Please input the instructor name")
-            instr_name = ''
-            try:
-                instr_name = await client.wait_for('message', check=check, timeout=60)
-                instr_name = instr_name.content.lower()
-            except asyncio.TimeoutError:
-                await message.channel.send("Timeout ERROR has occurred. Please try the query again")
+        await message.channel.send("Please input the instructor name")
+        instr_name = await recieve_response()
+        instr_name = instr_name.content.lower()
 
-            await message.channel.send("Please input office hour days")
-            days = ''
-            try:
-                days = await client.wait_for('message', check=check, timeout=60)
-                days = days.content.lower()
-                days = BOT_RESPONSES.format_days_of_week(days)
-            except asyncio.TimeoutError:
-                await message.channel.send("Timeout ERROR has occurred. Please try the query again")
+        await message.channel.send("Please input office hour days")
+        days = await recieve_response()
+        days = days.content.lower()
+        days = BOT_RESPONSES.format_days_of_week(days)
 
-            await message.channel.send("Please input office hour start time. ie 13:30")
-            st_time = ''
-            try:
-                st_time = await client.wait_for('message', check=check, timeout=60)
-                st_time = st_time.content.lower()
-            except asyncio.TimeoutError:
-                await message.channel.send("Timeout ERROR has occurred. Please try the query again")
+        await message.channel.send("Please input office hour start time. ie 13:30")
+        st_time = await recieve_response()
+        st_time = st_time.content.lower()
 
-            await message.channel.send("Please input office hour end time. ie 14:30")
-            end_time = ''
-            try:
-                end_time = await client.wait_for('message', check=check, timeout=60)
-                end_time = end_time.content.lower()
-            except asyncio.TimeoutError:
-                await message.channel.send("Timeout ERROR has occurred. Please try the query again")
+        await message.channel.send("Please input office hour end time. ie 14:30")
+        end_time = await recieve_response()
+        end_time = end_time.content.lower()
 
-            response = BOT_RESPONSES.add_office_hours_to_calendar(course_name, instr_name, days, st_time, end_time)
-            await message.channel.send(response)
-        except asyncio.TimeoutError:
-            await message.channel.send("Timeout ERROR has occurred. Please try the query again")
+        response = BOT_RESPONSES.add_office_hours_to_calendar(course_name, instr_name, days, st_time, end_time)
+        await message.channel.send(response)
         return
 
     elif message.content.startswith("rename file"):
