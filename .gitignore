@@ -16,5 +16,9 @@ __pycache__/authentication.cpython-39.pyc
 __pycache__/bs_api.cpython-39.pyc
 __pycache__/bs_utilities.cpython-39.pyc
 database/__pycache__/db_utilities.cpython-39.pyc
+<<<<<<< HEAD
 database/__pycache__/mysql_database.cpython-39.pyc
 **/temp/
+=======
+database/__pycache__/mysql_database.cpython-39.pyc
+>>>>>>> 58d6a0b668f29114e5468f6d8ab5023b56b99587
