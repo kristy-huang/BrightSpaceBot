@@ -17,3 +17,4 @@ __pycache__/bs_api.cpython-39.pyc
 __pycache__/bs_utilities.cpython-39.pyc
 database/__pycache__/db_utilities.cpython-39.pyc
 database/__pycache__/mysql_database.cpython-39.pyc
+**/temp/

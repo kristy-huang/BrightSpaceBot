@@ -24,6 +24,7 @@ class Calendar:
 
         # insert the event into the calendar
         event = self.service.events().insert(calendarId='primary', body=eventBody).execute()
+
         '''print("created event")
         print("id: ", event['id'])
         print("summary: ", event['summary'])
