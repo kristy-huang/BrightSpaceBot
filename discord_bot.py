@@ -54,7 +54,7 @@ async def quit(ctx):
 async def minute_loop():
     print("minute loop")
     await nlpa.send_notifications(client)
-    await nlpa.download_files_by_schedule(client)
+    await nlpa.download_files_by_schedule()
     
 
 

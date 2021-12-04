@@ -69,7 +69,7 @@ class NLPAction():
         "check download schedule": (self._check_download_schedule, True),
         "get download schedule": (self._check_download_schedule, True),
         "delete download schedule": (self._delete_download_schedule, True),
-        "download files": (self._download_files, True),
+        "download files": (self._download_files_asking, True),
         "update storage": (self._update_storage, True)
         }
 
@@ -129,8 +129,8 @@ class NLPAction():
             print("Incoming message: ", message.content, "author: ", message.author, " Locked: ", self._locks[message.author.id])
 
         if self._locks[message.author.id]:
-            if self._debug:
-                print("Locked. abort.")
+            '''if self._debug:
+                print("Locked. abort.")'''
             return
 
         self._locks[message.author.id] = True 
@@ -138,8 +138,8 @@ class NLPAction():
         # ---- to prevent bot calling itself -----
 
         if self._author_check(message, client):
-            if self._debug:
-                print("Message is from the bot it self. Abort. ")
+            '''if self._debug:
+                print("Message is from the bot it self. Abort. ")'''
                 #print(f"message author: {message.author}. client author: {client.user}")
             self._locks[message.author.id] = False
             return
@@ -1132,37 +1132,49 @@ class NLPAction():
             await message.channel.send(msg)
 
 
-    async def _download_files(self, message, client):
+    async def _download_files_asking(self, message, client):
         username = self._id_to_username_map[message.author.id]
         bsu = self._id_to_bsu_map[message.author.id]
-
 
         await message.channel.send("For what class do you want to download?")
         res = await self._recieve_response(message, client)
         
         # save what courses they want to download files for
         courses = res.content
-        # see their storage path and location
-        sql_command = f"SELECT STORAGE_PATH from PREFERENCES WHERE USERNAME = '{username}';"
-        storage_path = self._DB_UTIL._mysql.general_command(sql_command)
-        sql_command = f"SELECT STORAGE_LOCATION from PREFERENCES WHERE USERNAME = '{username}';"
-        storage_location = self._DB_UTIL._mysql.general_command(sql_command)
-        
-        storage_location = "Local" if not storage_location or not storage_location[0][0] else storage_location[0][0]
-        storage_path = "./" if not storage_path or not storage_path[0][0] else storage_path[0][0]
-
-        if storage_location != "Local" and not bsu.drive:
-            bsu.init_google_auths()
-
         full_course_name, course_id = bsu.find_course_id_and_fullname(courses)
         if not full_course_name or not course_id:
             await message.channel.send("The course specified cannot be found. Please type the name again with more clarity.")
             return 
 
         await message.channel.send("Start downloading...")
-        bsu.download_files(course_id, storage_path, storage_location, full_course_name)
+
+        await self._download_files(username, bsu, course_id, full_course_name)
 
         await message.channel.send(f"{full_course_name}: Files downloaded successfully!")
+
+
+    async def _download_files_without_asking(self, user_id, course_id, course_name):
+        username = self._id_to_username_map[user_id]
+        bsu = self._id_to_bsu_map[user_id]
+        
+        await self._download_files(username, bsu, course_id, course_name)
+
+
+    async def _download_files(self, username, bsu, course_id, full_course_name):
+        # see their storage path and location
+        sql_command = f"SELECT STORAGE_PATH from PREFERENCES WHERE USERNAME = '{username}';"
+        storage_path = self._DB_UTIL._mysql.general_command(sql_command)
+        sql_command = f"SELECT STORAGE_LOCATION from PREFERENCES WHERE USERNAME = '{username}';"
+        storage_location = self._DB_UTIL._mysql.general_command(sql_command)
+        
+        storage_location = "Local Machine" if not storage_location or not storage_location[0][0] else storage_location[0][0]
+        storage_path = "./downloads/" if not storage_path or not storage_path[0][0] else storage_path[0][0]
+
+        if storage_location != "Local Machine" and not bsu.drive:
+            bsu.init_google_auths()
+
+        bsu.download_files(course_id, storage_path, storage_location, full_course_name)
+
 
     async def _update_storage(self, message, client):
         await message.channel.send("Google Drive or Local Machine?")
@@ -1170,7 +1182,7 @@ class NLPAction():
         # getting the type of storage location
         path_type = await self._recieve_response(message, client)
 
-        options = ["google drive", "local"]
+        options = ["google drive", "Local Machine"]
         selection = self._get_closer_response(options, path_type.content)
 
         bsu = self._id_to_bsu_map[message.author.id]
@@ -1193,7 +1205,6 @@ class NLPAction():
             
             # todo add saving mechanism to cloud database
 
-            sql_path =  \
             sql_type = "INSERT INTO PREFERENCES (USERNAME, STORAGE_LOCATION) VALUES (\"{f_name}\",\"{path_type}\") ON DUPLICATE KEY UPDATE STORAGE_LOCATION=\"{path_type}\"" \
                 .format(path_type="Google Drive", f_name=username)
             self._DB_UTIL._mysql.general_command(sql_type)
@@ -1398,7 +1409,7 @@ class NLPAction():
             await send_notifications(string, BS_UTILS, channel_id, types)
 
 
-    async def download_files_by_schedule(self, client): 
+    async def download_files_by_schedule(self):
         now = datetime.datetime.now()
         time_string = now.strftime("%H:%M")
 
@@ -1407,33 +1418,17 @@ class NLPAction():
         for schedule in schedules:
             user_id = schedule[0]
             type = schedule[1]
-            if user_id in self._id_to_bsu_map.keys():
-                print("1")
-                bsu = self._id_to_bsu_map[user_id]
-                username = self._id_to_username_map[user_id]
-
-                sql_command = f"SELECT STORAGE_PATH from PREFERENCES WHERE USERNAME = '{username}';"
-                storage_path = self._DB_UTIL._mysql.general_command(sql_command)
-                sql_command = f"SELECT STORAGE_LOCATION from PREFERENCES WHERE USERNAME = '{username}';"
-                storage_location = self._DB_UTIL._mysql.general_command(sql_command)
-                
-                print("1")
-                storage_location = "Local" if not storage_location or not storage_location[0][0] else storage_location[0][0]
-                storage_path = "./" if not storage_path or not storage_path[0][0] else storage_path[0][0]
-
-                if storage_location != "Local" and not bsu.drive:
-                    storage_location = "Local" if not storage_location or not storage_location[0][0] else storage_location[0][0]
-                    storage_path = "./" if not storage_path or not storage_path[0][0] else storage_path[0][0]
+            bsu = self._id_to_bsu_map[user_id]
+            username = self._id_to_username_map[user_id]
+            print(f"Download schedule activated for {username} ... !")
+        
+            courses = bsu.get_classes_enrolled()
+            for course_name in courses.keys():
+                print("downloading course: ", course_name)
+                await self._download_files_without_asking(user_id, courses[course_name], course_name)
 
 
-                print("1")
-                courses = bsu.get_classes_enrolled()
-                for course_name in courses.keys():
-                    try:
-                        print("downloading course: ", course_name)
-                    except:
-                        pass
-                bsu.download_files(courses[course_name], storage_path, storage_location, course_name, type=type)
+
 
 
 

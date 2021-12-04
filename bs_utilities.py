@@ -1,17 +1,17 @@
 
 from bs_api import BSAPI
+from database.db_utilities import DBUtilities
+from database.mysql_database import MySQLDatabase
+from rename_file import RenameFile
 
 import datetime
-from datetime import date
+import shutil
 import urllib.parse
 import os
 from pathlib import Path
-from database.db_utilities import DBUtilities
-from database.mysql_database import MySQLDatabase
 from pydrive.auth import GoogleAuth
 from pydrive.drive import GoogleDrive
 from File import File, StorageTypes
-from rename_file import RenameFile
 
 
 class BSUtilities():
@@ -84,7 +84,7 @@ class BSUtilities():
         #print(type)
         if type.startswith('Local'):
             # First check if a folder exists with course name
-            path = os.path.join(destination, course_name)  # TODO replace with course name
+            path = os.path.join(destination, course_name)
             os.makedirs(path, exist_ok=True)
             destination = path
             destination += "/" if destination[-1] != '/' else ""
@@ -92,37 +92,46 @@ class BSUtilities():
                 os.makedirs(destination)
             full_path = destination + filename
             # saving the path in the right place
-            open(full_path, 'wb').write(res.content)
+            
+            with open(full_path, 'wb') as file:
+                file.write(res.content)
             if self._debug:
                 print("File {filename}: downloaded.".format(filename=filename))
         else:
             # TODO download to google drive
             return_val = self.validate_path_drive(destination, self.drive)
-            open(filename, 'wb').write(res.content)
+
+            os.makedirs("./temp/", exist_ok=True)
+            temp_path = os.path.join("./temp/", filename)
+
+            with open(temp_path, 'wb') as file:
+                file.write(res.content)
+
             # for debugging, just using this default file
-            self.upload_to_google_drive(self.drive, destination, filename, course_name)
             try:
-                os.remove(filename)
-            except PermissionError:
-                if self._debug:
-                    print("Removal permission denied")
+                self.upload_to_google_drive(self.drive, destination, temp_path, course_name)
+            except Exception as e:
+                print(e)
+                print("Google upload failed.")
 
 
     def upload_to_google_drive(self, drive, storage_path, file, course_name):
-        file_to_upload = file
         # finding the folder to upload to
         folders = self.get_all_files_in_google(drive)
         rename = RenameFile()
         folder_id = -1
         found = False
         course_folder_id = -1
+
+        filename = file.split('/')[-1]
+
         for folder in folders:
             if folder.fileTitle == storage_path:
                 folder_id = folder.filePath
         #print(folder_id)
         if folder_id == -1:
             # upload it to the root (My Drive)
-            gd_file = drive.CreateFile({'title': file})
+            gd_file = drive.CreateFile({'title': filename})
         else:
             subfolders = rename.get_folders_from_specified_folder(drive, folder_id, [])
             for s in subfolders:
@@ -139,7 +148,8 @@ class BSUtilities():
                 folder.Upload()
                 course_folder_id = folder['id']
 
-            gd_file = drive.CreateFile({'parents': [{'id': course_folder_id}]})
+            gd_file = drive.CreateFile({'title': filename,
+                                        'parents': [{'id': course_folder_id}]})
 
         # Read file and set it as the content of this instance.
         gd_file.SetContentFile(file)
@@ -156,6 +166,7 @@ class BSUtilities():
 
         course_id (int / str): id of the course
         destination (str): location the files are downloaded.
+        t: Google drive or Local
     '''
 
     # TODO: files not located in a sub-module are not downloaded.
@@ -180,18 +191,25 @@ class BSUtilities():
                     extension = suffix[len(suffix) - 1]
                     # currently only saving pdf files
                     print(Path(m_topics[k]["Url"]).suffixes)
-                    if file_types  == "pdf" and extension == ".pdf":
-                        self.download_file(course_id, m_topics[k]["TopicId"], destination=destination,
-                            type=t, course_name=course_name)
-                    elif file_types == "videos" and extension.lower() in ["mp4", "avi", "wmv"]:
-                        self.download_file(course_id, m_topics[k]["TopicId"], destination=destination,
-                            type=t, course_name=course_name)
-                    elif file_types == "slides" and extension.lower() in ["pptx", "ppt"]:
-                        self.download_file(course_id, m_topics[k]["TopicId"], destination=destination,
-                            type=t, course_name=course_name)
-                    elif extension in [".pdf", ".mp4", ".avi", ".wmv", ".pptx", ".ppt", ".html", '.xlsx']:
-                        self.download_file(course_id, m_topics[k]["TopicId"], destination=destination,
-                                            type=t, course_name=course_name)
+                    try:
+                        if file_types  == "pdf" and extension == ".pdf":
+                            self.download_file(course_id, m_topics[k]["TopicId"], destination=destination,
+                                type=t, course_name=course_name)
+                        elif file_types == "videos" and extension.lower() in ["mp4", "avi", "wmv"]:
+                            self.download_file(course_id, m_topics[k]["TopicId"], destination=destination,
+                                type=t, course_name=course_name)
+                        elif file_types == "slides" and extension.lower() in ["pptx", "ppt"]:
+                            self.download_file(course_id, m_topics[k]["TopicId"], destination=destination,
+                                type=t, course_name=course_name)
+                        elif extension in [".pdf", ".mp4", ".avi", ".wmv", ".pptx", ".ppt", ".html", '.xlsx']:
+                            self.download_file(course_id, m_topics[k]["TopicId"], destination=destination,
+                                                type=t, course_name=course_name)
+                    except Exception as e:
+                        print(e)
+            
+        # If files are uploaded to google drive, cleanup the temp storage location
+        if not t.startswith('Local'):
+            shutil.rmtree("./temp/")
     '''
         Gets a list of classes the user is currently enrolled in.
         Returns a dictionary in the format of 
