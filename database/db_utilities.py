@@ -168,6 +168,44 @@ class DBUtilities():
     def change_username(self, table_name, old_username, new_username):
         res = self._mysql.general_command(f"UPDATE {table_name} SET USERNAME = \"{new_username}\" WHERE USERNAME = \"{old_username}\"")
 
+
+
+    # If a user exists in the USER table, return the username & encoded password 
+    # Returns None if it does not.
+    # username: str
+
+    def get_username_password(self, username):
+        res = self._mysql.general_command(f"SELECT username, password FROM USERS WHERE username = \"{username}\"")
+        return res
+
+
+
+
+    # description: weekday!
+    def add_download_shcedule(self, username, scheduled_time, type, description, user_id):
+        cols = {
+            "USERNAME": username,
+            "TIME": scheduled_time,
+            "TYPE": type,
+            "DESCRIPTION": str(description),
+            "user_id": user_id
+        }
+
+        self._mysql.insert_into("DOWNLOAD_SCHEDULE", cols)
+
+
+    def get_download_schedule(self, username):
+        return self._mysql.general_command(f"SELECT DISTINCT TIME,DESCRIPTION,TYPE FROM DOWNLOAD_SCHEDULE WHERE USERNAME = \"{username}\" ORDER BY TIME ASC")
+
+
+    def get_download_schedule_by_time(self, time_string):
+        return self._mysql.general_command(f"SELECT DISTINCT user_id,TYPE FROM DOWNLOAD_SCHEDULE WHERE TIME = \"{time_string}\"")
+
+    def clear_download_schedule(self, user_name):
+        self._mysql.delete("DOWNLOAD_SCHEDULE", f"USERNAME = \"{user_name}\"")
+
+
+
     def add_discussion_schedule(self, username, formatted_days, formatted_classes):
         self._mysql.create_table('DISCUSSION_SCHEDULE', 'username VARCHAR(50), '
                                                         'days_of_wk VARCHAR(50), '

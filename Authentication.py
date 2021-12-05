@@ -14,7 +14,6 @@ HEADER = {
 # with the given username and password.
 # Needs to pass Duo Authentication manually - through their app.
 #
-# TODO: automate Duo Authentication
 #
 # username (str) - brightspace username.
 # password (str) - <4-digit pin>,push  <4-digit pin>,<temp code> 
@@ -203,7 +202,7 @@ def setup_automation(dbu, discord_username, bs_username, bs_pin, url):
     sc = res_sanity_check(res)
 
     if not sc[1]:
-        print(sc[0])
+        #print(sc[0])
         return sc
 
     res_data = res.json()["response"]

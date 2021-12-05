@@ -328,6 +328,8 @@ class BSAPI():
 
         return self.__process_api_json("get_course_all_events", url)
 
+
+    
     '''
         Retrieve not submitted grade conditions 
         
@@ -336,6 +338,51 @@ class BSAPI():
 
     def get_content_conditions(self):
         return
+
+
+    # Modification of 'get_grade_of_assignment' to return just the overall points received
+    def get_grade_received(self, course_id, grade_object_id):
+        url = self._API_URL_PREFIX + "le/1.38/{course_id}/grades/{grade_object_id}/values/myGradeValue".format(
+            course_id=course_id, grade_object_id=grade_object_id
+        )
+        # returns a dict with assignment info or 'None' if assignment has no grade yet
+        grade_object = self.__process_api_json("get_grade_of_assignment", url)
+        # print(grade_object)
+        if grade_object is None:
+            # meaning no points yet
+            return 0, 0
+
+        total = grade_object["PointsDenominator"]
+        grade_received = grade_object["PointsNumerator"]
+
+        return grade_received, total
+
+    def get_upcoming_assignments(self, course_id):
+        url = self._API_URL_PREFIX + "le/1.38/{course_id}/dropbox/folders/".format(course_id=course_id)
+        upcoming = self.__process_api_json("get_upcoming_assignments", url)
+        #file = open("/Users/raveena/Library/Preferences/PyCharmCE2019.2/scratches/scratch.json")
+        #upcoming = json.load(file)
+        #print(upcoming)
+        if upcoming is None:
+            return []
+        due = []
+        for assignment in upcoming:
+            if assignment["DueDate"] is None:
+                l = [assignment["Name"], None]
+            else:
+                l = [assignment["Name"], assignment["DueDate"]]
+            due.append(l)
+        return due
+
+
+    '''
+        Gets the content of a topic
+    ''' 
+    def get_topic_content(self, course_id, topic_id):
+        url = self._API_URL_PREFIX
+        url += "le/1.41/{course_id}/content/topics/{topic_id}".format(course_id=course_id, topic_id=topic_id)
+        return self.__process_api_json("get_course_all_events", url)
+
 
     '''
         Processing an api call that returns a json.
@@ -399,39 +446,15 @@ class BSAPI():
     def set_debug_mode(self, debug):
         self._debug = debug
 
-    # Modification of 'get_grade_of_assignment' to return just the overall points received
-    def get_grade_received(self, course_id, grade_object_id):
-        url = self._API_URL_PREFIX + "le/1.38/{course_id}/grades/{grade_object_id}/values/myGradeValue".format(
-            course_id=course_id, grade_object_id=grade_object_id
-        )
-        # returns a dict with assignment info or 'None' if assignment has no grade yet
-        grade_object = self.__process_api_json("get_grade_of_assignment", url)
-        # print(grade_object)
-        if grade_object is None:
-            # meaning no points yet
-            return 0, 0
+    
+    '''
+        Returns the raw result of a response using the current BrightSpace session
 
-        total = grade_object["PointsDenominator"]
-        grade_received = grade_object["PointsNumerator"]
-
-        return grade_received, total
-
-    def get_upcoming_assignments(self, course_id):
-        url = self._API_URL_PREFIX + "le/1.38/{course_id}/dropbox/folders/".format(course_id=course_id)
-        upcoming = self.__process_api_json("get_upcoming_assignments", url)
-        #file = open("/Users/raveena/Library/Preferences/PyCharmCE2019.2/scratches/scratch.json")
-        #upcoming = json.load(file)
-        print(upcoming)
-        if upcoming is None:
-            return []
-        due = []
-        for assignment in upcoming:
-            if assignment["DueDate"] is None:
-                l = [assignment["Name"], None]
-            else:
-                l = [assignment["Name"], assignment["DueDate"]]
-            due.append(l)
-        return due
+        url (str): url to access
+    '''
+    def just_gimme_a_response(self, url):
+        res = self._session.get(url, headers=self._HEADER)
+        return res
 
     def get_past_assignments(self, course_id):
         url = self._API_URL_PREFIX + "le/1.38/{course_id}/dropbox/folders/".format(course_id=course_id)
@@ -451,6 +474,7 @@ class BSAPI():
                 l = {'assignment_name': assignment["Name"], 'due_date': None, 'file_name': attachment_file}
             else:
                 l = {'assignment_name': assignment["Name"], 'due_date': assignment["DueDate"], 'file_name': attachment_file}
+
 
             current_date = datetime.datetime.utcnow()
             assignment_due_date = datetime.datetime.fromisoformat(assignment['DueDate'][:-1])

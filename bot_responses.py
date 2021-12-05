@@ -114,6 +114,7 @@ class BotResponses:
         HELPER FUNCTION
         Returns: Whether the text channel has already been created in their server 
     """
+
     def check_if_tc_exists(self, request_tc, username):
         sql_command = f"SELECT LIST_OF_TCS FROM PREFERENCES WHERE USERNAME = '{username}';"
         list_of_tcs = self.DB_UTILS._mysql.general_command(sql_command)[0][0]

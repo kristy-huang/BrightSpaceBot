@@ -1,12 +1,13 @@
 from bs_api import BSAPI
+from database.db_utilities import DBUtilities
+from database.mysql_database import MySQLDatabase
+from rename_file import RenameFile
 
 import datetime
-from datetime import date
+import shutil
 import urllib.parse
 import os
 from pathlib import Path
-from database.db_utilities import DBUtilities
-from database.mysql_database import MySQLDatabase
 from pydrive.auth import GoogleAuth
 from pydrive.drive import GoogleDrive
 from File import File, StorageTypes
@@ -18,6 +19,7 @@ class BSUtilities():
     def __init__(self, debug=False):
         self._bsapi = BSAPI(debug=debug)
         self._debug = debug
+        self.drive = None
 
     # Logs in to BS automatically
     #
@@ -50,6 +52,13 @@ class BSUtilities():
         bsapi: instance of BSAPI()
     '''
 
+    def init_google_auths(self):
+        gauth = GoogleAuth()
+        gauth.LocalWebserverAuth()  # client_secrets.json need to be in the same directory as the script
+        drive = GoogleDrive(gauth)
+        self.drive = drive
+
+
     def replace_bsapi(self, bsapi):
         self._bsapi = bsapi
 
@@ -60,6 +69,7 @@ class BSUtilities():
         topic_id (int / str): id of the topic
         destination (str): location the files are downloaded.
     '''
+
 
     def check_for_folder(self, storage_type, course_name):
         if storage_type == "Local Machine":
@@ -72,11 +82,11 @@ class BSUtilities():
         filename = filename[:filename.rindex("\"")]
         filename = filename[filename.rindex("\"") + 1:]
         filename = urllib.parse.unquote(filename)
-        print(filename)
-        print(type)
+
         if type.startswith('Local'):
             # First check if a folder exists with course name
-            path = os.path.join(destination, course_name)  # TODO replace with course name
+            path = os.path.join(destination, course_name)
+
             os.makedirs(path, exist_ok=True)
             destination = path
             destination += "/" if destination[-1] != '/' else ""
@@ -84,16 +94,29 @@ class BSUtilities():
                 os.makedirs(destination)
             full_path = destination + filename
             # saving the path in the right place
-            open(full_path, 'wb').write(res.content)
+            
+            with open(full_path, 'wb') as file:
+                file.write(res.content)
             if self._debug:
                 print("File {filename}: downloaded.".format(filename=filename))
         else:
             # TODO download to google drive
-            return_val = self.validate_path_drive(destination, drive)
-            open(filename, 'wb').write(res.content)
+            return_val = self.validate_path_drive(destination, self.drive)
+
+            os.makedirs("./temp/", exist_ok=True)
+            temp_path = os.path.join("./temp/", filename)
+
+            with open(temp_path, 'wb') as file:
+                file.write(res.content)
+
             # for debugging, just using this default file
-            self.upload_to_google_drive(drive, destination, filename, course_name)
-            os.remove(filename)
+            try:
+                self.upload_to_google_drive(self.drive, destination, temp_path, course_name)
+            except Exception as e:
+                print(e)
+                print("Google upload failed.")
+
+
 
     def upload_to_google_drive(self, drive, storage_path, file, course_name):
         file_to_upload = file
@@ -103,13 +126,16 @@ class BSUtilities():
         folder_id = -1
         found = False
         course_folder_id = -1
+
+        filename = file.split('/')[-1]
+
         for folder in folders:
             if folder.fileTitle == storage_path:
                 folder_id = folder.filePath
-        print(folder_id)
+        #print(folder_id)
         if folder_id == -1:
             # upload it to the root (My Drive)
-            gd_file = drive.CreateFile({'title': file})
+            gd_file = drive.CreateFile({'title': filename})
         else:
             subfolders = rename.get_folders_from_specified_folder(drive, folder_id, [])
             for s in subfolders:
@@ -121,12 +147,14 @@ class BSUtilities():
             if found == False:
                 # course folder does not exist so create one
                 folder = drive.CreateFile({'title': course_name,
-                                           'mimeType': 'application/vnd.google-apps.folder',
-                                           'parents': [{'id': folder_id}]})
+                                  'mimeType': 'application/vnd.google-apps.folder',
+                                  'parents': [{'id': folder_id}]})
                 folder.Upload()
                 course_folder_id = folder['id']
 
-            gd_file = drive.CreateFile({'parents': [{'id': course_folder_id}]})
+            gd_file = drive.CreateFile({'title': filename,
+                                        'parents': [{'id': course_folder_id}]})
+
 
         # Read file and set it as the content of this instance.
         gd_file.SetContentFile(file)
@@ -135,16 +163,19 @@ class BSUtilities():
         # handles memory leaks
         gd_file = None
 
+
     '''
         Downloads all files for a course recursively.
 
         course_id (int / str): id of the course
         destination (str): location the files are downloaded.
+        t: Google drive or Local
     '''
 
     # TODO: files not located in a sub-module are not downloaded.
 
-    def download_files(self, course_id, destination, t, drive, course_name):
+    def download_files(self, course_id, destination, t, course_name, file_types=None):
+
         modules = self._bsapi.get_topics(course_id)["Modules"]
 
         if self._debug:
@@ -159,11 +190,31 @@ class BSUtilities():
                 for k in range(len(m_topics)):
                     # getting the type of file it is
                     suffix = Path(m_topics[k]["Url"]).suffixes
+                    if len(suffix) == 0:
+                        continue
                     extension = suffix[len(suffix) - 1]
                     # currently only saving pdf files
-                    if extension == ".pdf":
-                        self.download_file(course_id, m_topics[k]["TopicId"], destination=destination,
-                                           type=t, drive=drive, course_name=course_name)
+
+                    print(Path(m_topics[k]["Url"]).suffixes)
+                    try:
+                        if file_types  == "pdf" and extension == ".pdf":
+                            self.download_file(course_id, m_topics[k]["TopicId"], destination=destination,
+                                type=t, course_name=course_name)
+                        elif file_types == "videos" and extension.lower() in ["mp4", "avi", "wmv"]:
+                            self.download_file(course_id, m_topics[k]["TopicId"], destination=destination,
+                                type=t, course_name=course_name)
+                        elif file_types == "slides" and extension.lower() in ["pptx", "ppt"]:
+                            self.download_file(course_id, m_topics[k]["TopicId"], destination=destination,
+                                type=t, course_name=course_name)
+                        elif extension in [".pdf", ".mp4", ".avi", ".wmv", ".pptx", ".ppt", ".html", '.xlsx']:
+                            self.download_file(course_id, m_topics[k]["TopicId"], destination=destination,
+                                                type=t, course_name=course_name)
+                    except Exception as e:
+                        print(e)
+            
+        # If files are uploaded to google drive, cleanup the temp storage location
+        if not t.startswith('Local'):
+            shutil.rmtree("./temp/")
 
     '''
         Gets a list of classes the user is currently enrolled in.
@@ -299,7 +350,7 @@ class BSUtilities():
     '''
 
     def get_folder_ID_from_dropbox(self, dropbox_folders, assignment_name):
-        assignment_name_str = str(assignment_name.content)
+        assignment_name_str = str(assignment_name)
 
         for folder in dropbox_folders:
             folder_name = folder['Name']
@@ -752,6 +803,7 @@ class BSUtilities():
         if time1 == time2:
             return 0
 
+
     def get_letter_grade(self, percentage):
         if percentage >= 90:
             return 'A'
@@ -806,6 +858,7 @@ class BSUtilities():
 
         return grades
 
+
     def get_dict_of_discussion_dates(self):
         classes = self.get_classes_enrolled()
         dates = {}
@@ -837,6 +890,7 @@ class BSUtilities():
 
         return string
 
+
     def find_course_id(self, class_name):
         dictionary = self.get_classes_enrolled()
 
@@ -854,21 +908,22 @@ class BSUtilities():
         class_name = class_name.replace(' ', '')
         course_id = -1
         for c_full_name, c_id in dictionary.items():
+            c_full_name = c_full_name.replace(' ', '')
             if c_full_name.lower().find(class_name.lower()) != -1:
                 return c_full_name, c_id
-        return None
+        return (None, None)
 
     # Since our project is in "testing" phase, you have to manually add test users until you publish the app
     # My personal email is the only test user now, but we can add more
     def init_google_auths(self):
         gauth = GoogleAuth()
         gauth.LocalWebserverAuth()  # client_secrets.json need to be in the same directory as the script
-        drive = GoogleDrive(gauth)
-        return drive
+        self.drive = GoogleDrive(gauth)
 
     def get_all_files_in_google(self, drive):
         # only querying files (everything) from the 'MyDrive' root
         fileList = drive.ListFile({'q': "'root' in parents and trashed=false"}).GetList()
+        #print(fileList)
         # Use this to save all the folders in 'MyDrive'
         folderList = []
         for file in fileList:
@@ -876,7 +931,7 @@ class BSUtilities():
                 myFile = File(file['title'], file['id'])
                 myFile.storageType = StorageTypes.GOOGLE_DRIVE
                 folderList.append(myFile)
-
+        #print(folderList)
         return folderList
 
     def get_notifications_past_24h(self):
@@ -911,7 +966,7 @@ class BSUtilities():
     # Algorithm to get overall points received in a class if not displayed at top
     def sum_total_points(self, courseID):
         gradeIDs = self._bsapi.get_all_assignments_in_gradebook(courseID)
-        print(gradeIDs)
+        #print(gradeIDs)
         yourTotal = 0
         classTotal = 0
         for id in gradeIDs:
@@ -1157,15 +1212,15 @@ class BSUtilities():
 
         # courses sorted by grade
         user_sorted_grade = self.get_sorted_grades()[0]
-        print(user_sorted_grade)
+        #print(user_sorted_grade)
         user_missing_grade = self.get_sorted_grades()[1]
-        print(user_missing_grade)
+        #print(user_missing_grade)
 
         # courses sorted by due dates
         user_sorted_due_dates = self.get_course_by_due_date()[0]
-        print(user_sorted_due_dates)
+        #print(user_sorted_due_dates)
         user_missing_due_dates = self.get_course_by_due_date()[1]
-        print(user_missing_due_dates)
+        #print(user_missing_due_dates)
 
         # courses sorted by un-submitted assignments
         # needs implementation
@@ -1204,6 +1259,39 @@ class BSUtilities():
                                               'Lack': "Grade & Deadline"})
 
         return suggested_classes, lack_info_classes
+
+
+
+    # checks if a specific topic is a kaltura lecture. Returns Trur / False for the result.
+    #
+    # course_id (int / str): which course the topic belongs to
+    # topic_id (int / str): the id of the topic
+
+    def check_kaltura(self, course_id, topic_id):
+        TOPIC_TYPE_FILE = 1
+        TOPIC_TYPE_LINK = 3
+
+        topic_content = self._bsapi.get_topic_content(course_id, topic_id)
+        if not topic_content:
+            if self._debug:
+                print("Check kaltura: topic does not exist")
+            return False
+
+        if topic_content["TopicType"] != TOPIC_TYPE_LINK:
+            if self._debug:
+                print("Check kaltura: topic is not a link")
+            return False
+
+        next_url = "https://purdue.brightspace.com" + topic_content["Url"]
+        res = self._bsapi.just_gimme_a_response(next_url)
+        if res.status_code != 200:
+            if self._debug:
+                print(f"Check kaltura: failed to acces link in the topic. status code: {res.status_code}")
+            return False
+
+        if "kaf.kaltura.com" in str(res.content):
+            return True
+        return False
 
     def get_students_who_posted(self, course_id, forum_id, topic_id):
         students = []
