@@ -1,8 +1,33 @@
 import discord
 from rename_file import RenameFile
+from bs_utilities import BSUtilities
+from bs_calendar import Calendar
+import datetime
+import re
+from file_storage import *
 import asyncio
 from file_storage import validate_path_local
 from datetime import datetime
+
+DAY_MAP = {
+    0: "MO",
+    1: "TU",
+    2: "WE",
+    3: "TH",
+    4: "FR",
+    5: "SA",
+    6: "SU"
+}
+
+DAY_MAP_NUM = {
+    "MO": 0,
+    "TU": 1,
+    "WE": 2,
+    "TH": 3,
+    "FR": 4,
+    "SA": 5,
+    "SU": 6
+}
 
 # This will be a helper class to organize all the responses that the bot will need to provide back to discord
 class BotResponses:
@@ -14,10 +39,11 @@ class BotResponses:
         self.message = None
         self.username = None
         self.channel = None
-        self.DB_UTILS = None
+        self.DB_UTILS = DBUtilities('database/db_config.py')
         self.BS_UTILS = None
         self.RN_FILE = RenameFile()
         self.google_drive = None
+        self.db_username = None
 
     """
     Setting the message parameter that the discord method passes in for future use
@@ -42,6 +68,9 @@ class BotResponses:
     def set_google_drive(self):
         if self.google_drive is None:
             self.google_drive = self.BS_UTILS.init_google_auths()
+
+    def set_db_username(self, db_username):
+        self.db_username = db_username
 
     """
     DEBUGGING Helps see what the discord messages are 
@@ -90,7 +119,7 @@ class BotResponses:
         list_of_tcs = self.DB_UTILS._mysql.general_command(sql_command)[0][0]
         if list_of_tcs is None:
             sql_command = f"UPDATE PREFERENCES SET LIST_OF_TCS = 'general' WHERE USERNAME = '{username}';"
-            self.DB_UTILS._mysql.general_command(sql_command) # execute command
+            self.DB_UTILS._mysql.general_command(sql_command)  # execute command
             sql_command = f"SELECT LIST_OF_TCS FROM PREFERENCES WHERE USERNAME = '{username}';"
             list_of_tcs = self.DB_UTILS._mysql.general_command(sql_command)[0][0]
 
@@ -545,7 +574,140 @@ class BotResponses:
 
 
 
+    def format_days_of_week(self, user_input):
+        days = []
+        if 'm' in user_input:
+            days.append('MO')
+        if 'tu' in user_input:
+            days.append("TU")
+        if 'w' in user_input:
+            days.append("WE")
+        if 'th' in user_input:
+            days.append('TH')
+        if 'f' in user_input:
+            days.append('FR')
+        if 'sa' in user_input:
+            days.append('SA')
+        if 'su' in user_input:
+            days.append('SU')
+        result = ''
+        for day in days:
+            result = result + "," + day
+        return result[1:]
 
-    def change_configuration(self):
+    def week_to_num(self, user_input):
+        days = []
+        if 'm' in user_input:
+            days.append('MO')
+        if 'tu' in user_input:
+            days.append("TU")
+        if 'w' in user_input:
+            days.append("WE")
+        if 'th' in user_input:
+            days.append('TH')
+        if 'f' in user_input:
+            days.append('FR')
+        if 'sa' in user_input:
+            days.append('SA')
+        if 'su' in user_input:
+            days.append('SU')
+        day_num = ''
+        for day in days:
+            day_num = day_num + "," + str(DAY_MAP_NUM[day])
+        return day_num[1:]
 
+    def format_classes(self, classes):
+        classes = re.split('[^a-zA-Z0-9]+', classes)
+        result = ''
+        for c in classes:
+            course_id = self.BS_UTILS.find_course_ID(c)
+            result = result + "," + str(course_id)
+        return result[1:]
+
+    def add_office_hours_to_calendar(self, course_name, instr_name, days, st_time, end_time):
+        self.DB_UTILS._mysql.create_table('OFFICE_HOURS', 'username VARCHAR(50), '
+                                                          'recurring_event_id VARCHAR(255), '
+                                                          'event_title VARCHAR(255), '
+                                                          'PRIMARY KEY (username, recurring_event_id)')
+        cal = Calendar()
+        event_title = f"OFFICE HOURS: for {course_name}, {instr_name}"
+        description = f"Don't forget to attend {instr_name}'s office hours!"
+
+        start = datetime.datetime.utcnow()
+        weekday = start.weekday()
+        st_hour = int(st_time.partition(":")[0])
+        st_min = int(st_time.partition(":")[2])
+        start = start.replace(hour=st_hour, minute=st_min)
+        start = start.isoformat()
+
+        end = datetime.datetime.utcnow()
+        end_hour = int(end_time.partition(":")[0])
+        end_min = int(end_time.partition(":")[2])
+        end = end.replace(hour=end_hour, minute=end_min)
+        end = end.isoformat()
+
+        sql_command = f"SELECT recurring_event_id, event_title from OFFICE_HOURS;"
+        event_titles = self.DB_UTILS._mysql.general_command(sql_command)
+        for et in event_titles:
+            if et[1] == event_title:
+                cal.delete_event(et[0])
+        # print(event_titles)
+
+        recurring_event_id = cal.insert_event_recurring(event_title, description, start, end, days)
+        print(recurring_event_id)
+        self.DB_UTILS._mysql.general_command(f"INSERT INTO OFFICE_HOURS (username, recurring_event_id, event_title) "
+                                             f"VALUES(\'{self.db_username}\', \'{recurring_event_id}\', \'{event_title}\') "
+                                             f"ON DUPLICATE KEY UPDATE event_title=\'{event_title}\'")
+
+        # cal.insert_event_recurring creates an event for today. Check if today is a day of week listed in days
+        if DAY_MAP[weekday] not in days:
+            first_event_id = cal.get_recurring_event(recurring_event_id)['id']
+            cal.delete_event(first_event_id)
+        return "Office hours successfully added to calendar!"
+
+    def add_discussion_schedule_to_db(self, username, days, classes):
+        day_num = self.week_to_num(days)
+        formatted_classes = self.format_classes(classes)
+        self.DB_UTILS.add_discussion_schedule(username, day_num, formatted_classes)
         return
+
+    def discussion_remind_to_post(self, username):
+        reply = '-1'
+        days = self.DB_UTILS.get_days_in_discussion_schedule(username)
+        full_name = self.DB_UTILS.get_full_name(username)
+        classes = self.DB_UTILS.get_classes_in_discussion_schedule(username)
+        if str(datetime.date.today().weekday()) in days:
+            reply = ''
+            for course_id in classes:
+                forum_ids_names = self.BS_UTILS.get_all_forum_ids_names(course_id)
+                for forum_id_name in forum_ids_names:
+                    topic_ids_names = self.BS_UTILS.get_all_topic_ids_names(course_id, forum_id_name['id'])
+                    for topic_id_name in topic_ids_names:
+                        students = self.BS_UTILS.get_students_who_posted(course_id, forum_id_name['id'],
+                                                                         topic_id_name['id'])
+                        # student hasn't replied to another student or hasn't posted
+                        due_date = '-1'
+                        if topic_id_name['due_date'] is not None:
+                            due_date = datetime.datetime.fromisoformat(topic_id_name['due_date'][:-1])
+                            due_date = (due_date - datetime.datetime.utcnow()).days
+                        #
+                        # # for testing
+                        # if topic_id_name['name'] == 'Syllabus, Course Structure, or Other General Course Questions':
+                        #     due_date = datetime.datetime.now() + datetime.timedelta(days=-1)
+                        #     due_date = (due_date - datetime.datetime.utcnow()).days
+
+                        if students.count(full_name) < 2 and (due_date == '-1' or due_date >= 0):
+                            reply = reply + \
+                                    f"course:{course_id}->{forum_id_name['name']}->{topic_id_name['name']}\n"
+        return reply
+
+    def archive_past_assignments(self, bs_api):
+        reply = '-1'
+        drive = init_google_auths()
+        move_past_assignments_to_archive(drive, bs_api)
+        reply = 'success'
+        return reply
+
+    def updated_section(self):
+        reply = self.BS_UTILS.get_updated_sections(self.db_username)
+        return reply

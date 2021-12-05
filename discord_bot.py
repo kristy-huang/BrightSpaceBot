@@ -16,6 +16,7 @@ from bot_responses import BotResponses
 from bs_calendar import Calendar
 from Authentication import setup_automation
 from werkzeug.security import generate_password_hash
+from database.mysql_database import MySQLDatabase
 
 '''
 To add the bot to your own server and test it out, copy this URL into your browser
@@ -203,6 +204,11 @@ async def notification_loop():
             ## only for debugging ##
             string = "No posts today"
 
+    # response = BOT_RESPONSES.discussion_remind_to_post(BOT_RESPONSES.db_username)
+    # string += "Reminder to reply to the following discussions: "
+    # if response != '-1':
+    #     string += response
+
     # print("called_once_a_day:")
     async def send_notifications(string, channel_id, types):
         message_channel = client.get_channel(channel_id)
@@ -271,7 +277,6 @@ async def notification_before():
 notification_loop.start()
 login_lock = False
 
-
 # This is our input stream for our discord bot
 # Every message that comes from the chat server will go through here
 @client.event
@@ -290,9 +295,10 @@ async def on_message(message):
     username = str(message.author).split('#')[0]
     user_message = str(message.content)
     channel = str(message.channel.name)
+    
     global channelID
     channelID = message.channel.id
-    print(channelID)
+    print(f'{username}: {user_message} ({channel}) ({message.channel.id})')
 
     def check(msg):
         return msg.author == message.author
@@ -309,6 +315,7 @@ async def on_message(message):
         await message.channel.send("What is your username?")
         username = await recieve_response()
         author_id_to_username_map[username.author.id] = username.content
+        BOT_RESPONSES.set_db_username(username.content)
 
     def get_weekday(msg):
         msg = msg.lower()
@@ -483,6 +490,9 @@ async def on_message(message):
             await message.channel.send("You should probably study...")
             return
 
+    '''
+    start of discord commands below
+    '''
     # setting up a basic 'hello' command so you get this gist of it
     if user_message.lower() == 'hello':
         # put your custom message here for the bot to output
@@ -1279,8 +1289,97 @@ async def on_message(message):
 
     # redirecting notifications
     elif message.content.startswith("redirect notifications"):
+
+        await message.channel.send("Here are the notification types you can redirect - Grades, Files, Deadlines.\n"
+                                   "Format the response as <Notification Type> - <Text Channel Name>.\n"
+                                   "EX: Grades - Grades Notifications")
+
+        # check what type of path they want
+        def storage_path(m):
+            return m.author == message.author
+
+        # getting the type of redirecting of notification
+        try:
+            response = await client.wait_for('message', check=storage_path, timeout=30)
+        except asyncio.TimeoutError:
+            await message.channel.send("taking too long...")
+            return
+
+        # split the notification type and desired text channel
+        response_array = response.content.split("-")
+        category = response_array[0]
+        category = category.strip()
+        text_channel = response_array[1]
+        text_channel = text_channel.strip()
+        print(category.lower())
+        # Get the database category
+        db_category = ""
+        if category.lower() == "grades":
+            db_category = "GRADES_TC"
+        elif category.lower() == 'files':
+            db_category = "FILES_TC"
+        elif category.lower() == 'deadlines':
+            db_category = "DEADLINES_TC"
+        else:
+            await message.channel.send("Sorry, the notification type you specified is not valid. Please try the "
+                                       "process again")
+            return
+
+        # TODO get the username from a different way
+        sql_command = f"SELECT {db_category} FROM PREFERENCES WHERE USERNAME = '{DB_USERNAME}';"
+        current_saved_tc = DB_UTILS._mysql.general_command(sql_command)[0][0]
+        # Check if the channel that is being requested has already been created
+        sql_command = f"SELECT LIST_OF_TCS FROM PREFERENCES WHERE USERNAME = '{DB_USERNAME}';"
+        list_of_tcs = DB_UTILS._mysql.general_command(sql_command)[0][0]
+        if list_of_tcs is None:
+            sql_command = f"UPDATE PREFERENCES SET LIST_OF_TCS = 'general' WHERE USERNAME = '{DB_USERNAME}';"
+            DB_UTILS._mysql.general_command(sql_command)
+            sql_command = f"SELECT LIST_OF_TCS FROM PREFERENCES WHERE USERNAME = '{DB_USERNAME}';"
+            list_of_tcs = DB_UTILS._mysql.general_command(sql_command)[0][0]
+
+        array = list_of_tcs.split(",")
+        found = False
+        for a in array:
+            if a == text_channel:
+                # Then this text channel already exists
+                found = True
+        # found, list_of_tcs = BOT_RESPONSES.check_if_tc_exists(current_saved_tc, DB_USERNAME)
+
+        sql_command = f"UPDATE PREFERENCES SET {db_category} = '{text_channel}' WHERE USERNAME = '{DB_USERNAME}';"
+        DB_UTILS._mysql.general_command(sql_command)
+
+        if not found:
+            list_of_tcs = list_of_tcs + "," + text_channel
+            sql_command = f"UPDATE PREFERENCES SET LIST_OF_TCS = '{list_of_tcs}' WHERE USERNAME = '{DB_USERNAME}';"
+            DB_UTILS._mysql.general_command(sql_command)
+            name = 'Text Channels'  # This will go under the default category
+            cat = discord.utils.get(message.guild.categories, name=name)
+            await message.guild.create_text_channel(text_channel, category=cat)
+
+            channel_id = 0
+            for channel in message.guild.text_channels:
+                print(channel)
+                print(channel.id)
+                channel_id = channel.id
+
+            await message.channel.send("You successfully moved " + category + " notifications from "
+                                       + str(
+                current_saved_tc) + " to " + text_channel + ". I will send a message to this "
+                                                            "channel to start the thread.")
+
+            send_message_to_channel = client.get_channel(channel_id)
+            await send_message_to_channel.send("Hello! This thread will hold notifications about " + category)
+            return
+        else:
+            await message.channel.send("Since this channel already exists, a new channel will not be created. \nYou "
+                                       "successfully moved " + category + " notifications from "
+                                       + str(current_saved_tc) + " to " + text_channel + ".")
+            return
+
+
         await BOT_RESPONSES.redirect_notifications(message, client, DB_USERNAME)
         return
+
 
     # shows where the redirections lead to for each category
     elif message.content.startswith("where are my notifications?"):
@@ -1290,7 +1389,6 @@ async def on_message(message):
 
     elif message.content.startswith("add quiz due dates to calendar"):
         await message.channel.send("Retrieving quizzes...")
-        # Syncing quizzes to the calendar daily (so it can get the correct changes)
         quizzes = BS_UTILS.get_all_upcoming_quizzes()
         for quiz in quizzes:
             cal = Calendar()
@@ -1300,16 +1398,14 @@ async def on_message(message):
             end = date.isoformat()
             start = (date - datetime.timedelta(hours=1)).isoformat()
             event_id, end_time = cal.get_event_from_name(event_title)
-            # event has already been created in google calendar
+            # event hasn't been created in google calendar
             if event_id == -1:
                 # insert new event to calendar
                 cal.insert_event(event_title, description, start, end)
-            # event has not been created
+            # event has already been created
             else:
                 # if end time has changed, update the event
                 if end_time != end:
-                    # await message.channel.send(end_time)
-                    # await message.channel.send(end)
                     cal.delete_event(event_id)
                     cal.insert_event(event_title, description, start, end)
                 else:
@@ -1486,6 +1582,31 @@ async def on_message(message):
             await message.channel.send("Timeout ERROR has occurred. Please try the query again")
 
         return
+    elif message.content.startswith("add office hours to calendar"):
+        await message.channel.send("Please input the course name")
+        course_name = await recieve_response()
+        course_name = course_name.content.lower()
+
+        await message.channel.send("Please input the instructor name")
+        instr_name = await recieve_response()
+        instr_name = instr_name.content.lower()
+
+        await message.channel.send("Please input office hour days")
+        days = await recieve_response()
+        days = days.content.lower()
+        days = BOT_RESPONSES.format_days_of_week(days)
+
+        await message.channel.send("Please input office hour start time. ie 13:30")
+        st_time = await recieve_response()
+        st_time = st_time.content.lower()
+
+        await message.channel.send("Please input office hour end time. ie 14:30")
+        end_time = await recieve_response()
+        end_time = end_time.content.lower()
+
+        response = BOT_RESPONSES.add_office_hours_to_calendar(course_name, instr_name, days, st_time, end_time)
+        await message.channel.send(response)
+        return
 
     elif message.content.startswith("rename file"):
         # list out the files that they can rename
@@ -1510,6 +1631,36 @@ async def on_message(message):
     elif message.content.startswith("!D:"):
         BOT_RESPONSES.download_files(message.content, DB_USERNAME)
 
+
+    elif message.content.startswith("add discussion schedule"):
+        await message.channel.send('What day(s) do you want discussion reminders sent each week?')
+        days = await recieve_response()
+        username = author_id_to_username_map[days.author.id]
+        days = days.content.lower()
+        await message.channel.send("Which class's discussions do you want to add to the schedule?")
+        classes = await recieve_response()
+        classes = classes.content.lower()
+        BOT_RESPONSES.add_discussion_schedule_to_db(username, days, classes)
+        return
+
+    elif message.content.startswith("check discussion schedule"):
+        response = BOT_RESPONSES.discussion_remind_to_post(BOT_RESPONSES.db_username)
+        await message.channel.send("Reminder to reply to the following discussions: ")
+        if response != '-1':
+            await message.channel.send(response)
+        return
+
+    elif message.content.startswith("archive"):
+        response = BOT_RESPONSES.archive_past_assignments(BS_UTILS._bsapi)
+        if response != '-1':
+            await message.channel.send(response)
+        return
+
+    elif message.content.startswith("check update section"):
+        response = BOT_RESPONSES.updated_section()
+        await message.channel.send(response)
+        return
+
     elif message.content.startswith("configuration setting"):
         # Bot configuration includes:
         # 1 BrightSpace configuration
@@ -1529,6 +1680,7 @@ async def on_message(message):
                                    "[1] Download location\n"
                                    "[2] BrightSpaceBot Notification\n[3] Change Bot name\n"
                                    "[4] Set configuration to default\n")
+
 
         try:
             user_choice = await client.wait_for("message", check=check, timeout=60)

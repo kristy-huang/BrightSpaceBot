@@ -167,3 +167,30 @@ class DBUtilities():
 
     def change_username(self, table_name, old_username, new_username):
         res = self._mysql.general_command(f"UPDATE {table_name} SET USERNAME = \"{new_username}\" WHERE USERNAME = \"{old_username}\"")
+
+    def add_discussion_schedule(self, username, formatted_days, formatted_classes):
+        self._mysql.create_table('DISCUSSION_SCHEDULE', 'username VARCHAR(50), '
+                                                        'days_of_wk VARCHAR(50), '
+                                                        'classes VARCHAR(255),'
+                                                        'PRIMARY KEY (username)')
+        self._mysql.general_command(f"INSERT INTO DISCUSSION_SCHEDULE (username, days_of_wk, classes) "
+                                    f"VALUES(\'{username}\', \'{formatted_days}\', \'{formatted_classes}\') "
+                                    f"ON DUPLICATE KEY UPDATE days_of_wk=\'{formatted_days}\', classes=\'{formatted_classes}\'")
+
+    def get_classes_in_discussion_schedule(self, username):
+        result = self._mysql.general_command(f"SELECT classes FROM DISCUSSION_SCHEDULE WHERE username = \'{username}\'")[0][0]
+        result = result.split(",")
+        return result
+
+    def get_days_in_discussion_schedule(self, username):
+        result = self._mysql.general_command(f"SELECT days_of_wk FROM DISCUSSION_SCHEDULE WHERE username=\'{username}\'")[0][0]
+        result = result.split(",")
+        return result
+
+    def get_full_name(self, username):
+        result = self._mysql.general_command(f"SELECT first_name, last_name FROM USERS WHERE username=\'{username}\'")[0]
+        full_name = ''
+        for r in result:
+            full_name = full_name + " " + r
+        full_name = full_name.lower()
+        return full_name[1:]

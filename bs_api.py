@@ -3,7 +3,7 @@ from Authentication import get_brightspace_session, get_brightspace_session_auto
 import requests
 import os
 import json
-
+import datetime
 
 class BSAPI():
     # ---------- Some initialization functions -----------
@@ -270,6 +270,11 @@ class BSAPI():
                         forum_id=forum_id)
         return self.__process_api_json("get_disscussion_topics", url)
 
+    def get_discussion_posts(self, course_id, forum_id, topic_id):
+        url = "https://purdue.brightspace.com/d2l/api/le/1.38/{course_id}/discussions/forums/{forum_id}/topics/{topic_id}/posts/" \
+                .format(course_id=course_id, forum_id=forum_id, topic_id=topic_id)
+        return self.__process_api_json("get_dicussion_posts", url)
+
     '''
         Pulls all announcements from BrightSpace with a given course id.
         Announcements posted after "since" are returned. If no since is provided, 
@@ -428,10 +433,37 @@ class BSAPI():
             due.append(l)
         return due
 
+    def get_past_assignments(self, course_id):
+        url = self._API_URL_PREFIX + "le/1.38/{course_id}/dropbox/folders/".format(course_id=course_id)
+        assignments = self.__process_api_json("get_past_assignments", url)
+        # print(assignments)
+        if assignments is None:
+            return []
+        past_assignments = []
+        for assignment in assignments:
+            attachment_len = len(assignment['Attachments'])
+            attachment_file = None
+            if attachment_len > 0:
+                attachment_file = assignment['Attachments'][0]['FileName']
+                # print(attachment_file)
+
+            if assignment["DueDate"] is None:
+                l = {'assignment_name': assignment["Name"], 'due_date': None, 'file_name': attachment_file}
+            else:
+                l = {'assignment_name': assignment["Name"], 'due_date': assignment["DueDate"], 'file_name': attachment_file}
+
+            current_date = datetime.datetime.utcnow()
+            assignment_due_date = datetime.datetime.fromisoformat(assignment['DueDate'][:-1])
+
+            # # for testing
+            # if attachment_file is not None and attachment_file == 'Question and Answer Plan.docx':
+            #     assignment_due_date = datetime.datetime.now() + datetime.timedelta(days=1)
+
+            diff = (assignment_due_date - current_date).days
+            if diff < 0:
+                past_assignments.append(l)
+        return past_assignments
+
     def get_all_notifications_on_brightspace(self):
         url = self._API_URL_PREFIX + "/d2l/api/lp/1.38/notifications/instant/carriers/"
         return self.__process_api_json("get_all_notification_on_brightspace", url)
-
-
-
-

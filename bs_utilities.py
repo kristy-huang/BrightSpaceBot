@@ -1,4 +1,3 @@
-
 from bs_api import BSAPI
 
 import datetime
@@ -14,17 +13,17 @@ from File import File, StorageTypes
 from rename_file import RenameFile
 import json
 
+
 class BSUtilities():
     def __init__(self, debug=False):
         self._bsapi = BSAPI(debug=debug)
         self._debug = debug
 
-
     # Logs in to BS automatically
     #
     # dbu (DBUtilities object): a DBUtilities object connected to a database
     # discord_username (str): discord username
-   
+
     def set_session_auto(self, dbu, discord_username):
         self._bsapi.set_session_auto(dbu, discord_username)
 
@@ -32,14 +31,11 @@ class BSUtilities():
     def set_session_by_session(self, session):
         self._bsapi.set_session_by_session(session)
 
-
     def set_session(self, username, password):
         self._bsapi.set_session(username, password)
 
-
     def session_exists(self):
         return self._bsapi._session != None
-
 
     def check_connection(self):
         if not self.session_exists():
@@ -125,8 +121,8 @@ class BSUtilities():
             if found == False:
                 # course folder does not exist so create one
                 folder = drive.CreateFile({'title': course_name,
-                                  'mimeType': 'application/vnd.google-apps.folder',
-                                  'parents': [{'id': folder_id}]})
+                                           'mimeType': 'application/vnd.google-apps.folder',
+                                           'parents': [{'id': folder_id}]})
                 folder.Upload()
                 course_folder_id = folder['id']
 
@@ -138,7 +134,6 @@ class BSUtilities():
         gd_file.Upload()
         # handles memory leaks
         gd_file = None
-
 
     '''
         Downloads all files for a course recursively.
@@ -275,8 +270,7 @@ class BSUtilities():
                 arr.append(t["EndDate"])
                 dates.append(arr)
         return dates
-    
-    
+
     '''
         This is a subfunction for get_assignment_feedback. It finds the courseID/orgUnitID 
 
@@ -285,17 +279,17 @@ class BSUtilities():
         returns: int course_ID, or None if the inputted course_name is not a valid course that the user is enrolled in. 
 
     '''
-    
+
     def find_course_ID(self, course_name_str):
-        #course_name_str = str(course_name.content)
+        # course_name_str = str(course_name.content)
         enrolled_courses = self.get_classes_enrolled()
         for course in enrolled_courses:
             class_name = str(course)
             if class_name.__contains__(course_name_str.upper()):
-              return enrolled_courses[course]    
-        
+                return enrolled_courses[course]
+
         return None
-    
+
     '''
         This is a subfunction that finds the folderID of the specific dropbox folder we need to access the feedback on an assignment
         
@@ -303,6 +297,7 @@ class BSUtilities():
 
         Returns: int folder_ID, or None if the inputted assignment_name is not a valid assignment in this course. 
     '''
+
     def get_folder_ID_from_dropbox(self, dropbox_folders, assignment_name):
         assignment_name_str = str(assignment_name.content)
 
@@ -312,17 +307,16 @@ class BSUtilities():
             if folder_name_str.__contains__(assignment_name_str):
                 folder_ID = folder['Id']
                 return folder_ID
-            
+
         return None
-    
-    
+
     '''
         This is a helper function for get_assignment_feedback(). 
     '''
-    
+
     def get_feedback(self, submissions_arr):
         entity_dropbox = submissions_arr[0]
-        feedback_block  = entity_dropbox["Feedback"]
+        feedback_block = entity_dropbox["Feedback"]
         if feedback_block is not None:
             feedback = feedback_block["Feedback"]
             if feedback is not None:
@@ -481,7 +475,8 @@ class BSUtilities():
             dropbox_folders = self._bsapi.get_dropbox_folders_for_org_unit(course_ID)
             folder_ID = self.get_folder_ID_from_dropbox(dropbox_folders, assignment_name_str)
             if folder_ID is not None:
-                submissions_arr = self._bsapi.get_submissions_for_dropbox_folder(course_ID, folder_ID)      #JSON array of EntityDropbox structures
+                submissions_arr = self._bsapi.get_submissions_for_dropbox_folder(course_ID,
+                                                                                 folder_ID)  # JSON array of EntityDropbox structures
                 if submissions_arr is not None:
                     feedback = self.get_feedback(submissions_arr)
                     if feedback is not None:
@@ -494,9 +489,10 @@ class BSUtilities():
                 output = "ERROR: Please make sure the assignment you have specified is spelled correctly and exists."
                 return output
 
-        else: output = "ERROR: Please make sure the course you have specified is spelled correctly and is a course that you are currently enrolled in."
+        else:
+            output = "ERROR: Please make sure the course you have specified is spelled correctly and is a course that you are currently enrolled in."
         return output
-    
+
     '''
         This function tries to search for an inputted student name in a given class.  
         
@@ -513,9 +509,9 @@ class BSUtilities():
                 current_name = first_name + " " + last_name
                 if current_name.lower() == student_name_str.lower():
                     return True
-        
+
         return False
-    
+
     '''
         This is a helper function for get_upcoming_quizzes(). It is used to determine whether a given 
 
@@ -525,11 +521,12 @@ class BSUtilities():
     '''
 
     def isQuizUnattempted(self, course_id, quiz_id):
-        result = self._bsapi.get_quiz_attempts(course_id, quiz_id)  #returns a list of QuizAttemptData blocks. 
+        result = self._bsapi.get_quiz_attempts(course_id, quiz_id)  # returns a list of QuizAttemptData blocks.
         if result is not None:
             return False
 
         return True
+
     '''
         This functions pulls up a student's upcoming quizzes across all their
 
@@ -537,32 +534,34 @@ class BSUtilities():
         
         returns: list of QuizReadDate blocks.
     '''
+
     def get_upcoming_quizzes(self):
         enrolled_courses = self.get_classes_enrolled()
         upcoming_quizzes = {}
-        for course in enrolled_courses: 
-            result = self._bsapi.get_quizzes(enrolled_courses[course])        #returns a list of QuizReadData blocks - dictionaries
+        for course in enrolled_courses:
+            result = self._bsapi.get_quizzes(
+                enrolled_courses[course])  # returns a list of QuizReadData blocks - dictionaries
             quizzes = result['Objects']
-            for quiz in quizzes:       #for each block in the list,
-                #get today's date
+            for quiz in quizzes:  # for each block in the list,
+                # get today's date
                 current_date = datetime.datetime.utcnow()
 
                 if quiz['DueDate'] is not None:
                     quiz_due_date = datetime.datetime.strptime(quiz['DueDate'], "%Y-%m-%dT%H:%M:%S.%fZ")
 
-                #find diff between quiz.due date and today
+                    # find diff between quiz.due date and today
                     diff = quiz_due_date - current_date
-                #if diff less than or equal to 7 days = 604800 seconds
-                #for 2 weeks = 1209600 seconds
+                    # if diff less than or equal to 7 days = 604800 seconds
+                    # for 2 weeks = 1209600 seconds
                     diff_in_seconds = diff.total_seconds()
                     if diff_in_seconds <= 604800 and diff_in_seconds > 0:
-                        #if the quiz isUnattempted, we can add it to our output array.
+                        # if the quiz isUnattempted, we can add it to our output array.
                         if self.isQuizUnattempted(enrolled_courses[course], quiz):
                             course_name = course
                             upcoming_quizzes[course_name] = quiz
         return upcoming_quizzes
-    
-    #sub-function of suggest_focus_time(), maybe need this idk. May delete.
+
+    # sub-function of suggest_focus_time(), maybe need this idk. May delete.
     def find_end_term_date(self):
         ORG_ID_CLASS = 3
         ORG_ID_GROUP = 4
@@ -576,7 +575,7 @@ class BSUtilities():
                 end_date = item['Access']['EndDate']
                 if self.__timestamp_later_than(end_date, end_term_date):
                     end_term_date = end_date
-                
+
         return end_term_date
 
     '''
@@ -593,14 +592,11 @@ class BSUtilities():
 
         enrolled_courses = self.get_classes_enrolled()
         current_date = datetime.now()
-        end_date = current_date + datetime.timedelta(days = 7)
+        end_date = current_date + datetime.timedelta(days=7)
         item_counts = self._bsapi.get_scheduled_item_counts(enrolled_courses.values(), current_date, end_date)
 
-        
-
-
         future_scheduled_items = []
-        #for each course, grab all the scheduled items. 
+        # for each course, grab all the scheduled items.
         for course_id in enrolled_courses.values():
             course_items = self._bsapi.get_scheduled(course_id)
             for item in course_items:
@@ -608,11 +604,11 @@ class BSUtilities():
                 if due_date:
                     if self.__timestamp_later_than_current(due_date):
                         future_scheduled_items.append(item)
-        #we now have all future scheduled_items. 
+        # we now have all future scheduled_items.
 
         end_term_date = self.find_end_term_date()
         return
-        #return busiest_weeks
+        # return busiest_weeks
 
     '''
         Pulls events of a specific type from currently enrolled classes that  
@@ -697,18 +693,16 @@ class BSUtilities():
 
         return events
 
-
     # returns a string describing the event
     def get_events_by_type_past_24h(self, eventType=1):
         endDateTime = datetime.datetime.utcnow()
         startDateTime = endDateTime - datetime.timedelta(days=10)
         endDateTime = endDateTime.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
         startDateTime = startDateTime.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
-        
 
         events = self.get_events_by_type(startDateTime, endDateTime, eventType)
         str_rep = ""
-        #print("events:", events)
+        # print("events:", events)
         for event in events:
             # TODO: get a mapping from course id to course names from the database
             str_rep += "Class: {}\n".format(event['course_id'])
@@ -717,7 +711,6 @@ class BSUtilities():
             str_rep += "-----------------------------------\n\n"
 
         return str_rep
-
 
     '''
         Returns True if time_str is later than (or at the same time as) the current time
@@ -771,22 +764,19 @@ class BSUtilities():
         else:
             return 'F'
 
-
     '''
         Retrieves any assignments that were recently graded
         
         returns an array with the grade and assignment details of recently graded assignments
         or if no assignments were recently graded, return empty array
     '''
+
     def get_grade_updates(self):
         sql = MySQLDatabase('database/db_config.py')
-        # sql.drop_table('GRADED_ASSIGNMENTS')
         sql.create_table('GRADED_ASSIGNMENTS', 'grade_object_id INT PRIMARY KEY, '
                                                'course_id INT,'
                                                'assignment_name VARCHAR(255), '
                                                'grade VARCHAR(255)')
-
-        # sql.delete("GRADED_ASSIGNMENTS", "grade_object_id = 1537997")
         # print(sql.show_tables())
         enrolled_courses = self.get_classes_enrolled()
         # print(enrolled_courses)
@@ -814,9 +804,6 @@ class BSUtilities():
                         sql.insert_into('GRADED_ASSIGNMENTS', data)
                         grades.append(data)
 
-        # print(db_util.show_table_content("GRADED_ASSIGNMENTS"))
-        # for grade in grades:
-        #     print(grade)
         return grades
 
     def get_dict_of_discussion_dates(self):
@@ -852,20 +839,18 @@ class BSUtilities():
 
     def find_course_id(self, class_name):
         dictionary = self.get_classes_enrolled()
-        
+
         class_name = class_name.replace(' ', '')
         course_id = -1
         for key, value in dictionary.items():
             if key.lower().find(class_name.lower()) != -1:
                 course_id = value
 
-
         return course_id
-
 
     def find_course_id_and_fullname(self, class_name):
         dictionary = self.get_classes_enrolled()
-        
+
         class_name = class_name.replace(' ', '')
         course_id = -1
         for c_full_name, c_id in dictionary.items():
@@ -894,12 +879,11 @@ class BSUtilities():
 
         return folderList
 
-
     def get_notifications_past_24h(self):
-        utc_one_day_before = datetime.datetime.utcnow() - datetime.timedelta(days = 10)
+        utc_one_day_before = datetime.datetime.utcnow() - datetime.timedelta(days=10)
         utc_one_day_before = utc_one_day_before.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
         announcements = self.get_announcements(since=utc_one_day_before)
-        #announcements = self.get_announcements()
+        # announcements = self.get_announcements()
 
         notification_header = "Announcements from the past 24 hours: \n\n"
         notification = ""
@@ -910,7 +894,6 @@ class BSUtilities():
             notification += "{}\n".format(announcement['Text'])
             notification += "-----------------------------------\n\n"
         return notification_header + notification if notification else ""
-
 
     # Algorithm to check if path is a valid path
     def validate_path_drive(self, storage_path, drive):
@@ -924,7 +907,6 @@ class BSUtilities():
             else:
                 return False
         return True
-
 
     # Algorithm to get overall points received in a class if not displayed at top
     def sum_total_points(self, courseID):
@@ -940,7 +922,6 @@ class BSUtilities():
 
         return yourTotal, classTotal
 
-
     def process_upcoming_dates(self, upcoming_list):
         due = []
         current_utc = datetime.datetime.utcnow()
@@ -950,9 +931,9 @@ class BSUtilities():
                 date = datetime.datetime.fromisoformat(date[:-1])
                 diff = date - current_utc
                 if diff.days >= 0:
-                  due.append(assignment)
+                    due.append(assignment)
         return due
-                # print(diff.days)
+        # print(diff.days)
 
     '''
         This functions pulls up all of a student's upcoming quizzes across all their
@@ -971,20 +952,17 @@ class BSUtilities():
             quizzes = result['Objects']
             for quiz in quizzes:  # for each block in the list,
                 # get today's date
-
                 current_date = datetime.datetime.utcnow()
 
                 if quiz['DueDate'] is not None:
                     quiz_due_date = datetime.datetime.fromisoformat(quiz['DueDate'][:-1])
                     # print(quiz_due_date)
-                    # quiz_due_date = datetime.datetime.strptime(quiz['DueDate'], "%Y-%m-%dT%H:%M:%S.%fZ")
 
-                    # find diff between quiz.due date and today
+                    # find diff between quiz due date and today
                     diff = (quiz_due_date - current_date).days
                     # print(diff)
                     # for upcoming quizzes due today or later in the future: diff >= 0
-                    # TODO: fix this!!!
-                    if diff >= -7:
+                    if diff >= 0:
                         data = {
                             "course_id": course_id,
                             "course_name": course_name,
@@ -992,10 +970,8 @@ class BSUtilities():
                             "due_date": quiz['DueDate']
                         }
                         # print(data)
-                        # print(datetime.datetime.fromisoformat(quiz['DueDate'][:-1]))
                         upcoming_quizzes.append(data)
         return upcoming_quizzes
-
 
     def get_sorted_grades(self):
         # list of courses in preferred priority
@@ -1194,7 +1170,7 @@ class BSUtilities():
         # courses sorted by un-submitted assignments
         # needs implementation
 
-        if user_requested_order == 1:   # grade, deadline
+        if user_requested_order == 1:  # grade, deadline
             # should start from lowest grades
             # but if there is no grade nor deadline the course should not be recommended
             # for course in user_sorted_grade:
@@ -1212,7 +1188,7 @@ class BSUtilities():
                     lack_info_classes.append({'Course Name': name,
                                               'Lack': "Grade & Deadline"})
 
-        elif user_requested_order == 2: # deadline, grade
+        elif user_requested_order == 2:  # deadline, grade
             # should start from earliest deadlines
             # but if there is no grade nor deadline the course should not be recommended
             for course in user_sorted_due_dates:
@@ -1228,6 +1204,82 @@ class BSUtilities():
                                               'Lack': "Grade & Deadline"})
 
         return suggested_classes, lack_info_classes
+
+    def get_students_who_posted(self, course_id, forum_id, topic_id):
+        students = []
+        posts = self._bsapi.get_discussion_posts(course_id=course_id, forum_id=forum_id, topic_id=topic_id)
+        for post in posts:
+            name = post['PostingUserDisplayName']
+            name = name.lower()
+            students.append(name)
+        return students
+
+    def get_all_forum_ids_names(self, course_id):
+        forums = self._bsapi.get_forums(course_id)
+        forum_ids_names = []
+        for forum in forums:
+            forum_ids_names.append({"id": forum['ForumId'], "name": forum['Name']})
+        return forum_ids_names
+
+    def get_all_topic_ids_names(self, course_id, forum_id):
+        topics = self._bsapi.get_discussion_topics(course_id, forum_id)
+        topic_ids_names = []
+        for topic in topics:
+            topic_ids_names.append({"id": topic['TopicId'], "name": topic['Name'], "due_date": topic['EndDate']})
+        return topic_ids_names
+
+    def get_updated_sections(self, username):
+        sql = MySQLDatabase('database/db_config.py')
+        sql.create_table('COURSE_SECTIONS', 'username VARCHAR(255),'
+                                            'course_id VARCHAR(255),'
+                                            'num_sections INT,'
+                                            'sections VARCHAR(2048),'
+                                            'PRIMARY KEY (username, course_id)')
+        # course_id = 335093  # com 217
+        # print(sql.show_tables())
+        enrolled_courses = self.get_classes_enrolled()
+        response = 'You have no new sections added.'
+        for course_name, course_id in enrolled_courses.items():
+            secs = []
+            sections = self._bsapi.get_topics(course_id)
+            if len(sections) != 0 and sections is not None:
+                num_sections = len(sections['Modules'])
+                for section in sections['Modules']:
+                    sec_title = section['Title']
+                    secs.append(sec_title)
+                formatted_secs = self.format_sections(secs)
+                print(formatted_secs)
+                sql_response = sql.general_command(f"SELECT * FROM COURSE_SECTIONS "
+                                                   f"WHERE username=\'{username}\' AND course_id=\'{course_id}\'")
+                # if that section is not in the db yet, insert into db
+                if len(sql_response) == 0:
+                    sql.general_command(f"INSERT INTO COURSE_SECTIONS (username, course_id, num_sections, sections) "
+                                        f"VALUES (\"{username}\", \"{course_id}\", \"{num_sections}\", \"{formatted_secs}\")")
+                    response = f"{course_name} has {num_sections} new sections added. The following sections have been added by " \
+                               f"your instructor: {formatted_secs} \n\n"
+                else:
+                    num_sec_in_db = sql_response[0][2]
+                    if num_sections > num_sec_in_db:
+                        diff = self.get_diff_in_list(sql_response[0][3], formatted_secs)
+                        response = f"{course_name} has {num_sections - num_sec_in_db} new sections added. The following sections have been added by " \
+                                   f"your instructor: {diff} \n\n"
+
+        return response
+
+    def format_sections(self, sections):
+        result = ''
+        for section in sections:
+            result = result + "," + section
+        return result[1:]
+
+    def get_diff_in_list(self, original, new):
+        og_arr = original.split(",")
+        new_arr = new.split(",")
+        result = []
+        for n in new_arr:
+            if n not in og_arr:
+                result.append(n)
+        return result
 
     '''Returns an array of the last modified dates in each section and topic'''
     def get_last_mod_from_sections(self, course_id):
@@ -1264,3 +1316,4 @@ class BSUtilities():
 
             last_mod_dates.append(arr)
         return last_mod_dates
+
