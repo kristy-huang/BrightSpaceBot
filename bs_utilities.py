@@ -1107,13 +1107,13 @@ class BSUtilities():
                 if len(sql_response) == 0:
                     sql.general_command(f"INSERT INTO COURSE_SECTIONS (username, course_id, num_sections, sections) "
                                         f"VALUES (\"{username}\", \"{course_id}\", \"{num_sections}\", \"{formatted_secs}\")")
-                    response = response + f"{course_name} has {num_sections} new sections added. The following sections have been added by " \
+                    response = f"{course_name} has {num_sections} new sections added. The following sections have been added by " \
                                f"your instructor: {formatted_secs} \n\n"
                 else:
                     num_sec_in_db = sql_response[0][2]
                     if num_sections > num_sec_in_db:
                         diff = self.get_diff_in_list(sql_response[0][3], formatted_secs)
-                        response = response + f"{course_name} has {num_sections - num_sec_in_db} new sections added. The following sections have been added by " \
+                        response = f"{course_name} has {num_sections - num_sec_in_db} new sections added. The following sections have been added by " \
                                    f"your instructor: {diff} \n\n"
 
         return response

@@ -283,7 +283,7 @@ class BotResponses:
         end = end.replace(hour=end_hour, minute=end_min)
         end = end.isoformat()
 
-        sql_command = f"SELECT recurring_event_id, event_title from OFFICE_HOURS WHERE USERNAME = '{self.db_username}';"
+        sql_command = f"SELECT recurring_event_id, event_title from OFFICE_HOURS;"
         event_titles = self.DB_UTILS._mysql.general_command(sql_command)
         for et in event_titles:
             if et[1] == event_title:
@@ -327,6 +327,12 @@ class BotResponses:
                         if topic_id_name['due_date'] is not None:
                             due_date = datetime.datetime.fromisoformat(topic_id_name['due_date'][:-1])
                             due_date = (due_date - datetime.datetime.utcnow()).days
+                        #
+                        # # for testing
+                        # if topic_id_name['name'] == 'Syllabus, Course Structure, or Other General Course Questions':
+                        #     due_date = datetime.datetime.now() + datetime.timedelta(days=-1)
+                        #     due_date = (due_date - datetime.datetime.utcnow()).days
+
                         if students.count(full_name) < 2 and (due_date == '-1' or due_date >= 0):
                             reply = reply + \
                                     f"course:{course_id}->{forum_id_name['name']}->{topic_id_name['name']}\n"

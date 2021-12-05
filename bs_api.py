@@ -454,6 +454,11 @@ class BSAPI():
 
             current_date = datetime.datetime.utcnow()
             assignment_due_date = datetime.datetime.fromisoformat(assignment['DueDate'][:-1])
+
+            # # for testing
+            # if attachment_file is not None and attachment_file == 'Question and Answer Plan.docx':
+            #     assignment_due_date = datetime.datetime.now() + datetime.timedelta(days=1)
+
             diff = (assignment_due_date - current_date).days
             if diff < 0:
                 past_assignments.append(l)

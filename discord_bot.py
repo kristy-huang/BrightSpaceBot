@@ -157,10 +157,10 @@ async def notification_loop():
             ## only for debugging ##
             string = "No posts today"
 
-    response = BOT_RESPONSES.discussion_remind_to_post(BOT_RESPONSES.db_username)
-    string += "Reminder to reply to the following discussions: "
-    if response != '-1':
-        string += response
+    # response = BOT_RESPONSES.discussion_remind_to_post(BOT_RESPONSES.db_username)
+    # string += "Reminder to reply to the following discussions: "
+    # if response != '-1':
+    #     string += response
 
     # print("called_once_a_day:")
     async def send_notifications(string, channel_id, types):
