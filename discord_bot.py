@@ -166,160 +166,12 @@ async def on_message(message):
 
             return new_time
 
-        async def connect_bs_to_discord():
-            await message.channel.send("boilerkey url...")
-
-            res = await recieve_response()
-            url = res.content
-            await message.channel.send("bs username")
-            res = await recieve_response()
-            bs_username = res.content
-            await message.channel.send("bs 4 digit pin")
-            res = await recieve_response()
-            bs_pin = res.content
-            status = setup_automation(DB_UTILS, author_id_to_username_map[message.author.id], bs_username, bs_pin, url )
 
 
-        async def delete_noti_all():
-            await message.channel.send("Are you sure to delete all of your scheduled times?")
-
-            res = await recieve_response()
-            if res.content.startswith("y") or res.content.startswith("right"):
-                DB_UTILS.clear_notification_schedule(author_id_to_username_map[message.author.id])
-                await message.channel.send("Schedule deleted")
-            else:
-                await message.channel.send(f"No changes are made to your schedule.")
-
-        async def delete_noti_some(current_times):
-            msg = ""
-            for i, time in enumerate(current_times):
-                msg += f"{i + 1}: {time[0]} {NOT_FREQ_MAP[int(time[1])].lower()}\n"
-                
-            await message.channel.send("Which time do you want to delete?")
-            await message.channel.send(msg)
-
-            while True:
-                res = await recieve_response()
-
-                try:
-                    num = int(res.content)
-                except ValueError:
-                    await message.channel.send(f"Please choose a number between 1 ~ {i + 1}")
-                    continue
-
-                if num not in range(1, i + 2):
-                    await message.channel.send(f"Please choose a number between 1 ~ {i + 1}")
-                    continue
-
-                break
-
-            num -= 1
-            await message.channel.send(f"Delete time: {current_times[num][0]} {NOT_FREQ_MAP[int(current_times[num][1])]}?")
-            
-            res = await recieve_response()
-
-            if res.content.startswith("y") or res.content.startswith("right"):
-                DB_UTILS.delete_notification_schedule(author_id_to_username_map[message.author.id], current_times[num][0], current_times[num][1])
-                
-                await message.channel.send("Schedule deleted")
-            else:
-                await message.channel.send(f"No changes are made to your schedule.")
-
-
-
-        if message.author.id not in author_id_to_username_map:
-            await request_username_password()
-
-        # TODO: might have problems with this lock when multiple users are using....
-        global login_lock
-        if not (BS_UTILS.session_exists() and BS_UTILS.check_connection()) and not login_lock:
-            login_lock = True
-
-            db_res = DB_UTILS.get_bs_username_pin(author_id_to_username_map[message.author.id])
-
-            while not db_res or not db_res[0][0]:
-                await message.channel.send("Setting up auto login...")
-                await connect_bs_to_discord()
-                db_res = DB_UTILS.get_bs_username_pin(author_id_to_username_map[message.author.id])
-                if not db_res or not db_res[0][0]:
-                    await message.channel.send("BrightSpace setup failed. please check your cridentials!")
-                    login_lock = False
-                    return
-
-            await message.channel.send("Logging in to BrightSpace...")
-            BS_UTILS.set_session_auto(DB_UTILS, author_id_to_username_map[message.author.id])
-
-            if BS_UTILS.check_connection():
-                await message.channel.send("Login successed!")
-
-            while not BS_UTILS.check_connection():
-                await message.channel.send(
-                    "Connection failed. Please check your internet connect and cridentials. \n Do you want to reset your BS cridentials, or retry to login?")
-                res = await recieve_response()
-                if "retry" in res.content:
-                    await message.channel.send("Logging in to BrightSpace...")
-                    BS_UTILS.set_session_auto(DB_UTILS, author_id_to_username_map[message.author.id])
-                elif "reset" in res.content:
-                    await message.channel.send("Setting up auto login...")
-                    await connect_bs_to_discord()
-                    await message.channel.send("Logging in to BrightSpace...")
-                    BS_UTILS.set_session_auto(DB_UTILS, author_id_to_username_map[message.author.id])
-                else:
-                    await message.channel.send("See you next time...")
-                    login_lock = False
-                    return
-
-            login_lock = False
-
-
-        elif not BS_UTILS.check_connection() and login_lock:
-            return
-
-        if not BS_UTILS.check_connection():
-            await message.channel.send("Connection to BS lost. Attempting to reconnect to BS...")
-            BS_UTILS.set_session_auto(DB_UTILS, author_id_to_username_map[message.author.id])
-
-        # test gate to prevent multiple responses from the bot to the user
-        # guild_members = message.guild.members
-        # if message.author not in guild_members:
-        #    return
-
-        # Lets say that we want the bot to only respond to a specific text channel in a server named 'todo'
-        if message.channel.name == 'specifics':
-            if user_message.lower() == 'im bored':
-                await message.channel.send("You should probably study...")
-                return
-
-        # setting up a basic 'hello' command so you get this gist of it
-        (Refactored)
-        if user_message.lower() == 'hello':
-            # put your custom message here for the bot to output
-            # we would incorporate our chat module here and then craft an appropriate response
-            # await message.channel.send(f'Hello {username}!')
-            # return
-            await BOT_RESPONSES.test_hello()
-            return
-
-        
-        (Refactored)elif user_message.lower() == 'bye':
-            await message.channel.send(f'Bye {username}!')
-            return
-        # get the current storage path
-        (Refactored) elif user_message.lower() == 'current storage location':
-            # todo: access database and get the actual value
-
-            # storage_path = DB_UTILS._mysql.general_command("SELECT STORAGE_PATH from USERS WHERE FIRST_NAME = 'Raveena';")
-            # if storage_path[0][0] is None:
-            #     await message.channel.send('No storage path specified. Type update storage to save something')
-            # else:
-            #     await message.channel.send(f'Current location: {storage_path[0][0]}')
-            # return
-            await BOT_RESPONSES.current_storage(DB_USERNAME)
-            return
 
 
         # update the current storage path (used starts with so they can type update storage destination or path)
-        elif message.content.startswith('update storage'):
+        (Refactored) elif message.content.startswith('update storage'):
             await message.channel.send("Google Drive or Local Machine?")
 
             # check what type of path they want
@@ -981,7 +833,7 @@ async def on_message(message):
 
                 await message.channel.send(msg)
 
-        elif message.content.startswith("download: "):
+        (Refactored) elif message.content.startswith("download: "):
             course = message.content.split(":")[1]
             sql_command = f"SELECT STORAGE_PATH from PREFERENCES WHERE USERNAME = '{DB_USERNAME}';"
             storage_path = DB_UTILS._mysql.general_command(sql_command)
@@ -1038,7 +890,7 @@ async def on_message(message):
                 return
 
         # returning user course priority by either grade or upcoming events
-        elif message.content.startswith("get course priority"):
+        (Refactored) elif message.content.startswith("get course priority"):
             # reply backs to the user
             suggested_course_priority = ""
             found_missing_info_courses = ""
@@ -1106,7 +958,7 @@ async def on_message(message):
             return
 
             # get a letter grade for a class
-        elif message.content.startswith("overall points:"):
+        (Refactored) elif message.content.startswith("overall points:"):
             courses = message.content.split(":")[1].split(",")
             IDs = []
             for c in courses:
@@ -1169,7 +1021,7 @@ async def on_message(message):
             return
 
         # redirecting notifications
-        elif message.content.startswith("redirect notifications"):
+        (Refactored) elif message.content.startswith("redirect notifications"):
             await message.channel.send("Here are the notification types you can redirect - Grades, Files, Deadlines.\n"
                                     "Format the response as <Notification Type> - <Text Channel Name>.\n"
                                     "EX: Grades - Grades Notifications")
@@ -1258,7 +1110,7 @@ async def on_message(message):
                 return
 
 
-        elif message.content.startswith("where are my notifications?"):
+        (Refactored) elif message.content.startswith("where are my notifications?"):
             sql = f"SELECT GRADES_TC FROM PREFERENCES WHERE USERNAME = '{DB_USERNAME}';"
             grades = DB_UTILS._mysql.general_command(sql)[0][0]
             if grades is None:
@@ -1277,7 +1129,7 @@ async def on_message(message):
                         f"FILES -> {files}"
             await message.channel.send(final_string)
 
-        elif message.content.startswith("add quiz due dates to calendar"):
+        (Refactored) elif message.content.startswith("add quiz due dates to calendar"):
             await message.channel.send("Retrieving quizzes...")
             # Syncing quizzes to the calendar daily (so it can get the correct changes)
             quizzes = BS_UTILS.get_all_upcoming_quizzes()
@@ -1306,7 +1158,7 @@ async def on_message(message):
             await message.channel.send("Quiz deadlines added/updated to calendar!")
             return
 
-        elif message.content.startswith("get course link"):
+        (Refactored) elif message.content.startswith("get course link"):
             # get user course urls in advance
             user_course_urls = BS_UTILS.get_course_url()
 
@@ -1364,7 +1216,7 @@ async def on_message(message):
                 await message.channel.send("Timeout ERROR has occurred. Please try the query again.")
             return
 
-        elif message.content.startswith("get upcoming assignments"):
+        (Refactored) elif message.content.startswith("get upcoming assignments"):
             # get today's date
             today = datetime.datetime.utcnow()
 

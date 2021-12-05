@@ -5,6 +5,7 @@ from urllib.parse import scheme_chars
 from discord.ext.commands.errors import UserNotFound
 from requests.models import Response
 from werkzeug.security import check_password_hash
+import discord
 
 from thefuzz import fuzz
 from thefuzz import process
@@ -1255,11 +1256,446 @@ class NLPAction():
             self._DB_UTIL.clear_download_schedule(self._id_to_username_map[message.author.id])
         await message.channel.send("Schedule deleted.")
 
+
+    async def _get_course_priority(self, message, client):
+        bsu = self._id_to_bsu_map[message.author.id]
+
+        # reply backs to the user
+        suggested_course_priority = ""
+        found_missing_info_courses = ""
+
+        # ask user for pick grade or by due date
+        await message.channel.send("Please pick between grade or due dates for prioritizing your courses.")
+
+        try:
+            priority_option = await self._recieve_response(message, client)
+
+            if priority_option.content.startswith("grade"):
+                # api call for grades
+                await message.channel.send("Setting course priority by grade ...")
+
+                priority = bsu.get_sorted_grades()[0]
+                missing = bsu.get_sorted_grades()[1]
+
+                for x in range(0, len(priority)):
+                    suggested_course_priority += priority[x]
+                    if not x == len(priority) - 1:
+                        suggested_course_priority += " << "
+
+                for x in range(0, len(missing)):
+                    found_missing_info_courses += missing[x]
+                    if not x == len(missing) - 1:
+                        found_missing_info_courses += " , "
+
+                await message.channel.send("The suggested course priority is (highest grade << lowest grade):\n"
+                                        + suggested_course_priority)
+                await message.channel.send("There are some courses that miss final grades:\n"
+                                        + found_missing_info_courses)
+
+            elif priority_option.content.startswith("due dates"):
+                # api call for due dates
+                await message.channel.send("Setting course priority by upcoming due dates ...")
+
+                priority = bsu.get_course_by_due_date()[0]
+                event_missing = bsu.get_course_by_due_date()[1]
+
+                for x in range(0, len(priority)):
+                    suggested_course_priority += priority[x]['Course Name']
+                    if not x == len(priority) - 1:
+                        suggested_course_priority += " >> "
+
+                for x in range(0, len(event_missing)):
+                    found_missing_info_courses += event_missing[x]['Course Name']
+                    if not x == len(event_missing) - 1:
+                        found_missing_info_courses += ", "
+
+                await message.channel.send("The suggested course priority is (earliest >> latest):\n" +
+                                        suggested_course_priority)
+                await message.channel.send("There are some courses that have no upcoming due dates:\n" +
+                                        found_missing_info_courses)
+            else:
+                await message.channel.send("Invalid response given! Please try the query again.")
+                return
+
+        except asyncio.TimeoutError:
+            await message.channel.send("Timeout ERROR has occurred. Please try the query again.")
+            return
+
+        return
+
+
+    async def _overall_points(self, message, client):
+        bsu = self._id_to_bsu_map[message.author.id]
+        username = self._id_to_username_map[message.author.id]
+
+        courses = message.content.split(":")[1].split(",")
+        IDs = []
+        for c in courses:
+            course_id = bsu.find_course_id(c)
+            IDs.append(course_id)  # getting the list of course IDs
+        print(IDs)
+
+        grades = {}
+        tosort = {}
+        counter = 0
+        for i in IDs:
+            if i == -1:
+                grades[courses[counter]] = 'Course not recognized'
+                tosort[courses[counter]] = 0
+            else:
+                yourTotal, classTotal = bsu.sum_total_points(i)
+                if classTotal == 0:
+                    grades[courses[counter]] = "No grades are uploaded for this class."
+                    tosort[courses[counter]] = 100
+                else:
+                    percentage = (yourTotal / classTotal) * 100
+                    grades[courses[counter]] = '{num:.2f}/{den:.2f}'.format(num=yourTotal, den=classTotal)
+                    tosort[courses[counter]] = percentage
+            counter = counter + 1
+
+        sorted_list = dict(sorted(tosort.items(), key=lambda item: item[1]))
+        
+        final_string = "Your overall grades are: \n"
+        for key, value in sorted_list.items():
+            final_string = final_string + key + ": " + str(grades[key]) + "\n"
+
+        # See if the user specified a grades text channel
+        sql_command = f"SELECT GRADES_TC FROM PREFERENCES WHERE USERNAME = '{username}';"
+        result = self._DB_UTIL._mysql.general_command(sql_command)[0][0]
+        print(result)
+        # if so, redirect message to that channel
+        if result is not None:
+            # get the channel ID
+            channel_id = 0
+            for channel in message.guild.text_channels:
+                result = result.replace(" ", "-")
+                if channel.name == result:
+                    print("found it")
+                    channel_id = channel.id
+                    break
+            if channel_id != 0:
+                send_message_to_channel = client.get_channel(channel_id)
+                await send_message_to_channel.send(final_string)
+
+            else:
+                # Some mistake came and could not find channel ID, so just go to default chat
+                await message.channel.send(final_string)
+        else:
+            # else go to normal channel
+            await message.channel.send(final_string)
+
+        return
+
+
+    async def _redirect_notifications(self, message, client):
+        username = self._id_to_username_map[message.author.id]
+        await message.channel.send("Here are the notification types you can redirect - Grades, Files, Deadlines.\n"
+                                    "Format the response as <Notification Type> - <Text Channel Name>.\n"
+                                    "EX: Grades - Grades Notifications")
+
+        # check what type of path they want
+        def storage_path(m):
+            return m.author == message.author
+
+        # getting the type of redirecting of notification
+        try:
+            response = await client.wait_for('message', check=storage_path, timeout=30)
+        except asyncio.TimeoutError:
+            await message.channel.send("taking too long...")
+            return
+
+        # split the notification type and desired text channel
+        response_array = response.content.split("-")
+        category = response_array[0]
+        category = category.strip()
+        text_channel = response_array[1]
+        text_channel = text_channel.strip()
+        print(category.lower())
+        # Get the database category
+        db_category = ""
+        if category.lower() == "grades":
+            db_category = "GRADES_TC"
+        elif category.lower() == 'files':
+            db_category = "FILES_TC"
+        elif category.lower() == 'deadlines':
+            db_category = "DEADLINES_TC"
+        else:
+            await message.channel.send("Sorry, the notification type you specified is not valid. Please try the "
+                                    "process again")
+            return
+
+        # TODO get the username from a different way
+        sql_command = f"SELECT {db_category} FROM PREFERENCES WHERE USERNAME = '{username}';"
+        current_saved_tc = self._DB_UTIL._mysql.general_command(sql_command)[0][0]
+        # Check if the channel that is being requested has already been created
+        sql_command = f"SELECT LIST_OF_TCS FROM PREFERENCES WHERE USERNAME = '{username}';"
+        list_of_tcs = self._DB_UTIL._mysql.general_command(sql_command)[0][0]
+        if list_of_tcs is None:
+            sql_command = f"UPDATE PREFERENCES SET LIST_OF_TCS = 'general' WHERE USERNAME = '{username}';"
+            self._DB_UTIL._mysql.general_command(sql_command)
+            sql_command = f"SELECT LIST_OF_TCS FROM PREFERENCES WHERE USERNAME = '{username}';"
+            list_of_tcs = self._DB_UTIL._mysql.general_command(sql_command)[0][0]
+
+        array = list_of_tcs.split(",")
+        found = False
+        for a in array:
+            if a == text_channel:
+                # Then this text channel already exists
+                found = True
+        # found, list_of_tcs = BOT_RESPONSES.check_if_tc_exists(current_saved_tc, DB_USERNAME)
+
+        sql_command = f"UPDATE PREFERENCES SET {db_category} = '{text_channel}' WHERE USERNAME = '{username}';"
+        self._DB_UTIL._mysql.general_command(sql_command)
+
+        if not found:
+            list_of_tcs = list_of_tcs + "," + text_channel
+            sql_command = f"UPDATE PREFERENCES SET LIST_OF_TCS = '{list_of_tcs}' WHERE USERNAME = '{username}';"
+            self._DB_UTIL._mysql.general_command(sql_command)
+            name = 'Text Channels'  # This will go under the default category
+            cat = discord.utils.get(message.guild.categories, name=name)
+            await message.guild.create_text_channel(text_channel, category=cat)
+
+            channel_id = 0
+            for channel in message.guild.text_channels:
+                print(channel)
+                print(channel.id)
+                channel_id = channel.id
+
+            await message.channel.send("You successfully moved " + category + " notifications from "
+                                    + str(
+                current_saved_tc) + " to " + text_channel + ". I will send a message to this "
+                                                            "channel to start the thread.")
+
+            send_message_to_channel = client.get_channel(channel_id)
+            await send_message_to_channel.send("Hello! This thread will hold notifications about " + category)
+            return
+        else:
+            await message.channel.send("Since this channel already exists, a new channel will not be created. \nYou "
+                                    "successfully moved " + category + " notifications from "
+                                    + str(current_saved_tc) + " to " + text_channel + ".")
+            return
+
+
+    async def _notification_location(self, message, client):
+        username = self._id_to_username_map[message.author.id]
+
+        sql = f"SELECT GRADES_TC FROM PREFERENCES WHERE USERNAME = '{username}';"
+        grades = self._DB_UTIL._mysql.general_command(sql)[0][0]
+        if grades is None:
+            grades = "Not specified"
+        sql = f"SELECT FILES_TC FROM PREFERENCES WHERE USERNAME = '{username}';"
+        files = self._DB_UTIL._mysql.general_command(sql)[0][0]
+        if files is None:
+            files = "Not specified"
+        sql = f"SELECT DEADLINES_TC FROM PREFERENCES WHERE USERNAME = '{username}';"
+        deadlines = self._DB_UTIL._mysql.general_command(sql)[0][0]
+        if deadlines is None:
+            deadlines = "Not specified"
+        final_string = f"Your notification redirections are saved as the following:\n" \
+                    f"GRADES -> {grades}\n" \
+                    f"DEADLINES -> {deadlines}\n" \
+                    f"FILES -> {files}"
+        await message.channel.send(final_string)
+    
+
+    async def _add_quiz_due_dates_to_calendar(self, message, client):
+        bsu = self._id_to_bsu_map[message.author.id]
+        username = self._id_to_username_map[message.author.id]
+
+        await message.channel.send("Retrieving quizzes...")
+        # Syncing quizzes to the calendar daily (so it can get the correct changes)
+        quizzes = bsu.get_all_upcoming_quizzes()
+        for quiz in quizzes:
+            cal = Calendar()
+            event_title = f"QUIZ DUE: {quiz['quiz_name']} ({quiz['course_id']})"
+            description = f"{quiz['quiz_name']} for {quiz['course_name']} is due. Don't forget to submit it!"
+            date = datetime.datetime.fromisoformat(quiz['due_date'][:-1])
+            end = date.isoformat()
+            start = (date - datetime.timedelta(hours=1)).isoformat()
+            event_id, end_time = cal.get_event_from_name(event_title)
+            # event has already been created in google calendar
+            if event_id == -1:
+                # insert new event to calendar
+                cal.insert_event(event_title, description, start, end)
+            # event has not been created
+            else:
+                # if end time has changed, update the event
+                if end_time != end:
+                    # await message.channel.send(end_time)
+                    # await message.channel.send(end)
+                    cal.delete_event(event_id)
+                    cal.insert_event(event_title, description, start, end)
+                else:
+                    await message.channel.send("No new quizzes found.")
+        await message.channel.send("Quiz deadlines added/updated to calendar!")
+
+
+    async def _get_course_link(self, message, client):
+        bsu = self._id_to_bsu_map[message.author.id]
+        username = self._id_to_username_map[message.author.id]
+
+        user_course_urls = bsu.get_course_url()
+
+        # bot asks user for specific input
+        await message.channel.send("Which course link do you need? Type \'All\' or specific course links")
+        await message.channel.send("ex) All or CS 180, CS 240")
+        reply_back = ""
+        cannot_find_courses = ""
+
+        try:
+            # get user reply back
+            user_reply = await self._recieve_response(message, client)
+
+            # different user_request options
+            # 'All'
+            if user_reply.content.lower().startswith("all"):
+                for course_name, course_url in user_course_urls.items():
+                    reply_back += "{course_name}: {url}\n".format(course_name=course_name,
+                                                                url=course_url)
+            else:
+                user_requests = user_reply.content.split(", ")
+                for requested_course in user_requests:
+                    for course_name, course_url in user_course_urls.items():
+                        if requested_course.upper() in course_name:
+                            reply_back += "{course_name}: {url}\n".format(course_name=course_name,
+                                                                        url=course_url)
+                        continue
+                    if requested_course.upper() not in reply_back:
+                        cannot_find_courses += "{course_name}\t".format(course_name=requested_course)
+
+            # send the reply back
+            if not reply_back == "":
+                await message.channel.send("The followings are the links to your course homepages\n")
+                await message.channel.send(reply_back)
+                if not cannot_find_courses == "":
+                    await message.channel.send("These are courses that I couldn't find:")
+                    await message.channel.send(cannot_find_courses)
+                    await message.channel.send("Please check if they are your valid course(s)")
+            else:
+                await message.channel.send("Sorry, we couldn't find the matching courses.")
+                await message.channel.send("Please check if they are your valid course(s).")
+                # home page vary by campus location
+                # West Lafayette: 6824
+                # Fort Wayne: 6822
+                # Northwest: 6823
+                await message.channel.send("Here is the home page default link: " +
+                                        "https://purdue.brightspace.com/d2l/home/6824")
+                return
+
+        except asyncio.TimeoutError:
+            await message.channel.send("Timeout ERROR has occurred. Please try the query again.")
+        return
+
+
+    async def _get_upcoming_assignments(self, message, client):
+        bsu = self._id_to_bsu_map[message.author.id]
+        username = self._id_to_username_map[message.author.id]
+
+        # get today's date
+        today = datetime.datetime.utcnow()
+
+        # user start and end time set to today for default
+        user_start_time = today
+        user_end_time = today
+
+        # user requested event list
+        event_list = []
+
+        await message.channel.send(
+            "Which time period of assignments/exams do you need? Please type one of the options:")
+        await message.channel.send("\'Tomorrow\' or \'Next week\' or \'Next month\' or \'mm/dd/yy - mm/dd/yy\'")
+
+
+        # get user response back
+        user_reply = await self._recieve_response(message, client)
+
+        # different user options
+        if user_reply.content.lower() == "tomorrow":
+            user_end_time = today + datetime.timedelta(days=1)
+        elif user_reply.content.lower() == "next week":
+            user_end_time = today + datetime.timedelta(days=7)
+        elif user_reply.content.lower() == "next month":
+            user_end_time = today + datetime.timedelta(days=31)
+        # elif user_reply.content.lower() == "semester":
+        #    user_end_time = today + datetime.timedelta(days=122)
+        else:
+            user_requested_time = user_reply.content.split(" - ")
+            try:
+                user_start_time = datetime.datetime.strptime(user_requested_time[0], "%m/%d/%y")
+                user_end_time = datetime.datetime.strptime(user_requested_time[1], "%m/%d/%y")
+
+                if user_end_time < user_start_time:
+                    await message.channel.send("Given time interval is invalid. Please try the query again")
+                    return
+
+                if user_start_time < today:
+                    user_start_time = today
+            except:
+                await message.channel.send("Given option is invalid. Please try the query again")
+                return
+
+        await message.channel.send("Finding your events ...")
+        event_list = bsu.get_upcoming_events(user_start_time, user_end_time)
+
+        event_list_to_str = ""
+        for event in event_list:
+            event_list_to_str += "[{due_date}] {name}: {title}".format(due_date=event['Due Date'],
+                                                                    name=event['Course Name'],
+                                                                    title=event['Event Name'])
+            event_list_to_str += "\n"
+
+        await message.channel.send("These are your upcoming assignments/exams:\n" + event_list_to_str)
+
+
+    async def _suggest_course_study(self, message, client):
+        # check function for client.wait_for
+        bsu = self._id_to_bsu_map[message.author.id]
+        username = self._id_to_username_map[message.author.id]
+
+        await message.channel.send("What order would you like for suggestions?\n" +
+                                "\'grade, deadline\' or \'deadline, grade\'")
+
+        try:
+            user_response = await self._recieve_response(message, client)
+
+            # default order value
+            order = 0
+
+            # user_requested_order = user_response.content.split(", ")
+            if user_response.content.lower() == "grade, deadline":
+                order = 1
+            elif user_response.content.lower() == "deadline, grade":
+                order = 2
+
+            await message.channel.send("Creating suggestions...")
+            if order != 0:
+                focus_suggestion = bsu.get_focus_suggestion(order)[0]
+                lack_info = bsu.get_focus_suggestion(order)[1]
+
+                reply = ""
+                for x in range(0, len(focus_suggestion)):
+                    reply += "{course_name}".format(course_name=focus_suggestion[x])
+                    if x != len(focus_suggestion) - 1:
+                        reply += " << "
+
+                lack_reply = ""
+                for x in range(0, len(lack_info)):
+                    lack_reply += "{course_name}[{reason}]".format(course_name=lack_info[x]['Course Name'],
+                                                                reason=lack_info[x]['Lack'])
+                    if x != len(lack_info) - 1:
+                        lack_reply += ", "
+
+                await message.channel.send("Here is your suggested classes to focus more(focus less << focus more):\n"
+                                        + reply)
+                await message.channel.send("There are some courses that lack info:\n" + lack_reply)
+            else:
+                await message.channel.send("Invalid order was given. Please try the query again")
+                return
+        except asyncio.TimeoutError:
+            await message.channel.send("Timeout ERROR has occurred. Please try the query again")
+
     # ----- recurring events -----
 
-
-    # TODO: how to sync to different Google drive accounts?
-    # TODO: I don't have a client secret... how to get one? - Katherine
     async def sync_calendar_classes(self):
 
         # Sync calendar for every user!
@@ -1426,6 +1862,11 @@ class NLPAction():
             for course_name in courses.keys():
                 print("downloading course: ", course_name)
                 await self._download_files_without_asking(user_id, courses[course_name], course_name)
+
+
+
+    
+
 
 
 
