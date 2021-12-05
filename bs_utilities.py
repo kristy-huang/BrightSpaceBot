@@ -322,6 +322,144 @@ class BSUtilities():
         return None
 
     '''
+        Function that suggest study groups. The user can specify how many students to have in their group, as well as 
+        how many courses they want to have in common with the students in their study group. 
+
+        returns: a list of students to comprise the group.
+    '''
+    def suggest_study_groups(self, num_of_students_str, num_of_courses_str):
+        output_dict = self.suggest_study_groups_num_of_courses(num_of_courses_str)
+        return output_dict
+    
+    '''
+        This is a subfunction for suggest_study_groups(). This particular function is for when only the "number of students"
+        parameter has been specified. The "number of courses to have in common" parameter has not been given. 
+
+        returns: a dictionary of students (key) and the number of courses in common (value)
+    '''
+    def suggest_study_groups_num_of_students(self, num_of_students_str):
+        sorted_dict = self.suggest_study_groups_no_parameters()
+        #num_of_students = int(num_of_students_str)
+        
+        return sorted_dict
+
+    '''
+        This is a subfunction for suggest_study_groups(). This particular function is for when only the "number of courses"
+        parameter has been specified. The "number of students" parameter has not been given. 
+
+        returns: a dictionary of students (key) and the number of courses in common (value)
+    '''
+    def suggest_study_groups_num_of_courses(self, num_of_courses_str):
+        sorted_dict = self.suggest_study_groups_no_parameters()
+        num_of_courses = int(num_of_courses_str)
+        output_dict = {}
+        for student in sorted_dict:
+            if sorted_dict[student] == num_of_courses:
+                output_dict[student] = num_of_courses
+        
+        return output_dict
+    
+    '''
+        This is a subfunction for suggest_study_groups(). This particular function is for when no parameters have been given.
+        The user has not specified how many students to have in their group, nor have they specified how many courses they 
+        want to have in common with the students in their study group.
+
+        returns: a dictionary of students (key) and the number of courses in common (value)
+    '''
+    def suggest_study_groups_no_parameters(self):
+        temp_dict = {}
+        enrolled_courses = self.get_classes_enrolled_2()
+        x = 0
+        for course in enrolled_courses:
+            if x == 0:
+                #add names from classlist 1 to the dict
+                classlist_user_blocks = self._bsapi.get_enrolled_users_for_org_unit(enrolled_courses[course])
+                for classlist_user in classlist_user_blocks:
+                    first_name = classlist_user["FirstName"]
+                    last_name = classlist_user["LastName"]
+                    current_name = first_name + " " + last_name
+                    temp_dict[current_name] = 1        
+                x = -1
+            else:
+                classlist_user_blocks = self._bsapi.get_enrolled_users_for_org_unit(enrolled_courses[course])
+                for classlist_user in classlist_user_blocks:
+                    first_name = classlist_user["FirstName"]
+                    last_name = classlist_user["LastName"]
+                    current_name = first_name + " " + last_name
+                    if current_name in temp_dict:
+                        temp_dict[current_name] += 1
+                    else:
+                        temp_dict[current_name] = 1
+        
+        sorted_dict =  dict(sorted(temp_dict.items(), key = lambda x: x[1], reverse = True))
+        return sorted_dict
+
+    def get_classes_enrolled_2(self):
+        ORG_ID_CLASS = 3
+        ORG_ID_GROUP = 4
+
+        enrolled_classes = {}
+
+        enroll = self._bsapi.get_enrollments()
+        for item in enroll['Items']:
+            if item['OrgUnit']['Type']['Id'] == ORG_ID_CLASS:
+                # Check if the class ended already
+                end_date = item['Access']['EndDate']
+                #name = item['OrgUnit']['Name']
+                class_name = item['OrgUnit']['Name']
+                substring = "Fall 2021"
+                if self.__timestamp_later_than_current(end_date) and substring in class_name:
+                    #class_name = item['OrgUnit']['Name']
+                    #print(class_name)
+                    class_id = item['OrgUnit']['Id']
+                    enrolled_classes[class_name] = class_id
+
+        return enrolled_classes
+    
+    
+    '''
+        Experimenting with the table of contents format. 
+    '''
+    def toc_experiment(self):
+        course_ID = self.find_course_ID("CS 307")
+        #print(course_ID)
+        toc_block_modules = self._bsapi.get_topics(course_ID)["Modules"]
+        
+        # going through the big sections
+        for i in range(len(toc_block_modules)):
+            # go through any folders the module section may have (module inside module)
+            for j in range(len(toc_block_modules[i]["Modules"])):
+                m_topics = toc_block_modules[i]["Modules"][j]["Topics"]
+                # going through the topics to see files listed
+                for k in range(len(m_topics)):
+                    # getting the type of file it is
+                    url = m_topics[k]["Url"]
+                    title = m_topics[k]["Title"]
+                    #topic_id = m_topics[k]["TopicId"]
+                    
+                    if ("quickLink") in url:
+                        print("Title: " + title)
+                        #url = m_topics[k]["Url"]
+                        print("URL: " + url)
+                    '''else:
+                        print("quickLink not found")
+                        print("Title: " + title)
+                        print("URL: " + url)'''
+
+        return
+    
+    
+    '''
+        This is a function that checks if a given assignemnt in a course has feedback or not. This reuses much of the code
+        from the get_assignment_feedback() function below this function.
+
+        returns: String of feedback, or NULL if there is no feedback, or error message if parameters are incorrect. 
+    '''
+    def check_for_assignment_feedback(self, course_name_str, assignment_name_str):
+        output = self.get_assignment_feedback(course_name_str, assignment_name_str)
+        return output
+    
+    '''
         This is a function that grabs feedback (if it exists) for an assignment in a course. 
 
         returns: String of feedback, or NULL if there is no feedback, or error message if parameters are incorrect. 
