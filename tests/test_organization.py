@@ -6,6 +6,7 @@ def check_for_file(filename, foldername, RF, checking):
     print(val)
     assert val == checking
 
+from datetime import datetime
 if __name__ == '__main__':
     rf = RenameFile()
     final_path = "/Users/raveena/Desktop/testing_org/Fall 2021 CS 30700-LE1 LEC/LEC-03.pdf"

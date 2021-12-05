@@ -1094,10 +1094,10 @@ class BSUtilities():
 
     '''Returns an array of the last modified dates in each section and topic'''
     def get_last_mod_from_sections(self, course_id):
-        modules = self._bsapi.get_topics(course_id)["Modules"]
-        #file = open("/Users/raveena/Library/Preferences/PyCharmCE2019.2/scratches/scratch3.json")
-        #modules = json.load(file)
-        #modules = modules["Modules"]
+        #modules = self._bsapi.get_topics(course_id)["Modules"]
+        file = open("/Users/raveena/Library/Preferences/PyCharmCE2019.2/scratches/scratch3.json")
+        modules = json.load(file)
+        modules = modules["Modules"]
 
 
         if self._debug:

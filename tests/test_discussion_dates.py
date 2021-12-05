@@ -30,7 +30,7 @@ if __name__ == '__main__':
     check_due_dates_EAPS(bs)
 
     event_name = "DISCUSSION POST DUE: Casual Conversation (336112)"
-    date = "2021-12-04T23:59:59-05:00"
+    date = "2021-12-05T23:59:59-05:00"
 
     check_event_details(event_name, date)
 

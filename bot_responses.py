@@ -523,9 +523,9 @@ class BotResponses:
 
 
     def get_update_section_all(self):
-        classes = self.BS_UTILS.get_classes_enrolled()
+        #classes = self.BS_UTILS.get_classes_enrolled()
         string = ""
-        #classes = {"Fall 2021 CS 38100-LE1 LEC": "335578"}
+        classes = {"Fall 2021 CS 38100-LE1 LEC": "335578"}
         for courseName, courseID in classes.items():
             sub_string = self.see_if_section_updated(courseID)
             if len(sub_string) > 0:
@@ -534,20 +534,6 @@ class BotResponses:
         return string
 
 
-from bs_utilities import BSUtilities
-from database.db_utilities import DBUtilities
-db_config = "./database/db_config.py"
-BS_UTILS = BSUtilities()
-DB_UTILS = DBUtilities(db_config)
 
-if __name__ == '__main__':
-    print(datetime.utcnow())
-    br = BotResponses()
-    bs = BSUtilities()
-    bs.set_session("nair64", "1500,push2")
-    br.set_BS_param(bs)
-
-
-    print(br.get_update_section_all())
 
 
