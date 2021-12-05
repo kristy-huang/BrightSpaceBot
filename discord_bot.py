@@ -552,7 +552,110 @@ async def on_message(message):
 
         await message.channel.send(final_string)
         return
+    
+    #user story 2 from sprint 3
+    elif message.content.startswith("suggest study groups"):
+        await message.channel.send("Would you like to specify the number of students in your group?\n If so, please type in the number. If not, type 'no'.")
 
+        def author_check(m):
+            return m.author == message.author
+        
+        num_of_students = await client.wait_for('message', check=author_check)
+
+        await message.channel.send("Would you like to specify the number of courses to have in common with your group? \n If so, please type in the number. If not, type 'no'.")
+        num_of_courses = await client.wait_for('message', check=author_check)
+
+        num_of_students_str = str(num_of_students.content)
+        num_of_courses_str = str(num_of_courses.content)
+
+        bs_username = "thoma854"
+        sql = f"SELECT FIRST_NAME FROM USERS WHERE USERNAME = '{bs_username}';"
+        temp = DB_UTILS._mysql.general_command(sql)
+        user_name_avoid = temp[0][0]
+        sql = f"SELECT LAST_NAME FROM USERS WHERE USERNAME = '{bs_username}';"
+        temp = DB_UTILS._mysql.general_command(sql)
+        user_name_avoid = user_name_avoid + " " + temp[0][0]
+
+        if num_of_students_str.lower() == "no" and num_of_courses_str.lower() == "no":
+            #when neither of the parameters have been specified
+            students_dict = BS_UTILS.suggest_study_groups_no_parameters()
+
+            if not students_dict:
+                await message.channel.send("No students have courses in common with you. \n")
+                return
+            #else
+            x = 0
+            if len(students_dict)-1 >= 3:
+                await message.channel.send("The following students are most eligible to be in your study group: \n")
+                for student_name in students_dict:
+                    if x == 3:
+                        await message.channel.send("\nReach out to them and enjoy your studies! \n") 
+                        return
+                    elif student_name != user_name_avoid:
+                        name_and_val = student_name + ": " + str(students_dict[student_name]) + " courses in common.\n"
+                        await message.channel.send(name_and_val)
+                        x+=1
+        elif num_of_students_str.lower() != "no" and num_of_courses_str.lower() == "no":
+            #when only the number of students is specified
+            #print("when the number of students is specified")
+            students_dict = BS_UTILS.suggest_study_groups_num_of_students(num_of_students_str)
+            num_students = int(num_of_students_str)
+
+            if not students_dict:
+                await message.channel.send("No students have courses in common with you. \n")
+                return
+            
+            y = 0
+            if len(students_dict)-1 >= num_students:
+                await message.channel.send("The following students are most eligible to be in your study group: \n")
+                for student_name in students_dict:
+                    if y == num_students:
+                        await message.channel.send("\nReach out to them and enjoy your studies! \n") 
+                        return
+                    elif student_name != user_name_avoid:
+                        name_and_val = student_name + ": " + str(students_dict[student_name]) + " courses in common.\n"
+                        await message.channel.send(name_and_val)
+                        y+=1
+
+            
+        elif num_of_students_str.lower() == "no" and num_of_courses_str.lower() != "no":
+            #when only the number of courses is specified
+            #print("when the number of courses is specified")
+            students_dict = BS_UTILS.suggest_study_groups_num_of_courses(num_of_courses_str)
+            if not students_dict:
+                await message.channel.send("No students could be found with the specified number of courses in common. \n")
+                return
+            
+            await message.channel.send("The following students are eligible to be in your study group: \n")
+            for student_name in students_dict:
+                if student_name != user_name_avoid:
+                    name_and_val = student_name + ": " + str(students_dict[student_name]) + " courses in common.\n"
+                    await message.channel.send(name_and_val)
+            
+            await message.channel.send("\nReach out to them and enjoy your studies! \n") 
+            return
+        else:
+            #when both parameters are given - num_of_students and num_of_courses
+            #print("when both parameters are given")
+            students_dict = BS_UTILS.suggest_study_groups(num_of_students_str, num_of_courses_str)
+
+            if not students_dict: 
+                await message.channel.send("No students could be found with the specified parameters. \n")
+                return
+            
+            num_students = int(num_of_students_str)
+            z = 0
+            if len(students_dict) >= num_students:
+                await message.channel.send("The following students are most eligible to be in your study group: \n")
+                for student_name in students_dict:
+                    if z == num_students:
+                        await message.channel.send("\nReach out to them and enjoy your studies! \n") 
+                        return
+                    elif student_name != user_name_avoid:
+                        name_and_val = student_name + ": " + str(students_dict[student_name]) + " courses in common.\n"
+                        await message.channel.send(name_and_val)
+                        z+=1
+        return
 
     elif message.content.startswith("get assignment feedback"):
         await message.channel.send("Please provide the Course name (for ex, NUTR 303) \n")
@@ -577,6 +680,31 @@ async def on_message(message):
 
         return
 
+    #user story 6 from sprint 3
+    elif message.content.startswith("check for assignment feedback"):
+        await message.channel.send("Please provide the Course name (for ex, NUTR 303) \n")
+
+        def author_check(m):
+            return m.author == message.author
+
+        course_name = await client.wait_for('message', check=author_check)
+        await message.channel.send("Please provide the full assignment name (for ex, 'Recitation Assignment 1')\n")
+        assignment_name = await client.wait_for('message', check=author_check)
+
+        course_name_str = str(course_name.content)  # converting it here for unit tests
+        assignment_name_str = str(assignment_name.content)  # converting it here for unit tests
+
+        #feedback = BS_UTILS.get_assignment_feedback(course_name_str, assignment_name_str)
+        feedback = BS_UTILS.check_for_assignment_feedback(course_name_str, assignment_name_str)
+        if feedback.__contains__("ERROR") or feedback.__contains__("BOT REPORT"):
+            await message.channel.send(feedback)
+        else:
+            await message.channel.send("Feedback is available for this assignment. Type the command 'get assignment feedback' to view the feedback. \n")
+    
+    #implementation of user story 14 - grabbing recorded lectures and notifying the user.
+    elif message.content.startswith("toc experiment"):
+        BS_UTILS.toc_experiment()
+    
     # enable the user to search for a specific student in a class.
     elif message.content.startswith("search for student"):
         await message.channel.send("Please provide the course in which you want to search \n")
