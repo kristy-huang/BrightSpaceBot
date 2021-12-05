@@ -238,7 +238,8 @@ async def notification_loop():
         await message_channel.send(string[:2000])
         return
 
-    '''if not BS_UTILS.check_connection():
+    '''
+        if not BS_UTILS.check_connection():
         message_channel = client.get_channel(channel_id)
         await message_channel.send("Connection to BS lost. Attempting to reconnect to BS...")
         BS_UTILS.set_session_auto(DB_UTILS, author_id_to_username_map[message.author.id])
@@ -509,7 +510,110 @@ async def on_message(message):
         response = BOT_RESPONSES.get_letter_grade(message)
         await BOT_RESPONSES.send_notification_to_channel(message, "GRADES_TC", response, DB_USERNAME, client)
         return
+    
+    #user story 2 from sprint 3
+    elif message.content.startswith("suggest study groups"):
+        await message.channel.send("Would you like to specify the number of students in your group?\n If so, please type in the number. If not, type 'no'.")
 
+        def author_check(m):
+            return m.author == message.author
+        
+        num_of_students = await client.wait_for('message', check=author_check)
+
+        await message.channel.send("Would you like to specify the number of courses to have in common with your group? \n If so, please type in the number. If not, type 'no'.")
+        num_of_courses = await client.wait_for('message', check=author_check)
+
+        num_of_students_str = str(num_of_students.content)
+        num_of_courses_str = str(num_of_courses.content)
+
+        bs_username = "thoma854"
+        sql = f"SELECT FIRST_NAME FROM USERS WHERE USERNAME = '{bs_username}';"
+        temp = DB_UTILS._mysql.general_command(sql)
+        user_name_avoid = temp[0][0]
+        sql = f"SELECT LAST_NAME FROM USERS WHERE USERNAME = '{bs_username}';"
+        temp = DB_UTILS._mysql.general_command(sql)
+        user_name_avoid = user_name_avoid + " " + temp[0][0]
+
+        if num_of_students_str.lower() == "no" and num_of_courses_str.lower() == "no":
+            #when neither of the parameters have been specified
+            students_dict = BS_UTILS.suggest_study_groups_no_parameters()
+
+            if not students_dict:
+                await message.channel.send("No students have courses in common with you. \n")
+                return
+            #else
+            x = 0
+            if len(students_dict)-1 >= 3:
+                await message.channel.send("The following students are most eligible to be in your study group: \n")
+                for student_name in students_dict:
+                    if x == 3:
+                        await message.channel.send("\nReach out to them and enjoy your studies! \n") 
+                        return
+                    elif student_name != user_name_avoid:
+                        name_and_val = student_name + ": " + str(students_dict[student_name]) + " courses in common.\n"
+                        await message.channel.send(name_and_val)
+                        x+=1
+        elif num_of_students_str.lower() != "no" and num_of_courses_str.lower() == "no":
+            #when only the number of students is specified
+            #print("when the number of students is specified")
+            students_dict = BS_UTILS.suggest_study_groups_num_of_students(num_of_students_str)
+            num_students = int(num_of_students_str)
+
+            if not students_dict:
+                await message.channel.send("No students have courses in common with you. \n")
+                return
+            
+            y = 0
+            if len(students_dict)-1 >= num_students:
+                await message.channel.send("The following students are most eligible to be in your study group: \n")
+                for student_name in students_dict:
+                    if y == num_students:
+                        await message.channel.send("\nReach out to them and enjoy your studies! \n") 
+                        return
+                    elif student_name != user_name_avoid:
+                        name_and_val = student_name + ": " + str(students_dict[student_name]) + " courses in common.\n"
+                        await message.channel.send(name_and_val)
+                        y+=1
+
+            
+        elif num_of_students_str.lower() == "no" and num_of_courses_str.lower() != "no":
+            #when only the number of courses is specified
+            #print("when the number of courses is specified")
+            students_dict = BS_UTILS.suggest_study_groups_num_of_courses(num_of_courses_str)
+            if not students_dict:
+                await message.channel.send("No students could be found with the specified number of courses in common. \n")
+                return
+            
+            await message.channel.send("The following students are eligible to be in your study group: \n")
+            for student_name in students_dict:
+                if student_name != user_name_avoid:
+                    name_and_val = student_name + ": " + str(students_dict[student_name]) + " courses in common.\n"
+                    await message.channel.send(name_and_val)
+            
+            await message.channel.send("\nReach out to them and enjoy your studies! \n") 
+            return
+        else:
+            #when both parameters are given - num_of_students and num_of_courses
+            #print("when both parameters are given")
+            students_dict = BS_UTILS.suggest_study_groups(num_of_students_str, num_of_courses_str)
+
+            if not students_dict: 
+                await message.channel.send("No students could be found with the specified parameters. \n")
+                return
+            
+            num_students = int(num_of_students_str)
+            z = 0
+            if len(students_dict) >= num_students:
+                await message.channel.send("The following students are most eligible to be in your study group: \n")
+                for student_name in students_dict:
+                    if z == num_students:
+                        await message.channel.send("\nReach out to them and enjoy your studies! \n") 
+                        return
+                    elif student_name != user_name_avoid:
+                        name_and_val = student_name + ": " + str(students_dict[student_name]) + " courses in common.\n"
+                        await message.channel.send(name_and_val)
+                        z+=1
+        return
 
     elif message.content.startswith("get assignment feedback"):
         await message.channel.send("Please provide the Course name (for ex, NUTR 303) \n")
@@ -534,6 +638,31 @@ async def on_message(message):
 
         return
 
+    #user story 6 from sprint 3
+    elif message.content.startswith("check for assignment feedback"):
+        await message.channel.send("Please provide the Course name (for ex, NUTR 303) \n")
+
+        def author_check(m):
+            return m.author == message.author
+
+        course_name = await client.wait_for('message', check=author_check)
+        await message.channel.send("Please provide the full assignment name (for ex, 'Recitation Assignment 1')\n")
+        assignment_name = await client.wait_for('message', check=author_check)
+
+        course_name_str = str(course_name.content)  # converting it here for unit tests
+        assignment_name_str = str(assignment_name.content)  # converting it here for unit tests
+
+        #feedback = BS_UTILS.get_assignment_feedback(course_name_str, assignment_name_str)
+        feedback = BS_UTILS.check_for_assignment_feedback(course_name_str, assignment_name_str)
+        if feedback.__contains__("ERROR") or feedback.__contains__("BOT REPORT"):
+            await message.channel.send(feedback)
+        else:
+            await message.channel.send("Feedback is available for this assignment. Type the command 'get assignment feedback' to view the feedback. \n")
+    
+    #implementation of user story 14 - grabbing recorded lectures and notifying the user.
+    elif message.content.startswith("toc experiment"):
+        BS_UTILS.toc_experiment()
+    
     # enable the user to search for a specific student in a class.
     elif message.content.startswith("search for student"):
         await message.channel.send("Please provide the course in which you want to search \n")
@@ -606,9 +735,7 @@ async def on_message(message):
 
         # change value used to check if the user keep wants to change the name of the bot
         # initialized to True
-
         change = True
-        valid_change_response = True
 
         # check method for waiting client's reply back
         def check(msg):
@@ -637,10 +764,11 @@ async def on_message(message):
                 change_again = await client.wait_for('message', check=check)
 
                 # user does not want to change again
-                if change_again.content.startswith('No'):
+                if change_again.content.lower().startswith('no') or change_again.content.lower().startswith('n'):
                     change = False
                     await message.channel.send("Thank you for changing my name!")
-                elif not change_again.content.startswith('Yes'):  # user input invalid response
+                elif not change_again.content.lower().startswith('yes') or not change_again.content.lower().startswith(
+                        'y'):  # user input invalid response
                     await message.channel.send("Invalid response given! Please try the query again.")
                     return
             except asyncio.TimeoutError:
@@ -1379,6 +1507,75 @@ async def on_message(message):
         await message.channel.send(response)
         return
 
+    elif message.content.startswith("!D:"):
+        BOT_RESPONSES.download_files(message.content, DB_USERNAME)
+
+    elif message.content.startswith("configuration setting"):
+        # Bot configuration includes:
+        # 1 BrightSpace configuration
+        # 1.1 Notification
+        # 1.2 Download location
+        #
+        # 2 Bot configuration
+        # 2.1 Notification
+        # 2.2 Bot name
+        #
+        # 3 Default setting
+        # 3.1 Default mode: set everything to default
+        # 3.2 Change default: allow user to save their own default
+
+        # Ask for specific configuration
+        await message.channel.send("Please select a configuration you would like to change:\n" +
+                                   "[1] Download location\n"
+                                   "[2] BrightSpaceBot Notification\n[3] Change Bot name\n"
+                                   "[4] Set configuration to default\n")
+
+        try:
+            user_choice = await client.wait_for("message", check=check, timeout=60)
+            user_choice = user_choice.content
+
+            user_subchoice = ""
+
+            if user_choice.startswith("1"):
+                # download location change
+                await message.channel.send("Please confirm option selection by typing \"update storage\" to continue")
+                return
+            elif user_choice.startswith("2"):
+                # Notification Setting
+                await message.channel.send("Would you like to \"check notifications\", "
+                                           "\"check notification setting\", \"update schedule\"?")
+                return
+            elif user_choice.startswith("3"):
+                # Bot name change
+                await message.channel.send("Please confirm option selection by typing \"change bot name\" to continue")
+                return
+
+            elif user_choice.startswith("4"):
+                # Set to Default
+                await message.channel.send("Are you sure that you want to set every custom changes to default?\n"
+                                           "This includes notification setting, local drive location, "
+                                           " and the bot name.\n"
+                                           "Yes / No")
+                default_change = await client.wait_for("message", check=check, timeout=60)
+                default_change = default_change.content
+                if default_change.lower() == "yes":
+                    # set to default
+                    DB_UTILS.clear_notification_schedule(author_id_to_username_map[message.author.id])
+                    # Bot name
+                    await message.guild.me.edit(nick="BrightSpace Bot")
+                    await message.channel.send("Everything is set to default now!")
+                elif not default_change.lower() == "no":
+                    await message.channel.send("Given option is invalid. Please try the query from the beginning!")
+            else:
+                await message.channel.send("Given option is invalid. Please try the query again!")
+
+        except asyncio.TimeoutError:
+            await message.channel.send("Timeout Error has occurred. Please try the query again!")
+
+        return
+
+    elif message.content.startswith("check read"):
+        return
 
 # Now to actually run the bot!
 client.run(config['token'])

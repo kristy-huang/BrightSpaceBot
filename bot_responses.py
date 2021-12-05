@@ -64,6 +64,15 @@ class BotResponses:
     Returns: Either the storage path saved in Database or error message saying no storage path saved
     """
 
+    '''
+        Check method for waiting client's reply back
+        
+        Used for client.wait_for('message', check=check, timeout=##)
+    '''
+
+    # def check(self, msg):
+    #    return msg.author == self.message.author
+
     def current_storage(self, username):
         sql = f'SELECT STORAGE_PATH from PREFERENCES WHERE USERNAME = \'{username}\';'
         storage_path = self.DB_UTILS._mysql.general_command(sql)
@@ -537,3 +546,6 @@ class BotResponses:
 
 
 
+    def change_configuration(self):
+
+        return
