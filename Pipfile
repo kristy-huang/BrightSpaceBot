@@ -22,6 +22,7 @@ pydrive = "*"
 requests = "*"
 google-auth-oauthlib = "*"
 pyotp = "*"
+gunicorn = "*"
 
 [dev-packages]
 

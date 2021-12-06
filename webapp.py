@@ -1,12 +1,13 @@
 from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
-from flask_cors import CORS
+from flask_cors import CORS, cross_origin
+from flask.helpers import send_from_directory
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended import JWTManager, create_access_token, create_refresh_token, jwt_required
 import config
 
-webapp = Flask(__name__)
+webapp = Flask(__name__, static_folder='web/build', static_url_path='')
 CORS(webapp)
 JWTManager(webapp)
 
@@ -57,6 +58,7 @@ class Preferences(db.Model):
 
 
 @webapp.route("/registerUser", methods=['POST'])
+@cross_origin()
 def register_user():
     # get user input from website
     print(request.get_json())
@@ -95,6 +97,7 @@ def register_user():
 
 
 @webapp.route("/login", methods=['POST'])
+@cross_origin()
 def login_user():
     # get user input from website
     username = request.json['username']
@@ -136,6 +139,7 @@ def login_user():
 
 
 @webapp.route("/updateProfile", methods=['POST'])
+@cross_origin()
 def update_profile():
     # get user input from website
     print(request.get_json())
@@ -178,6 +182,12 @@ def update_profile():
         "status": 200,
         "message": "Profile Information Successfully Updated!"
     })
+
+
+@webapp.route('/')
+@cross_origin()
+def serve():
+    return send_from_directory(webapp.static_folder, 'index.html')
 
 
 if __name__ == "__main__":
