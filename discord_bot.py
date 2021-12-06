@@ -162,21 +162,18 @@ async def notification_loop():
     #
     print("inserting into calendar is finished...")
 
-    # SEEING IF A SECTION HAS BEEN UPDATED / ADDED
-
-    # message_channel = client.get_channel(channelID)
-    # dates = BS_UTILS.get_dict_of_discussion_dates()
-    # # dates = DATES
-    # string = BS_UTILS.find_upcoming_disc_dates(1, dates)
-    # string += BS_UTILS.get_notifications_past_24h()
-
     string = ""
 
+    # message_channel = client.get_channel(channelID)
+    print("getting discussion posts: ")
+    dates = BS_UTILS.get_discussion_due_dates_TEST()
+    string = BS_UTILS.find_upcoming_disc_dates(1, dates)
+
+    # SEEING IF A SECTION HAS BEEN UPDATED / ADDED
     section_updated = BOT_RESPONSES.get_update_section_all()
     if len(section_updated) > 0:
         string = string + " " + section_updated
     print("got section stuff")
-    #await client.get_channel(894679160981696555).send(string)
     print(channelID)
     print(len(string))
 
@@ -787,9 +784,8 @@ async def on_message(message):
 
     elif message.content.startswith("upcoming discussion"):
         # dictionary of class_name, [list of dates]
-        dates = BS_UTILS.get_dict_of_discussion_dates()
+        dates = BS_UTILS.get_discussion_due_dates_TEST()
 
-        # dates = DATES #ONLY FOR DEBUG
         def check(msg):
             return msg.author == message.author
 
@@ -806,7 +802,7 @@ async def on_message(message):
                 return
             # they want to see everything
             if response.content.startswith("yes"):
-                string = BS_UTILS.find_upcoming_disc_dates(0, dates)
+                string = BS_UTILS.find_upcoming_disc_dates(-1, dates)
                 if len(string) == 0:
                     await message.channel.send("No upcoming posts.")
                 else:
