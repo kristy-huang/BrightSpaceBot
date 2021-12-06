@@ -31,7 +31,7 @@ function LoggedIn() {
               })
         };
 
-        fetch('http://localhost:5000/updateProfile', requestOptions)
+        fetch('/updateProfile', requestOptions)
             .then(res=>res.json())
             .then(data=>{
                 alert(data.message)

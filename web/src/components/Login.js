@@ -24,7 +24,7 @@ function Login(props) {
               })
         };
 
-        fetch('http://localhost:5000/login', requestOptions)
+        fetch('/login', requestOptions)
             .then(res=>res.json())
             .then(data=>{
                 //console.log(data)

@@ -25,7 +25,7 @@ function Register(props) {
                     })
             };
             console.log(requestOptions)
-            fetch('http://localhost:5000/registerUser', requestOptions)
+            fetch('/registerUser', requestOptions)
             .then(res=>res.json())
             .then(data=>alert(data.message))
             .catch(err=>console.log(err))
