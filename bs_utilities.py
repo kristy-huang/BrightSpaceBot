@@ -312,8 +312,6 @@ class BSUtilities():
 
         for thread in threads:
             # get the list of topics for each thread
-            # file = open("/Users/raveena/Library/Preferences/PyCharmCE2019.2/scratches/scratch2.json")
-            # topics = json.load(file)
             topics = self._bsapi.get_discussion_topics(course_id, thread["ForumId"])
             for t in topics:
                 arr = []
@@ -867,26 +865,33 @@ class BSUtilities():
         return dates
 
     # given end time (24 hrs or 2 weeks) give the list of upcoming dates
-    def find_upcoming_disc_dates(self, add_days, dates):
-        current_date = datetime.datetime.now()  # saving the current date
-        ending_date = datetime.datetime.today() + datetime.timedelta(days=add_days)
+    def find_upcoming_disc_dates(self, add_days, discussion_dates):
+        # The ending date to compare with
+        ending_date = datetime.datetime.utcnow() + datetime.timedelta(days=add_days)
+        print(ending_date)
         string = ""
-        for key, value in dates.items():
-            for i in value:
-                # less than 24 hours left
+        for discussion in discussion_dates:
+            if discussion[0] is not None and discussion[1] is not None:
+                name = discussion[0]
+                date = datetime.datetime.fromisoformat(discussion[1][:-1])
+                diff = date - ending_date
+                print(diff)
+                # Checking if the post is due in less than 24 hrs
                 if add_days == 1:
-                    diff = i - current_date
                     if diff.days == 0 or diff.days == -1:
-                        string = string + " " + key + ", due " + i.strftime("%d-%b-%Y") + "\n"
+                        string = string + name + " Discussion Post is due in 24 hours.\n"
+                # if there is a post due in a week
+                elif add_days == 7:
+                    if -7 <= diff.days <= 0:
+                        string = string + name + " Discussion Post is due in a week.\n"
+                # find the next 2 weeks
                 elif add_days == 14:
-                    diff = ending_date - i
-                    if 0 <= diff.days <= 14:
-                        string = string + " " + key + ", due " + i.strftime("%d-%b-%Y") + "\n"
-                # just give everything upcoming
-                else:
-                    diff = i - current_date
+                    if -14 <= diff.days <= 0:
+                        string = string + name + " Discussion Post is due in two weeks.\n"
+                # Just want all discussion posts upcoming
+                elif add_days == -1:
                     if diff.days >= 0:
-                        string = string + " " + key + ", due " + i.strftime("%d-%b-%Y") + "\n"
+                        string = string + name + " is upcoming\n"
 
         return string
 

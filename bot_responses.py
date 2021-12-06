@@ -1,4 +1,6 @@
 import discord
+
+from database.db_utilities import DBUtilities
 from rename_file import RenameFile
 from bs_utilities import BSUtilities
 from bs_calendar import Calendar
