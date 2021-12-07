@@ -1,7 +1,6 @@
 import React from 'react'
 import {Link} from 'react-router-dom'
 import {useAuth} from '../auth'
-import image from '../Brightspacebot.png';
 
 function LoggedInHome() {
     return (
@@ -29,9 +28,7 @@ function Home(props) {
     const [loggedIn] = useAuth()
     return (
         <div className="home container">
-            <img src={image} height={200} width={480} />
-            <br></br>
-            <br></br>
+
             {loggedIn?<LoggedInHome/>:<LoggedOutHome/>}
         </div>
     )
