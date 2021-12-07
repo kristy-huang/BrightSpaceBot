@@ -28,6 +28,9 @@ function LoggedOutLinks() {
                 <Link className="nav-link active" aria-current="page" to="/">Home</Link>
             </li>
             <li className="nav-item">
+                <Link className="nav-link" to="/commands">Commands</Link>
+            </li>
+            <li className="nav-item">
                 <Link className="nav-link" to="/register">Sign Up</Link>
             </li>
             <li className="nav-item">
