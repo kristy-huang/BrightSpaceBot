@@ -1,19 +1,23 @@
 from flask import Flask, request, jsonify
+import os
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
 from flask_cors import CORS, cross_origin
 from flask.helpers import send_from_directory
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended import JWTManager, create_access_token, create_refresh_token, jwt_required
-import config
+# import config
+from dotenv import load_dotenv,  find_dotenv
+
+load_dotenv(find_dotenv())
 
 webapp = Flask(__name__, static_folder='web/build', static_url_path='/')
 CORS(webapp)
 JWTManager(webapp)
 
-webapp.config['SQLALCHEMY_DATABASE_URI'] = config.database_uri_prod
-webapp.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = config.track_modifications
-webapp.config['SECRET_KEY'] = config.secret_key
+webapp.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("database_uri_prod")
+webapp.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = os.environ.get("track_modifications")
+webapp.config['SECRET_KEY'] = os.environ.get("secret_key")
 
 db = SQLAlchemy(webapp)
 marshmallow = Marshmallow(webapp)
