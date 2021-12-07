@@ -1205,8 +1205,9 @@ class NLPAction():
         storage_location = "Local Machine" if not storage_location or not storage_location[0][0] else storage_location[0][0]
         storage_path = "./downloads/" if not storage_path or not storage_path[0][0] else storage_path[0][0]
 
+
         if storage_location != "Local Machine" and not bsu.drive:
-            bsu.init_google_auths()
+            bsu.drive = bsu.init_google_auths()
 
         bsu.download_files(course_id, storage_path, storage_location, full_course_name)
 

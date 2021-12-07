@@ -75,7 +75,7 @@ class BSUtilities():
         if storage_type == "Local Machine":
             return 0
 
-    def download_file(self, course_id, topic_id, destination, type, drive, course_name):
+    def download_file(self, course_id, topic_id, destination, type, course_name):
         res = self._bsapi.get_file_from_request(course_id, topic_id)
 
         filename = res.headers['Content-Disposition']
@@ -177,6 +177,7 @@ class BSUtilities():
     def download_files(self, course_id, destination, t, course_name, file_types=None):
 
         modules = self._bsapi.get_topics(course_id)["Modules"]
+
 
         if self._debug:
             print("number of big sections:", len(modules))
