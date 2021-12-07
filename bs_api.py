@@ -168,6 +168,7 @@ class BSAPI():
         # TODO : Should do error checking on if these values are even in the json
         numerator = ""
         denominator = ""
+        percentage = 0
         percentage_string = ""
         try:
             if grade_object["PointsNumerator"] is not None:
@@ -183,7 +184,8 @@ class BSAPI():
         except TypeError:
             return "", ""
 
-        percentage = num/den
+        if den != 0:
+            percentage = num/den
         percentage = percentage * 100
         return fraction_string, percentage
 
