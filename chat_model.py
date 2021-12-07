@@ -76,18 +76,18 @@ class NLPAction():
         "download files": (self._download_files_asking, True),
         "update storage": (self._update_storage, True),
         "delete download schedule": (self._delete_download_schedule, True),
-        "get course priority": (self._get_course_priority, True), # TODO:  divides by zero
+        "get course priority": (self._get_course_priority, True),
         "overall points": (self._overall_points, True),
         "overall grades": (self._overall_points, True),
         "get overall points": (self._overall_points, True),
         "get overall grades": (self._overall_points, True),
         "redirect notifications": (self._redirect_notifications, True),
         "notification location": (self._notification_location, True),
-        "add quiz due dates to calendar": (self._add_quiz_due_dates_to_calendar, True),# TODO: Who's calendar?
+        "add quiz due dates to calendar": (self._add_quiz_due_dates_to_calendar, True),
         "get course link": (self._get_course_link, True),
         "get upcoming assignments": (self._get_upcoming_assignments, True),
-        "suggest course study": (self._suggest_course_study, True),# TODO: divides by zero
-        "add office hours to calendar": (self._add_office_hours_to_calendar, True), # TODO: Who's calendar?
+        "suggest course study": (self._suggest_course_study, True),
+        "add office hours to calendar": (self._add_office_hours_to_calendar, True),
         "rename file": (self._rename_file, True),
         "add discussion schedule": (self._add_discussion_schedule, True),
         "check discussion schedule": (self._check_discussion_schedule, True),
