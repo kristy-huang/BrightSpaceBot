@@ -6,6 +6,7 @@ from pydrive.auth import GoogleAuth
 from pydrive.drive import GoogleDrive
 # Accessing the data class made
 from File import File, StorageTypes
+from rename_file import RenameFile
 
 
 # Since our project is in "testing" phase, you have to manually add test users until you publish the app
@@ -99,17 +100,33 @@ def upload_file_to_local_path(localPath, fileRUL, filename):
     urllib.urlretrieve(fileRUL, fullfilename)
 
 
+def create_folder_in_drive(drive, file_name):
+    folder_meta = {'title': file_name, 'mimeType': 'application/vnd.google-apps.folder'}
+    archive_folder = drive.CreateFile(folder_meta)
+    archive_folder.Upload()
+    return {'title': archive_folder['title'], 'id': archive_folder['id']}
+
+
+def move_past_assignments_to_archive(drive, bs_api):
+    re = RenameFile()
+    folder_id = re.get_folder_id(drive, "cs307 test")[1]
+    archive_id = re.get_folder_id(drive, 'Archive')[1]
+    files_in_drive = re.get_files_from_specified_folder(drive, folder_id, [])
+    course_id = 335093  # com217
+    past_assignments = bs_api.get_past_assignments(course_id)
+    # print(past_assignments)
+    for file in files_in_drive:
+        file_id = file['id']
+        file_title = file['title']
+        for past_assignment in past_assignments:
+            if past_assignment['file_name'] is not None:
+                if past_assignment['file_name'] in file_title:
+                    file_move = drive.CreateFile({'id': file['id']})
+                    file_move.Upload()
+                    file_move['parents'] = [{"kind": "drive#parentReference", "id": archive_id}]
+                    file_move.Upload()
+
+
 # Prompt options for storage locations when prompting users to specify a location
 
 
-# Main function
-if __name__ == '__main__':
-    # Example of what the typical flow would look like when interacting with Bot
-    storage_path = ask_for_path()
-    drive = init_google_auths()
-    return_val = validate_path_drive(storage_path, drive)
-    print(return_val)  # for debugging
-    # for debugging, just using this default file
-    file = "docs/Project Backlog - Team 14 (BrightspaceBot).pdf"
-
-    upload_to_google_drive(drive, storage_path, file)

@@ -1,7 +1,9 @@
 
 import asyncio
+from ctypes import c_longdouble
 import datetime
 from urllib.parse import scheme_chars
+from discord.ext.commands.converter import clean_content
 from discord.ext.commands.errors import UserNotFound
 from requests.models import Response
 from werkzeug.security import check_password_hash
@@ -14,6 +16,7 @@ from bs_utilities import BSUtilities
 from bs_calendar import Calendar
 from Authentication import setup_automation
 from file_storage import validate_path_local
+from bot_responses import BotResponses
 
 # A class to parse user commands, and run matching functionalities.
 #
@@ -47,7 +50,7 @@ class NLPAction():
         "bye": (self._say_good_bye, False),
         "change bot name": (self._change_bot_name, False),
         "change your name": (self._change_bot_name, False),
-        "switch bot account": ("switch", False),
+        #"switch bot account": ("switch", False), # Does not work and I don't want to fix it
         "search for student": (self._search_for_student, True),
         "current storage location": (self._current_storage, True),
         "check storage": (self._current_storage, True),
@@ -71,7 +74,26 @@ class NLPAction():
         "get download schedule": (self._check_download_schedule, True),
         "delete download schedule": (self._delete_download_schedule, True),
         "download files": (self._download_files_asking, True),
-        "update storage": (self._update_storage, True)
+        "update storage": (self._update_storage, True),
+        "delete download schedule": (self._delete_download_schedule, True),
+        "get course priority": (self._get_course_priority, True), # TODO:  divides by zero
+        "overall points": (self._overall_points, True),
+        "overall grades": (self._overall_points, True),
+        "get overall points": (self._overall_points, True),
+        "get overall grades": (self._overall_points, True),
+        "redirect notifications": (self._redirect_notifications, True),
+        "notification location": (self._notification_location, True),
+        "add quiz due dates to calendar": (self._add_quiz_due_dates_to_calendar, True),# TODO: Who's calendar?
+        "get course link": (self._get_course_link, True),
+        "get upcoming assignments": (self._get_upcoming_assignments, True),
+        "suggest course study": (self._suggest_course_study, True),# TODO: divides by zero
+        "add office hours to calendar": (self._add_office_hours_to_calendar, True), # TODO: Who's calendar?
+        "rename file": (self._rename_file, True),
+        "add discussion schedule": (self._add_discussion_schedule, True),
+        "check discussion schedule": (self._check_discussion_schedule, True),
+        # "archive": (self._archive, True), # Only works on one machine
+        "check update section": (self._check_update_section, True),
+        "configuration setting": (self._configuration_setting, True),
         }
 
         # 1 = yes, 0 = no
@@ -104,6 +126,8 @@ class NLPAction():
         self._id_to_bsu_map = {}
 
         self._DB_UTIL = DB_UTIL
+        self._br = BotResponses()
+
         # one lock per user! -> only 1 command will be processed each time 
         # (to prevent calling other functions when the bot is processing one function)
         self._locks = {}
@@ -152,6 +176,9 @@ class NLPAction():
         if action_tuple[1] < 50:
             if self._debug:
                 print("Confidency lower than 50%. Abort.")
+            
+            await message.channel.send("I am not sure what you are talking about.")
+
             self._locks[message.author.id] = False
             return 
 
@@ -182,12 +209,15 @@ class NLPAction():
             self._locks[message.author.id] = False
             return
 
-        await self.PHRASES[action_tuple[0]][0](message, client)
         # Run the corresponding function!
-        '''try:
+        try:
+            await self.PHRASES[action_tuple[0]][0](message, client)
         except Exception as e:
             self._locks[message.author.id] = False
-            print(e)'''
+            await message.channel.send("Some sort of error happened in my brain. Sorry, my bad! UWU")
+            
+            if self._debug:
+                print(e)
 
 
         if self._debug:
@@ -320,7 +350,7 @@ class NLPAction():
 
     async def _request_bot_username_password(self, message, client):
         #print("_request_bot_username_password")
-        await message.channel.send("Please enter your username for the bot. If you do not have an account yet, please go to https://brightspacebot.herokuapp.com/ to register an account. ")
+        await message.channel.send("Please enter your username for the bot. If you do not have an account yet, please visit https://brightspace-bot.herokuapp.com// to register an account. ")
         username = await self._recieve_response(message, client)
         name_pass = self._DB_UTIL.get_username_password(username.content)
         if not name_pass or not name_pass[0][0]:
@@ -527,17 +557,16 @@ class NLPAction():
 
         curr_bs_util = self._id_to_bsu_map[message.author.id]
 
-        await message.channel.send("For which classes?\n")
-
-        res = await self._recieve_response(message, client)
+        await message.channel.send("Please enter the courses you want to check with a comma. \n (e.g. cs180,cs182)")
         
-        courses = res.content.split(",")
+        res = await self._recieve_response(message, client)
+        courses = res.content.strip().split(",")
 
         IDs = []
+        print("Courses:", courses)
         for c in courses:
-            course_id = curr_bs_util.find_course_id(c)
+            course_id = curr_bs_util.find_course_ID(c)
             IDs.append(course_id)
-        #print(IDs)
 
         grades = {}
         counter = 0
@@ -549,7 +578,13 @@ class NLPAction():
                 #print(fraction_string)
                 #print(percentage)
                 if len(fraction_string) <= 1:
-                    grades[courses[counter]] = 'Not found'
+                    yourTotal, classTotal = curr_bs_util.sum_total_points(i)
+                    if classTotal == 0:
+                        grades[courses[counter]] = 'Not found'
+                    else:
+                        percentage = (yourTotal / classTotal) * 100
+                        letter = curr_bs_util.get_letter_grade(percentage)
+                        grades[courses[counter]] = letter
                 else:
                     letter = curr_bs_util.get_letter_grade(percentage)
                     grades[courses[counter]] = letter
@@ -563,7 +598,6 @@ class NLPAction():
             final_string = final_string + key.upper() + ": " + value + "\n"
 
         await message.channel.send(final_string)
-        return
 
 
     async def _get_assignment_feedback(self, message, client):
@@ -1241,7 +1275,6 @@ class NLPAction():
             await message.channel.send("Your input isn't valid")
 
 
-
     async def _delete_download_schedule(self, message, client):
         current_times = self._DB_UTIL.get_download_schedule(self._id_to_username_map[message.author.id])
 
@@ -1259,7 +1292,6 @@ class NLPAction():
 
     async def _get_course_priority(self, message, client):
         bsu = self._id_to_bsu_map[message.author.id]
-
         # reply backs to the user
         suggested_course_priority = ""
         found_missing_info_courses = ""
@@ -1267,73 +1299,45 @@ class NLPAction():
         # ask user for pick grade or by due date
         await message.channel.send("Please pick between grade or due dates for prioritizing your courses.")
 
-        try:
-            priority_option = await self._recieve_response(message, client)
+        priority_option = await self._recieve_response(message, client)
 
-            if priority_option.content.startswith("grade"):
-                # api call for grades
-                await message.channel.send("Setting course priority by grade ...")
+        if priority_option.content.startswith("grade"):
+            # api call for grades
+            await message.channel.send("Setting course priority by grade ...")
 
-                priority = bsu.get_sorted_grades()[0]
-                missing = bsu.get_sorted_grades()[1]
+            priority = bsu.get_sorted_grades()[0]
+            missing = bsu.get_sorted_grades()[1]
 
-                for x in range(0, len(priority)):
-                    suggested_course_priority += priority[x]
-                    if not x == len(priority) - 1:
-                        suggested_course_priority += " << "
+            for x in range(0, len(priority)):
+                suggested_course_priority += priority[x]
+                if not x == len(priority) - 1:
+                    suggested_course_priority += " << "
 
-                for x in range(0, len(missing)):
-                    found_missing_info_courses += missing[x]
-                    if not x == len(missing) - 1:
-                        found_missing_info_courses += " , "
+            for x in range(0, len(missing)):
+                found_missing_info_courses += missing[x]
+                if not x == len(missing) - 1:
+                    found_missing_info_courses += " , "
 
-                await message.channel.send("The suggested course priority is (highest grade << lowest grade):\n"
+            await message.channel.send("The suggested course priority is (highest grade << lowest grade):\n"
                                         + suggested_course_priority)
-                await message.channel.send("There are some courses that miss final grades:\n"
+            await message.channel.send("There are some courses that miss final grades:\n"
                                         + found_missing_info_courses)
-
-            elif priority_option.content.startswith("due dates"):
-                # api call for due dates
-                await message.channel.send("Setting course priority by upcoming due dates ...")
-
-                priority = bsu.get_course_by_due_date()[0]
-                event_missing = bsu.get_course_by_due_date()[1]
-
-                for x in range(0, len(priority)):
-                    suggested_course_priority += priority[x]['Course Name']
-                    if not x == len(priority) - 1:
-                        suggested_course_priority += " >> "
-
-                for x in range(0, len(event_missing)):
-                    found_missing_info_courses += event_missing[x]['Course Name']
-                    if not x == len(event_missing) - 1:
-                        found_missing_info_courses += ", "
-
-                await message.channel.send("The suggested course priority is (earliest >> latest):\n" +
-                                        suggested_course_priority)
-                await message.channel.send("There are some courses that have no upcoming due dates:\n" +
-                                        found_missing_info_courses)
-            else:
-                await message.channel.send("Invalid response given! Please try the query again.")
-                return
-
-        except asyncio.TimeoutError:
-            await message.channel.send("Timeout ERROR has occurred. Please try the query again.")
-            return
-
-        return
 
 
     async def _overall_points(self, message, client):
         bsu = self._id_to_bsu_map[message.author.id]
         username = self._id_to_username_map[message.author.id]
 
-        courses = message.content.split(":")[1].split(",")
+        await message.channel.send("Please enter the courses you want to check with a comma. \n (e.g. cs180,cs182)")
+        
+        res = await self._recieve_response(message, client)
+        courses = res.content.strip().split(",")
+        
         IDs = []
         for c in courses:
-            course_id = bsu.find_course_id(c)
+            course_id = bsu.find_course_ID(c)
             IDs.append(course_id)  # getting the list of course IDs
-        print(IDs)
+        #print(IDs)
 
         grades = {}
         tosort = {}
@@ -1410,7 +1414,7 @@ class NLPAction():
         category = category.strip()
         text_channel = response_array[1]
         text_channel = text_channel.strip()
-        print(category.lower())
+        #print(category.lower())
         # Get the database category
         db_category = ""
         if category.lower() == "grades":
@@ -1694,28 +1698,194 @@ class NLPAction():
         except asyncio.TimeoutError:
             await message.channel.send("Timeout ERROR has occurred. Please try the query again")
 
+
+    async def _add_office_hours_to_calendar(self, message, client):
+        await message.channel.send("Please input the course name")
+        course_name = await self._recieve_response(message, client)
+        course_name = course_name.content.lower()
+
+        await message.channel.send("Please input the instructor name")
+        instr_name = await self._recieve_response(message, client)
+        instr_name = instr_name.content.lower()
+
+        await message.channel.send("Please input office hour days")
+        days = await self._recieve_response(message, client)
+        days = days.content.lower()
+        days = BotResponses.format_days_of_week(days)
+
+        await message.channel.send("Please input office hour start time. ie 13:30")
+        st_time = await self._recieve_response(message, client)
+        st_time = st_time.content.lower()
+
+        await message.channel.send("Please input office hour end time. ie 14:30")
+        end_time = await self._recieve_response(message, client)
+        end_time = end_time.content.lower()
+
+        response = self._recieve_response(message, client).add_office_hours_to_calendar(course_name, instr_name, days, st_time, end_time)
+        await message.channel.send(response)
+        return
+
+
+    # ----------------------------------
+
+
+    async def _rename_file(self, message, client):
+        bsu = self._id_to_bsu_map[message.author.id]
+        username = self._id_to_username_map[message.author.id]
+
+        # list out the files that they can rename1
+        response, status = self._br.get_downloaded_files(username, bsu, self._DB_UTIL)
+        if status == False:
+            await message.channel.send(response)
+            return
+
+        res_str = response
+        while res_str:
+            await message.channel.send(res_str[:2000])
+            res_str = res_str[2000:]
+        user_response = await self._recieve_response(message, client)
+
+        response = self._br.process_renaming_response(username, user_response.content, bsu)
+        await message.channel.send(response)
+        return
+
+
+    async def _add_discussion_schedule(self, message, client):
+        bsu = self._id_to_bsu_map[message.author.id]
+        username = self._id_to_username_map[message.author.id]
+
+        await message.channel.send('What day(s) do you want discussion reminders sent each week?')
+        days = await self._recieve_response(message, client)
+        days = days.content.lower()
+
+        await message.channel.send("Which class's discussions do you want to add to the schedule?")
+        classes = await self._recieve_response(message, client)
+        classes = classes.content.lower()
+
+        self._br.add_discussion_schedule_to_db(username, days, classes, bsu, self._DB_UTIL)
+        await message.channel.send("Added. ")
+ 
+
+    async def _check_discussion_schedule(self, message, client):
+        bsu = self._id_to_bsu_map[message.author.id]
+        username = self._id_to_username_map[message.author.id]
+
+        response = self._br.discussion_remind_to_post(username, bsu, self._DB_UTIL)
+        await message.channel.send("Reminder to reply to the following discussions: ")
+        if response != '-1':
+            await message.channel.send(response)
+        return
+
+
+    async def _archive(self, message, client):
+        bsu = self._id_to_bsu_map[message.author.id]
+        username = self._id_to_username_map[message.author.id]
+
+        response = self._br.archive_past_assignments(bsu._bsapi)
+        if response != '-1':
+            await message.channel.send(response)
+
+
+    async def _check_update_section(self, message, client):
+        bsu = self._id_to_bsu_map[message.author.id]
+
+        response = self._br.updated_section(bsu)
+        await message.channel.send(response)
+
+
+    async def _configuration_setting(self, message, client):
+        # Bot configuration includes:
+        # 1 BrightSpace configuration
+        # 1.1 Notification
+        # 1.2 Download location
+        #
+        # 2 Bot configuration
+        # 2.1 Notification
+        # 2.2 Bot name
+        #
+        # 3 Default setting
+        # 3.1 Default mode: set everything to default
+        # 3.2 Change default: allow user to save their own default
+
+        # Ask for specific configuration
+
+        bsu = self._id_to_bsu_map[message.author.id]
+        username = self._id_to_username_map[message.author.id]
+
+        await message.channel.send("Please select a configuration you would like to change:\n" +
+                                   "[1] Download location\n"
+                                   "[2] BrightSpaceBot Notification\n[3] Change Bot name\n"
+                                   "[4] Set configuration to default\n")
+
+
+        try:
+            user_choice = await self._recieve_response(message, client)
+            user_choice = user_choice.content
+
+            user_subchoice = ""
+
+            if user_choice.startswith("1"):
+                # download location change
+                await message.channel.send("Please confirm option selection by typing \"update storage\" to continue")
+                return
+            elif user_choice.startswith("2"):
+                # Notification Setting
+                await message.channel.send("Would you like to \"check notifications\", "
+                                           "\"check notification setting\", \"update schedule\"?")
+                return
+            elif user_choice.startswith("3"):
+                # Bot name change
+                await message.channel.send("Please confirm option selection by typing \"change bot name\" to continue")
+                return
+
+            elif user_choice.startswith("4"):
+                # Set to Default
+                await message.channel.send("Are you sure that you want to set every custom changes to default?\n"
+                                           "This includes notification setting, local drive location, "
+                                           " and the bot name.\n"
+                                           "Yes / No")
+                default_change = await self._recieve_response(message, client)
+                default_change = default_change.content
+                if default_change.lower() == "yes":
+                    # set to default
+                    self._DB_UTIL.clear_notification_schedule(username)
+                    # Bot name
+                    await message.guild.me.edit(nick="BrightSpace Bot")
+                    await message.channel.send("Everything is set to default now!")
+                elif not default_change.lower() == "no":
+                    await message.channel.send("Given option is invalid. Please try the query from the beginning!")
+            else:
+                await message.channel.send("Given option is invalid. Please try the query again!")
+
+        except asyncio.TimeoutError:
+            await message.channel.send("Timeout Error has occurred. Please try the query again!")
+
+
+
     # ----- recurring events -----
 
-    async def sync_calendar_classes(self):
+
+    async def sync_calendar(self):
 
         # Sync calendar for every user!
+        # Each BS_UTILS represents one user.
         for BS_UTILS in self._id_to_bsu_map.values():
+
+            # Checks if the user is connected to BS before proceeding.
             if not self._login_if_necessary(None, BS_UTILS):
                 if self._debug:
                     print("sync calendar classes: login to bs failed.")
                 continue
 
-
-            #  Syncing the calendar daily (so it can get the correct changes)
             classes = BS_UTILS.get_classes_enrolled()
-            # classes = {"EAPS": "336112"}
+            # classes = {"EAPS": "336112"}  # IN TEST MODE
+            print("CALENDAR STUFF")
             for courseName, courseID in classes.items():
                 assignment_list = BS_UTILS._bsapi.get_upcoming_assignments(courseID)
                 due = BS_UTILS.process_upcoming_dates(assignment_list)
                 if len(due) != 0:
-                    # actually dates that are upcoming
-                    cal = Calendar()
                     # loop through all the upcoming assignments
+                    cal = Calendar()
                     for assignment in due:
                         # Check if the event exists first by searching by name
                         event_title = f"ASSIGNMENT DUE: {assignment[0]} ({courseID})"
@@ -1724,10 +1894,35 @@ class NLPAction():
                         date = datetime.datetime.fromisoformat(assignment[1][:-1])
                         end = date.isoformat()
                         start = (date - datetime.timedelta(hours=1)).isoformat()
+                        print("End date from search: " + str(end_time))
+                        if search_result != -1:
+                            # it has already been added to the calendar
+                            # see if the end times are different
+                            if end_time != end:
+                                # the due date has been updated, so delete the old event
+                                cal.delete_event(search_result)
+                                cal.insert_event(event_title, description, start, end)
+                        else:
+                            # has not been added to calendar, so add normally
+                            # inserting event
+                            cal.insert_event(event_title, description, start, end)
 
-                        if self._debug:
-                            print("End date from search: " + str(end_time))
-
+                print("DISCUSSION STUFF")
+                # Now adding dicussions
+                discussion_list = BS_UTILS.get_discussion_due_dates_TEST()  # IN TEST MODE
+                #discussion_list = BS_UTILS.get_discussion_due_dates(courseID)
+                due = BS_UTILS.process_upcoming_dates(discussion_list)
+                if len(due) != 0:
+                    cal = Calendar()
+                    for disc in due:
+                        event_title = f"DISCUSSION POST DUE: {disc[0]} ({courseID})"
+                        description = f"{disc[0]} for {courseName} is due. Don't forget to submit it!"
+                        search_result, end_time = cal.get_event_from_name(event_title)
+                        print("Search result: " + str(search_result))
+                        date = datetime.datetime.fromisoformat(disc[1][:-1])
+                        end = date.isoformat()
+                        start = (date - datetime.timedelta(hours=1)).isoformat()
+                        print("End date from search: " + str(end_time))
                         if search_result != -1:
                             # it has already been added to the calendar
                             # see if the end times are different
@@ -1741,14 +1936,18 @@ class NLPAction():
                             cal.insert_event(event_title, description, start, end)
 
 
-    async def sync_calender_quizzes(self):
+    async def sync_calendar_quiz(self):
         # Sync calendar for every user!
+        # Each BS_UTILS represents one user.
         for BS_UTILS in self._id_to_bsu_map.values():
+
+            # Checks if the user is connected to BS before proceeding.
             if not self._login_if_necessary(None, BS_UTILS):
                 if self._debug:
                     print("sync calendar classes: login to bs failed.")
                 continue
 
+            # Syncing quizzes to the calendar daily (so it can get the correct changes)
             quizzes = BS_UTILS.get_all_upcoming_quizzes()
             for quiz in quizzes:
                 cal = Calendar()
@@ -1768,9 +1967,6 @@ class NLPAction():
                     if end_time != end:
                         cal.delete_event(event_id)
                         cal.insert_event(event_title, description, start, end)
-
-        #print("inserting into calendar is finished...")
-
 
     async def send_notifications(self, client):
         async def send_notifications(string, BS_UTILS, channel_id, types):
@@ -1801,17 +1997,18 @@ class NLPAction():
             # send the upcoming discussion due dates
             # TODO: use a loop to send the full message. 
 
+            if not string:
+                await message_channel.send("No notifications.")
             while string:
                 await message_channel.send(string[:2000])
                 string = string[2000:]
-            return
         
         now = datetime.datetime.now()
         time_string = now.strftime("%H:%M")
         weekday = now.weekday()
 
         schedules = self._DB_UTIL.get_notifictaion_schedule_by_time(time_string, weekday)
-
+        
         for schedule in schedules:
             username = schedule[0]
             # The default channel!
@@ -1823,7 +2020,7 @@ class NLPAction():
             # Check if the user wants another channel
             sql_command = f"SELECT DEADLINES_TC FROM PREFERENCES WHERE USERNAME = '{username}';"
             sql_result = self._DB_UTIL._mysql.general_command(sql_command)
-            if sql_result:
+            if sql_result and sql_result[0][0]:
                 sql_result = sql_result[0][0]
                 for c in client.get_all_channels():
                     sql_result = sql_result.replace(" ", "-")
@@ -1831,8 +2028,21 @@ class NLPAction():
                         channel_id = c.id
                         break
 
-            
-            BS_UTILS = self._id_to_bsu_map[username]
+            user_id = -1
+            for ids in self._id_to_username_map:
+                if self._id_to_username_map[ids] == username:
+                    user_id = ids
+                    break
+            if user_id == -1:
+                continue
+
+            BS_UTILS = self._id_to_bsu_map[user_id]
+
+            '''section_updated = self._br.get_update_section_all(BS_UTILS)
+            if len(section_updated) > 0:
+                string += "\n " + section_updated'''
+
+
             if not self._login_if_necessary(None, BS_UTILS):
                 if self._debug:
                     print("send_notifications: login to bs failed.")
@@ -1843,14 +2053,111 @@ class NLPAction():
             string += BS_UTILS.get_notifications_past_24h()
 
             await send_notifications(string, BS_UTILS, channel_id, types)
+    '''
+        async def send_notifications(self, client):
+            async def send_notifications(string, BS_UTILS, channel_id, types):
+                message_channel = client.get_channel(channel_id)
+                #print(channel_id, message_channel)
 
+                if types[0] == "1":
+                    dates = BS_UTILS.get_dict_of_discussion_dates()
+                    # dates = DATES
+                    string += BS_UTILS.find_upcoming_disc_dates(1, dates)
+                if types[1] == "1":
+                    string += BS_UTILS.get_notifications_past_24h()
+                if types[2] == "1":
+                    string += BS_UTILS.get_events_by_type_past_24h(1)  # Reminder
+                if types[3] == "1":
+                    string += BS_UTILS.get_events_by_type_past_24h(6)  # DueDate
+
+                # replace course id's with course names:
+
+                courses = BS_UTILS.get_classes_enrolled()
+                for course in courses.keys():
+                    curr_course_id = courses[course]
+                    curr_course_id = str(curr_course_id)
+                    if curr_course_id in string:
+                        string = string.replace(curr_course_id, course)
+
+                section_updated = self._br.get_update_section_all(BS_UTILS)
+                if len(section_updated) > 0:
+                    string += " " + section_updated
+
+                # send the upcoming discussion due dates
+                # TODO: use a loop to send the full message. 
+
+                if not string:
+                    await message_channel.send("No notifications.")
+                while string:
+                    await message_channel.send(string[:2000])
+                    string = string[2000:]
+            
+            
+            def get_discussions(dates, bsu):
+                #dates = bsu.get_discussion_due_dates_TEST()
+                print("dates for discussion:", dates)
+                string = bsu.find_upcoming_disc_dates(1, dates)
+
+                # SEEING IF A SECTION HAS BEEN UPDATED / ADDED
+
+
+                return string
+
+
+
+            now = datetime.datetime.now()
+            time_string = now.strftime("%H:%M")
+            weekday = now.weekday()
+
+            schedules = self._DB_UTIL.get_notifictaion_schedule_by_time(time_string, weekday)
+
+            print("Schdules for notification loop:", schedules)
+            for schedule in schedules:
+                username = schedule[0]
+                # The default channel!
+                channel_id = int(schedule[1])
+                types = schedule[2]
+                if not types:
+                    types = "1111"
+
+                # Check if the user wants another channel
+                sql_command = f"SELECT DEADLINES_TC FROM PREFERENCES WHERE USERNAME = '{username}';"
+                sql_result = self._DB_UTIL._mysql.general_command(sql_command)
+                if sql_result and sql_result[0][0]:
+                    sql_result = sql_result.replace(" ", "-")
+                    for c in client.get_all_channels():
+                        if c.name == sql_result:
+                            channel_id = c.id
+                            break
+
+                user_id = -1
+                for ids in self._id_to_username_map:
+                    if self._id_to_username_map[ids] == username:
+                        user_id = ids
+                        break
+                if user_id == -1:
+                    continue
+
+                BS_UTILS = self._id_to_bsu_map[user_id]
+                if not await self._login_if_necessary(None, BS_UTILS):
+                    if self._debug:
+                        print("send_notifications: login to bs failed.")
+                    continue
+
+                dates = BS_UTILS.get_dict_of_discussion_dates()
+                string = BS_UTILS.find_upcoming_disc_dates(1, dates)
+                string += BS_UTILS.get_notifications_past_24h()
+
+                print("notifi")
+                await send_notifications(string, BS_UTILS, channel_id, types)
+    '''
 
     async def download_files_by_schedule(self):
         now = datetime.datetime.now()
         time_string = now.strftime("%H:%M")
 
         schedules = self._DB_UTIL.get_download_schedule_by_time(time_string)
-        print(schedules)
+        #print(schedules)
         for schedule in schedules:
             user_id = schedule[0]
             type = schedule[1]
@@ -1862,14 +2169,4 @@ class NLPAction():
             for course_name in courses.keys():
                 print("downloading course: ", course_name)
                 await self._download_files_without_asking(user_id, courses[course_name], course_name)
-
-
-
-    
-
-
-
-
-
-
 
