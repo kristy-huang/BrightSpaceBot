@@ -65,6 +65,7 @@ async def minute_loop_before():
 
 
 @tasks.loop(minutes=24 * 60)
+#@tasks.loop(minutes=1)
 async def day_loop():
     await nlpa.sync_calendar()
     await nlpa.sync_calendar_quiz()

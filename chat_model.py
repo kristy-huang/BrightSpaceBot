@@ -1879,7 +1879,7 @@ class NLPAction():
                 continue
 
             classes = BS_UTILS.get_classes_enrolled()
-            # classes = {"EAPS": "336112"}  # IN TEST MODE
+            #classes = {"EAPS": "336154"}  # IN TEST MODE
             print("CALENDAR STUFF")
             for courseName, courseID in classes.items():
                 assignment_list = BS_UTILS._bsapi.get_upcoming_assignments(courseID)
