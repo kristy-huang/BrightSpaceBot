@@ -61,6 +61,7 @@ class Preferences(db.Model):
         self.notification_frequency = notification_frequency
 
 
+
 @webapp.route("/registerUser", methods=['POST'])
 @cross_origin()
 def register_user():
