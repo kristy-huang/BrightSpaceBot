@@ -1049,7 +1049,6 @@ class BSUtilities():
             grade_string = self._bsapi.get_grade(course_id)[0]
             fraction_grade = 0.0
 
-            print("grade_string", grade_string) 
             if not grade_string == '':
                 fraction_grade = float(grade_string[0]) / float(grade_string[1])
 
