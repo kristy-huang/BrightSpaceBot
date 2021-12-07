@@ -1041,12 +1041,19 @@ class BSUtilities():
         # grades_frac will store all the fraction grade of the user for those courses
         class_names = []
         grades_frac = []
-            print(f"{name}, {course_id}\n")
+        
+        # revised for loop
+        for name, course_id in user_classes.items():
+            # getting class names and fraction grade from the enrolled class list
+            class_names.append(name)
+            grade_string = self._bsapi.get_grade(course_id)[0]
+            fraction_grade = 0.0
+            # print(f"{name}, {course_id}\n")
 
             if not grade_string == '':
                 fraction_grade = float(grade_string[0]) / float(grade_string[1])
                 fraction = grade_string.split("/")
-                print(f"top: {fraction[0]}, bottom: {fraction[1]}")
+                # print(f"top: {fraction[0]}, bottom: {fraction[1]}")
                 if float(fraction[1]) != 0:
                     fraction_grade = float(fraction[0]) / float(fraction[1])
 
