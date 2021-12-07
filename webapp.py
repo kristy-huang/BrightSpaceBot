@@ -7,7 +7,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended import JWTManager, create_access_token, create_refresh_token, jwt_required
 import config
 
-webapp = Flask(__name__, static_folder='web/build', static_url_path='')
+webapp = Flask(__name__, static_folder='web/build', static_url_path='/')
 CORS(webapp)
 JWTManager(webapp)
 
