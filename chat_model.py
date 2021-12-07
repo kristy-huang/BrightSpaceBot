@@ -422,13 +422,13 @@ class NLPAction():
                         self._id_to_bsu_map[message.author.id] = bsu
                         return True
 
-            await message.channel.send("please get a boilerkey url and send it to me.")
+            await message.channel.send("Please get a boilerkey url and send it to me!\n To get a boilerkey url, please go to https://www.purdue.edu/apps/account/BoilerKey/ . Go to <Manage> -> <Add or Remove your Duo Mobile BoilerKeys> -> <Add Another>, and follow the steps to add a new boilerkey. When you see a QR code, there should be an url under the QR code image. ")
             res = await self._recieve_response(message, client)
             url = res.content
-            await message.channel.send("bs username")
+            await message.channel.send("Please enter your BrightSpace username")
             res = await self._recieve_response(message, client)
             bs_username = res.content
-            await message.channel.send("bs 4 digit pin")
+            await message.channel.send("Please enter your BrightSpace 4 digit pin")
             res = await self._recieve_response(message, client)
             bs_pin = res.content
             status = setup_automation(self._DB_UTIL, self._id_to_username_map[message.author.id], bs_username, bs_pin, url )

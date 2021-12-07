@@ -983,6 +983,7 @@ class BSUtilities():
             if date is not None:
                 date = datetime.datetime.fromisoformat(date[:-1])
                 diff = date - current_utc
+                print("Diff in process_upcoming_dates", diff)
                 if diff.days >= 0:
                     due.append(assignment)
         return due
