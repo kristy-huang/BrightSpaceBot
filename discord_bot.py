@@ -54,7 +54,7 @@ async def quit(ctx):
 async def minute_loop():
     print("minute loop")
     await nlpa.send_notifications(client)
-    #await nlpa.download_files_by_schedule()
+    await nlpa.download_files_by_schedule()
     
 
 
@@ -66,9 +66,8 @@ async def minute_loop_before():
 
 @tasks.loop(minutes=24 * 60)
 async def day_loop():
-    '''await nlpa.sync_calendar()
-    await nlpa.sync_calendar_quiz()'''
-    pass
+    await nlpa.sync_calendar()
+    await nlpa.sync_calendar_quiz()
 
 
 @day_loop.before_loop
