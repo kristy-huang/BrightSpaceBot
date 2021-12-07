@@ -94,6 +94,7 @@ class NLPAction():
         # "archive": (self._archive, True), # Only works on one machine
         "check update section": (self._check_update_section, True),
         "configuration setting": (self._configuration_setting, True),
+        "login": (self._login_empty, True)
         }
 
         # 1 = yes, 0 = no
@@ -1725,6 +1726,11 @@ class NLPAction():
         response = self._recieve_response(message, client).add_office_hours_to_calendar(course_name, instr_name, days, st_time, end_time)
         await message.channel.send(response)
         return
+
+
+    # An empty function to login the user ...!
+    async def _login_empty(self, message, client):
+        await message.channel.send("You are logged in to BrightSpace!")
 
 
     # ----------------------------------
