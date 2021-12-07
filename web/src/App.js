@@ -5,6 +5,7 @@ import Navbar from './components/Navbar';
 import Register from './components/Register';
 import UpdateProfile from './components/UpdateProfile'
 import GetBot from './components/GetBot';
+import Commands from './components/Commands';
 import './styles/main.css'
 import {
     BrowserRouter as Router,
@@ -20,6 +21,9 @@ function App() {
         <Switch>
             <Route path="/login">
                 <Login/>
+            </Route>
+            <Route path="/commands">
+                <Commands/>
             </Route>
             <Route path="/register">
                 <Register/>
