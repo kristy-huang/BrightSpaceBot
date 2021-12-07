@@ -11,16 +11,3 @@
     background-color: #f9759e !important;
     border-color: #f9759e !important;
 }
-
-p {
-    color: grey;
-    margin: 200px;
-}
-
-table {
-    border-collapse: collapse;
-}
-
-table td {
-    border: 1px solid #333;
-}
