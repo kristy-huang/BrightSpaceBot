@@ -997,11 +997,14 @@ class BSUtilities():
     '''
 
     def get_all_upcoming_quizzes(self):
-        enrolled_courses = self.get_classes_enrolled()
+        # enrolled_courses = self.get_classes_enrolled()
+        enrolled_courses = {"EAPS": "336154"}
         # print(enrolled_courses)
         upcoming_quizzes = []
         for course_name, course_id in enrolled_courses.items():
-            result = self._bsapi.get_quizzes(course_id)  # returns a list of QuizReadData blocks - dictionaries
+            # result = self._bsapi.get_quizzes(course_id)  # returns a list of QuizReadData blocks - dictionaries
+            file = open("demo_test_data.json")
+            result = json.load(file)
             quizzes = result['Objects']
             for quiz in quizzes:  # for each block in the list,
                 # get today's date

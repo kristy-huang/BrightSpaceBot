@@ -1,0 +1,821 @@
+{
+  "Objects": [
+    {
+      "QuizId": 470576,
+      "Name": "Demo Quiz",
+      "AutoExportToGrades": true,
+      "IsActive": true,
+      "GradeItemId": 1612473,
+      "IsAutoSetGraded": true,
+      "Instructions": {
+        "Text": {
+          "Text": "",
+          "Html": ""
+        },
+        "IsDisplayed": false
+      },
+      "Description": {
+        "Text": {
+          "Text": "",
+          "Html": ""
+        },
+        "IsDisplayed": false
+      },
+      "Header": {
+        "Text": {
+          "Text": "",
+          "Html": ""
+        },
+        "IsDisplayed": false
+      },
+      "Footer": {
+        "Text": {
+          "Text": "",
+          "Html": ""
+        },
+        "IsDisplayed": false
+      },
+      "StartDate": "2021-08-30T21:00:00.000Z",
+      "EndDate": "2021-08-31T21:00:00.000Z",
+      "DueDate": "2021-12-10T21:00:00.000Z",
+      "DisplayInCalendar": false,
+      "SortOrder": 2,
+      "SubmissionTimeLimit": {
+        "IsEnforced": true,
+        "ShowClock": true,
+        "TimeLimitValue": 60
+      },
+      "SubmissionGracePeriod": 5,
+      "LateSubmissionInfo": {
+        "LateSubmissionOption": 2,
+        "LateLimitMinutes": 1
+      },
+      "AttemptsAllowed": {
+        "IsUnlimited": false,
+        "NumberOfAttemptsAllowed": 2
+      },
+      "Password": null,
+      "AllowHints": false,
+      "DisableRightClick": false,
+      "DisablePagerAndAlerts": false,
+      "RestrictIPAddressRange": [],
+      "NotificationEmail": null,
+      "CalcTypeId": 1,
+      "CategoryId": null,
+      "PreventMovingBackwards": false,
+      "Shuffle": false,
+      "ActivityId": "https://ids.brightspace.com/activities/quiz/354644E0-4CD8-419D-A32F-4E78D8778E5C-3572297",
+      "AllowOnlyUsersWithSpecialAccess": false,
+      "IsRetakeIncorrectOnly": false
+    },
+    {
+      "QuizId": 471680,
+      "Name": "Fall 2021 Quiz 02",
+      "AutoExportToGrades": true,
+      "IsActive": true,
+      "GradeItemId": 1616220,
+      "IsAutoSetGraded": true,
+      "Instructions": {
+        "Text": {
+          "Text": "",
+          "Html": ""
+        },
+        "IsDisplayed": false
+      },
+      "Description": {
+        "Text": {
+          "Text": "",
+          "Html": ""
+        },
+        "IsDisplayed": false
+      },
+      "Header": {
+        "Text": {
+          "Text": "",
+          "Html": ""
+        },
+        "IsDisplayed": false
+      },
+      "Footer": {
+        "Text": {
+          "Text": "",
+          "Html": ""
+        },
+        "IsDisplayed": false
+      },
+      "StartDate": "2021-09-09T21:00:00.000Z",
+      "EndDate": "2021-09-10T21:00:00.000Z",
+      "DueDate": "2021-09-10T21:00:00.000Z",
+      "DisplayInCalendar": false,
+      "SortOrder": 4,
+      "SubmissionTimeLimit": {
+        "IsEnforced": true,
+        "ShowClock": true,
+        "TimeLimitValue": 60
+      },
+      "SubmissionGracePeriod": 5,
+      "LateSubmissionInfo": {
+        "LateSubmissionOption": 2,
+        "LateLimitMinutes": 1
+      },
+      "AttemptsAllowed": {
+        "IsUnlimited": false,
+        "NumberOfAttemptsAllowed": 2
+      },
+      "Password": null,
+      "AllowHints": false,
+      "DisableRightClick": false,
+      "DisablePagerAndAlerts": false,
+      "RestrictIPAddressRange": [],
+      "NotificationEmail": null,
+      "CalcTypeId": 1,
+      "CategoryId": null,
+      "PreventMovingBackwards": false,
+      "Shuffle": false,
+      "ActivityId": "https://ids.brightspace.com/activities/quiz/354644E0-4CD8-419D-A32F-4E78D8778E5C-3612406",
+      "AllowOnlyUsersWithSpecialAccess": false,
+      "IsRetakeIncorrectOnly": false
+    },
+    {
+      "QuizId": 473120,
+      "Name": "Fall 2021 Quiz 03",
+      "AutoExportToGrades": true,
+      "IsActive": true,
+      "GradeItemId": 1622769,
+      "IsAutoSetGraded": true,
+      "Instructions": {
+        "Text": {
+          "Text": "",
+          "Html": ""
+        },
+        "IsDisplayed": false
+      },
+      "Description": {
+        "Text": {
+          "Text": "",
+          "Html": ""
+        },
+        "IsDisplayed": false
+      },
+      "Header": {
+        "Text": {
+          "Text": "",
+          "Html": ""
+        },
+        "IsDisplayed": false
+      },
+      "Footer": {
+        "Text": {
+          "Text": "",
+          "Html": ""
+        },
+        "IsDisplayed": false
+      },
+      "StartDate": "2021-09-13T21:00:00.000Z",
+      "EndDate": "2021-09-14T21:30:00.000Z",
+      "DueDate": "2021-09-14T21:30:00.000Z",
+      "DisplayInCalendar": false,
+      "SortOrder": 5,
+      "SubmissionTimeLimit": {
+        "IsEnforced": true,
+        "ShowClock": true,
+        "TimeLimitValue": 60
+      },
+      "SubmissionGracePeriod": 5,
+      "LateSubmissionInfo": {
+        "LateSubmissionOption": 2,
+        "LateLimitMinutes": 1
+      },
+      "AttemptsAllowed": {
+        "IsUnlimited": false,
+        "NumberOfAttemptsAllowed": 2
+      },
+      "Password": null,
+      "AllowHints": false,
+      "DisableRightClick": false,
+      "DisablePagerAndAlerts": false,
+      "RestrictIPAddressRange": [],
+      "NotificationEmail": null,
+      "CalcTypeId": 1,
+      "CategoryId": null,
+      "PreventMovingBackwards": false,
+      "Shuffle": false,
+      "ActivityId": "https://ids.brightspace.com/activities/quiz/354644E0-4CD8-419D-A32F-4E78D8778E5C-3653351",
+      "AllowOnlyUsersWithSpecialAccess": false,
+      "IsRetakeIncorrectOnly": false
+    },
+    {
+      "QuizId": 474774,
+      "Name": "Fall 2021 Quiz 04",
+      "AutoExportToGrades": true,
+      "IsActive": true,
+      "GradeItemId": 1629726,
+      "IsAutoSetGraded": true,
+      "Instructions": {
+        "Text": {
+          "Text": "",
+          "Html": ""
+        },
+        "IsDisplayed": false
+      },
+      "Description": {
+        "Text": {
+          "Text": "",
+          "Html": ""
+        },
+        "IsDisplayed": false
+      },
+      "Header": {
+        "Text": {
+          "Text": "",
+          "Html": ""
+        },
+        "IsDisplayed": false
+      },
+      "Footer": {
+        "Text": {
+          "Text": "",
+          "Html": ""
+        },
+        "IsDisplayed": false
+      },
+      "StartDate": "2021-09-20T21:00:00.000Z",
+      "EndDate": "2021-09-22T03:59:00.000Z",
+      "DueDate": "2021-09-22T03:59:00.000Z",
+      "DisplayInCalendar": false,
+      "SortOrder": 7,
+      "SubmissionTimeLimit": {
+        "IsEnforced": true,
+        "ShowClock": true,
+        "TimeLimitValue": 60
+      },
+      "SubmissionGracePeriod": 5,
+      "LateSubmissionInfo": {
+        "LateSubmissionOption": 2,
+        "LateLimitMinutes": 1
+      },
+      "AttemptsAllowed": {
+        "IsUnlimited": false,
+        "NumberOfAttemptsAllowed": 2
+      },
+      "Password": null,
+      "AllowHints": false,
+      "DisableRightClick": false,
+      "DisablePagerAndAlerts": false,
+      "RestrictIPAddressRange": [],
+      "NotificationEmail": null,
+      "CalcTypeId": 1,
+      "CategoryId": null,
+      "PreventMovingBackwards": false,
+      "Shuffle": false,
+      "ActivityId": "https://ids.brightspace.com/activities/quiz/354644E0-4CD8-419D-A32F-4E78D8778E5C-3687234",
+      "AllowOnlyUsersWithSpecialAccess": false,
+      "IsRetakeIncorrectOnly": false
+    },
+    {
+      "QuizId": 476572,
+      "Name": "Fall 2021 Quiz 05",
+      "AutoExportToGrades": true,
+      "IsActive": true,
+      "GradeItemId": 1637257,
+      "IsAutoSetGraded": true,
+      "Instructions": {
+        "Text": {
+          "Text": "",
+          "Html": ""
+        },
+        "IsDisplayed": false
+      },
+      "Description": {
+        "Text": {
+          "Text": "",
+          "Html": ""
+        },
+        "IsDisplayed": false
+      },
+      "Header": {
+        "Text": {
+          "Text": "",
+          "Html": ""
+        },
+        "IsDisplayed": false
+      },
+      "Footer": {
+        "Text": {
+          "Text": "",
+          "Html": ""
+        },
+        "IsDisplayed": false
+      },
+      "StartDate": "2021-09-24T21:00:00.000Z",
+      "EndDate": "2021-09-29T03:59:00.000Z",
+      "DueDate": "2021-09-29T03:59:00.000Z",
+      "DisplayInCalendar": false,
+      "SortOrder": 9,
+      "SubmissionTimeLimit": {
+        "IsEnforced": true,
+        "ShowClock": true,
+        "TimeLimitValue": 60
+      },
+      "SubmissionGracePeriod": 5,
+      "LateSubmissionInfo": {
+        "LateSubmissionOption": 2,
+        "LateLimitMinutes": 1
+      },
+      "AttemptsAllowed": {
+        "IsUnlimited": false,
+        "NumberOfAttemptsAllowed": 2
+      },
+      "Password": null,
+      "AllowHints": false,
+      "DisableRightClick": false,
+      "DisablePagerAndAlerts": false,
+      "RestrictIPAddressRange": [],
+      "NotificationEmail": null,
+      "CalcTypeId": 1,
+      "CategoryId": null,
+      "PreventMovingBackwards": false,
+      "Shuffle": false,
+      "ActivityId": "https://ids.brightspace.com/activities/quiz/354644E0-4CD8-419D-A32F-4E78D8778E5C-3719433",
+      "AllowOnlyUsersWithSpecialAccess": false,
+      "IsRetakeIncorrectOnly": false
+    },
+    {
+      "QuizId": 478321,
+      "Name": "Fall 2021 Quiz 06",
+      "AutoExportToGrades": true,
+      "IsActive": true,
+      "GradeItemId": 1644714,
+      "IsAutoSetGraded": true,
+      "Instructions": {
+        "Text": {
+          "Text": "",
+          "Html": ""
+        },
+        "IsDisplayed": false
+      },
+      "Description": {
+        "Text": {
+          "Text": "",
+          "Html": ""
+        },
+        "IsDisplayed": false
+      },
+      "Header": {
+        "Text": {
+          "Text": "",
+          "Html": ""
+        },
+        "IsDisplayed": false
+      },
+      "Footer": {
+        "Text": {
+          "Text": "",
+          "Html": ""
+        },
+        "IsDisplayed": false
+      },
+      "StartDate": "2021-10-04T21:00:00.000Z",
+      "EndDate": "2021-10-06T03:59:00.000Z",
+      "DueDate": "2021-10-06T03:59:00.000Z",
+      "DisplayInCalendar": false,
+      "SortOrder": 10,
+      "SubmissionTimeLimit": {
+        "IsEnforced": true,
+        "ShowClock": true,
+        "TimeLimitValue": 60
+      },
+      "SubmissionGracePeriod": 5,
+      "LateSubmissionInfo": {
+        "LateSubmissionOption": 2,
+        "LateLimitMinutes": 1
+      },
+      "AttemptsAllowed": {
+        "IsUnlimited": false,
+        "NumberOfAttemptsAllowed": 2
+      },
+      "Password": null,
+      "AllowHints": false,
+      "DisableRightClick": false,
+      "DisablePagerAndAlerts": false,
+      "RestrictIPAddressRange": [],
+      "NotificationEmail": null,
+      "CalcTypeId": 1,
+      "CategoryId": null,
+      "PreventMovingBackwards": false,
+      "Shuffle": false,
+      "ActivityId": "https://ids.brightspace.com/activities/quiz/354644E0-4CD8-419D-A32F-4E78D8778E5C-3751472",
+      "AllowOnlyUsersWithSpecialAccess": false,
+      "IsRetakeIncorrectOnly": false
+    },
+    {
+      "QuizId": 481024,
+      "Name": "Fall 2021 Quiz 07",
+      "AutoExportToGrades": true,
+      "IsActive": true,
+      "GradeItemId": 1657837,
+      "IsAutoSetGraded": true,
+      "Instructions": {
+        "Text": {
+          "Text": "",
+          "Html": ""
+        },
+        "IsDisplayed": false
+      },
+      "Description": {
+        "Text": {
+          "Text": "",
+          "Html": ""
+        },
+        "IsDisplayed": false
+      },
+      "Header": {
+        "Text": {
+          "Text": "",
+          "Html": ""
+        },
+        "IsDisplayed": false
+      },
+      "Footer": {
+        "Text": {
+          "Text": "",
+          "Html": ""
+        },
+        "IsDisplayed": false
+      },
+      "StartDate": "2021-10-18T21:00:00.000Z",
+      "EndDate": "2021-10-20T03:59:00.000Z",
+      "DueDate": "2021-10-20T03:59:00.000Z",
+      "DisplayInCalendar": false,
+      "SortOrder": 11,
+      "SubmissionTimeLimit": {
+        "IsEnforced": true,
+        "ShowClock": true,
+        "TimeLimitValue": 60
+      },
+      "SubmissionGracePeriod": 5,
+      "LateSubmissionInfo": {
+        "LateSubmissionOption": 2,
+        "LateLimitMinutes": 1
+      },
+      "AttemptsAllowed": {
+        "IsUnlimited": false,
+        "NumberOfAttemptsAllowed": 2
+      },
+      "Password": null,
+      "AllowHints": false,
+      "DisableRightClick": false,
+      "DisablePagerAndAlerts": false,
+      "RestrictIPAddressRange": [],
+      "NotificationEmail": null,
+      "CalcTypeId": 1,
+      "CategoryId": null,
+      "PreventMovingBackwards": false,
+      "Shuffle": false,
+      "ActivityId": "https://ids.brightspace.com/activities/quiz/354644E0-4CD8-419D-A32F-4E78D8778E5C-3814598",
+      "AllowOnlyUsersWithSpecialAccess": false,
+      "IsRetakeIncorrectOnly": false
+    },
+    {
+      "QuizId": 485547,
+      "Name": "Fall 2021 Quiz 08",
+      "AutoExportToGrades": true,
+      "IsActive": true,
+      "GradeItemId": 1670326,
+      "IsAutoSetGraded": true,
+      "Instructions": {
+        "Text": {
+          "Text": "",
+          "Html": ""
+        },
+        "IsDisplayed": false
+      },
+      "Description": {
+        "Text": {
+          "Text": "",
+          "Html": ""
+        },
+        "IsDisplayed": false
+      },
+      "Header": {
+        "Text": {
+          "Text": "",
+          "Html": ""
+        },
+        "IsDisplayed": false
+      },
+      "Footer": {
+        "Text": {
+          "Text": "",
+          "Html": ""
+        },
+        "IsDisplayed": false
+      },
+      "StartDate": "2021-10-25T21:00:00.000Z",
+      "EndDate": "2021-10-27T03:59:00.000Z",
+      "DueDate": "2021-10-27T03:59:00.000Z",
+      "DisplayInCalendar": false,
+      "SortOrder": 12,
+      "SubmissionTimeLimit": {
+        "IsEnforced": true,
+        "ShowClock": true,
+        "TimeLimitValue": 60
+      },
+      "SubmissionGracePeriod": 5,
+      "LateSubmissionInfo": {
+        "LateSubmissionOption": 2,
+        "LateLimitMinutes": 1
+      },
+      "AttemptsAllowed": {
+        "IsUnlimited": false,
+        "NumberOfAttemptsAllowed": 2
+      },
+      "Password": null,
+      "AllowHints": false,
+      "DisableRightClick": false,
+      "DisablePagerAndAlerts": false,
+      "RestrictIPAddressRange": [],
+      "NotificationEmail": null,
+      "CalcTypeId": 1,
+      "CategoryId": null,
+      "PreventMovingBackwards": false,
+      "Shuffle": false,
+      "ActivityId": "https://ids.brightspace.com/activities/quiz/354644E0-4CD8-419D-A32F-4E78D8778E5C-3840542",
+      "AllowOnlyUsersWithSpecialAccess": false,
+      "IsRetakeIncorrectOnly": false
+    },
+    {
+      "QuizId": 507075,
+      "Name": "Fall 2021 Quiz 09",
+      "AutoExportToGrades": true,
+      "IsActive": true,
+      "GradeItemId": 1714644,
+      "IsAutoSetGraded": true,
+      "Instructions": {
+        "Text": {
+          "Text": "",
+          "Html": ""
+        },
+        "IsDisplayed": false
+      },
+      "Description": {
+        "Text": {
+          "Text": "",
+          "Html": ""
+        },
+        "IsDisplayed": false
+      },
+      "Header": {
+        "Text": {
+          "Text": "",
+          "Html": ""
+        },
+        "IsDisplayed": false
+      },
+      "Footer": {
+        "Text": {
+          "Text": "",
+          "Html": ""
+        },
+        "IsDisplayed": false
+      },
+      "StartDate": "2021-11-01T21:00:00.000Z",
+      "EndDate": "2021-11-03T03:59:00.000Z",
+      "DueDate": "2021-11-03T03:59:00.000Z",
+      "DisplayInCalendar": false,
+      "SortOrder": 13,
+      "SubmissionTimeLimit": {
+        "IsEnforced": true,
+        "ShowClock": true,
+        "TimeLimitValue": 60
+      },
+      "SubmissionGracePeriod": 5,
+      "LateSubmissionInfo": {
+        "LateSubmissionOption": 2,
+        "LateLimitMinutes": 1
+      },
+      "AttemptsAllowed": {
+        "IsUnlimited": false,
+        "NumberOfAttemptsAllowed": 2
+      },
+      "Password": null,
+      "AllowHints": false,
+      "DisableRightClick": false,
+      "DisablePagerAndAlerts": false,
+      "RestrictIPAddressRange": [],
+      "NotificationEmail": null,
+      "CalcTypeId": 1,
+      "CategoryId": null,
+      "PreventMovingBackwards": false,
+      "Shuffle": false,
+      "ActivityId": "https://ids.brightspace.com/activities/quiz/354644E0-4CD8-419D-A32F-4E78D8778E5C-3869634",
+      "AllowOnlyUsersWithSpecialAccess": false,
+      "IsRetakeIncorrectOnly": false
+    },
+    {
+      "QuizId": 508874,
+      "Name": "Fall 2021 Quiz 10",
+      "AutoExportToGrades": true,
+      "IsActive": true,
+      "GradeItemId": 1722521,
+      "IsAutoSetGraded": true,
+      "Instructions": {
+        "Text": {
+          "Text": "",
+          "Html": ""
+        },
+        "IsDisplayed": false
+      },
+      "Description": {
+        "Text": {
+          "Text": "",
+          "Html": ""
+        },
+        "IsDisplayed": false
+      },
+      "Header": {
+        "Text": {
+          "Text": "",
+          "Html": ""
+        },
+        "IsDisplayed": false
+      },
+      "Footer": {
+        "Text": {
+          "Text": "",
+          "Html": ""
+        },
+        "IsDisplayed": false
+      },
+      "StartDate": "2021-11-08T22:00:00.000Z",
+      "EndDate": "2021-11-10T04:59:00.000Z",
+      "DueDate": "2021-11-10T04:59:00.000Z",
+      "DisplayInCalendar": false,
+      "SortOrder": 14,
+      "SubmissionTimeLimit": {
+        "IsEnforced": true,
+        "ShowClock": true,
+        "TimeLimitValue": 60
+      },
+      "SubmissionGracePeriod": 5,
+      "LateSubmissionInfo": {
+        "LateSubmissionOption": 2,
+        "LateLimitMinutes": 1
+      },
+      "AttemptsAllowed": {
+        "IsUnlimited": false,
+        "NumberOfAttemptsAllowed": 2
+      },
+      "Password": null,
+      "AllowHints": false,
+      "DisableRightClick": false,
+      "DisablePagerAndAlerts": false,
+      "RestrictIPAddressRange": [],
+      "NotificationEmail": null,
+      "CalcTypeId": 1,
+      "CategoryId": null,
+      "PreventMovingBackwards": false,
+      "Shuffle": false,
+      "ActivityId": "https://ids.brightspace.com/activities/quiz/354644E0-4CD8-419D-A32F-4E78D8778E5C-3899978",
+      "AllowOnlyUsersWithSpecialAccess": false,
+      "IsRetakeIncorrectOnly": false
+    },
+    {
+      "QuizId": 510673,
+      "Name": "Fall 2021 Quiz 11",
+      "AutoExportToGrades": true,
+      "IsActive": true,
+      "GradeItemId": 1730257,
+      "IsAutoSetGraded": true,
+      "Instructions": {
+        "Text": {
+          "Text": "",
+          "Html": ""
+        },
+        "IsDisplayed": false
+      },
+      "Description": {
+        "Text": {
+          "Text": "",
+          "Html": ""
+        },
+        "IsDisplayed": false
+      },
+      "Header": {
+        "Text": {
+          "Text": "",
+          "Html": ""
+        },
+        "IsDisplayed": false
+      },
+      "Footer": {
+        "Text": {
+          "Text": "",
+          "Html": ""
+        },
+        "IsDisplayed": false
+      },
+      "StartDate": "2021-11-15T22:00:00.000Z",
+      "EndDate": "2021-11-17T04:59:00.000Z",
+      "DueDate": "2021-11-17T04:59:00.000Z",
+      "DisplayInCalendar": false,
+      "SortOrder": 15,
+      "SubmissionTimeLimit": {
+        "IsEnforced": true,
+        "ShowClock": true,
+        "TimeLimitValue": 60
+      },
+      "SubmissionGracePeriod": 5,
+      "LateSubmissionInfo": {
+        "LateSubmissionOption": 2,
+        "LateLimitMinutes": 1
+      },
+      "AttemptsAllowed": {
+        "IsUnlimited": false,
+        "NumberOfAttemptsAllowed": 2
+      },
+      "Password": null,
+      "AllowHints": false,
+      "DisableRightClick": false,
+      "DisablePagerAndAlerts": false,
+      "RestrictIPAddressRange": [],
+      "NotificationEmail": null,
+      "CalcTypeId": 1,
+      "CategoryId": null,
+      "PreventMovingBackwards": false,
+      "Shuffle": false,
+      "ActivityId": "https://ids.brightspace.com/activities/quiz/354644E0-4CD8-419D-A32F-4E78D8778E5C-3930873",
+      "AllowOnlyUsersWithSpecialAccess": false,
+      "IsRetakeIncorrectOnly": false
+    },
+    {
+      "QuizId": 511404,
+      "Name": "Fall 2021 Quiz 12",
+      "AutoExportToGrades": true,
+      "IsActive": true,
+      "GradeItemId": 1736322,
+      "IsAutoSetGraded": true,
+      "Instructions": {
+        "Text": {
+          "Text": "",
+          "Html": ""
+        },
+        "IsDisplayed": false
+      },
+      "Description": {
+        "Text": {
+          "Text": "",
+          "Html": ""
+        },
+        "IsDisplayed": false
+      },
+      "Header": {
+        "Text": {
+          "Text": "",
+          "Html": ""
+        },
+        "IsDisplayed": false
+      },
+      "Footer": {
+        "Text": {
+          "Text": "",
+          "Html": ""
+        },
+        "IsDisplayed": false
+      },
+      "StartDate": "2021-11-22T22:00:00.000Z",
+      "EndDate": "2021-11-24T04:59:00.000Z",
+      "DueDate": "2021-11-24T04:59:00.000Z",
+      "DisplayInCalendar": false,
+      "SortOrder": 16,
+      "SubmissionTimeLimit": {
+        "IsEnforced": true,
+        "ShowClock": true,
+        "TimeLimitValue": 60
+      },
+      "SubmissionGracePeriod": 5,
+      "LateSubmissionInfo": {
+        "LateSubmissionOption": 2,
+        "LateLimitMinutes": 1
+      },
+      "AttemptsAllowed": {
+        "IsUnlimited": false,
+        "NumberOfAttemptsAllowed": 2
+      },
+      "Password": null,
+      "AllowHints": false,
+      "DisableRightClick": false,
+      "DisablePagerAndAlerts": false,
+      "RestrictIPAddressRange": [],
+      "NotificationEmail": null,
+      "CalcTypeId": 1,
+      "CategoryId": null,
+      "PreventMovingBackwards": false,
+      "Shuffle": false,
+      "ActivityId": "https://ids.brightspace.com/activities/quiz/354644E0-4CD8-419D-A32F-4E78D8778E5C-3964240",
+      "AllowOnlyUsersWithSpecialAccess": false,
+      "IsRetakeIncorrectOnly": false
+    }
+  ],
+  "Next": null
+}
